@@ -1,0 +1,8 @@
+TODO list
+1. unify form of sample function in On-policy worker and Off-policy worker
+2. add postprocessor module to deal with different calculation using samples (from worker or buffer), e.g.
+   advantage function, td-lambda, importance weights, etc, which can be used in different algorithms
+3. add gradient clip (norm)
+4. add readme
+5. cleaning code to make it easier to understand and use
+6. more test for debug
