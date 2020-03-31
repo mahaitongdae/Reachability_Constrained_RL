@@ -5,7 +5,9 @@ import os
 from preprocessor import Preprocessor
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+
+# logger.setLevel(logging.INFO)
 
 
 class Evaluator(object):

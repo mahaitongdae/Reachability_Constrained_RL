@@ -78,26 +78,35 @@ class ReferencePath(object):
     def __init__(self):
         self.curve_list = [(10, 100, 0), (15, 150, 0), (20, 200, 0)]
 
-    def compute_y(self, x):
-        y = np.zeros_like(x)
+    def compute_path_y(self, x):
+        y = tf.zeros_like(x, dtype=tf.float32)
         for curve in self.curve_list:
             magnitude, T, shift = curve
-            y += magnitude * np.sin((x - shift) * 2 * np.pi / T)
+            y += magnitude * tf.sin((x - shift) * 2 * tf.convert_to_tensor(np.pi) / T)
         return y
 
-    def compute_phi(self, x):
-        deriv = np.zeros_like(x)
+    def compute_path_phi(self, x):
+        deriv = tf.zeros_like(x, dtype=tf.float32)
         for curve in self.curve_list:
             magnitude, T, shift = curve
-            deriv += magnitude * 2 * np.pi / T * np.cos((x - shift) * 2 * np.pi / T)
-        return np.arctan(deriv)
+            deriv += magnitude * 2 * tf.convert_to_tensor(np.pi) / T * tf.cos(
+                (x - shift) * 2 * tf.convert_to_tensor(np.pi) / T)
+        return tf.atan(deriv)
 
     def compute_y_deviation(self, x, y):
-        y_ref = self.compute_y(x)
+        y_ref = self.compute_path_y(x)
         return y - y_ref
 
+    def compute_y(self, x, delta_y):
+        y_ref = self.compute_path_y(x)
+        return delta_y + y_ref
+
+    def compute_phi(self, x, delta_phi):
+        phi_ref = self.compute_path_phi(x)
+        return delta_phi + phi_ref
+
     def compute_phi_deviation(self, x, phi):
-        phi_ref = self.compute_phi(x)
+        phi_ref = self.compute_path_phi(x)
         return phi - phi_ref
 
 
@@ -118,7 +127,7 @@ class EnvironmentModel(object):  # all tensors
     def compute_rewards(self, obses, actions):  # obses and actions are tensors
         v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs, xs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
                                                            obses[:, 4], obses[:, 5], obses[:, 6]
-        v = tf.sqrt(tf.square(v_xs)+tf.square(v_ys))
+        v = tf.sqrt(tf.square(v_xs) + tf.square(v_ys))
         deltas, a_xs = actions[:, 0], actions[:, 1]
 
         devi_v = -tf.pow(v - exp_vs, 2)
@@ -136,13 +145,13 @@ class EnvironmentModel(object):  # all tensors
         v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs, xs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
                                                            obses[:, 4], obses[:, 5], obses[:, 6]
         self.expected_vs = exp_vs
-        path_ys, path_phis = self.path.compute_y(xs), self.path.compute_phi(xs)
+        path_ys, path_phis = self.path.compute_path_y(xs), self.path.compute_path_phi(xs)
         ys, phis = path_ys + delta_ys, path_phis + delta_phis
         veh_states = tf.stack([v_ys, rs, v_xs, phis, xs, ys], axis=1)
         return veh_states
 
     def _get_obses(self, veh_states):
-        v_ys, rs, v_xs, phis, xs, ys = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], veh_states[:, 3],\
+        v_ys, rs, v_xs, phis, xs, ys = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], veh_states[:, 3], \
                                        veh_states[:, 4], veh_states[:, 5]
         delta_ys, delta_phis = self.path.compute_y_deviation(xs, ys), self.path.compute_phi_deviation(xs, phis)
         obses = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, self.expected_vs, xs], axis=1)
@@ -167,11 +176,11 @@ class PathTrackingEnv(gym.Env, ABC):
         self.base_frequency = 200
         self.simulation_frequency = 40
         self.simulation_time = 0
-        self.observation_space = gym.spaces.Box(low=np.array([0, 0, -np.pi/6, -np.inf, -np.pi, 0, -np.inf]),
-                                                high=np.array([35, 1.5, np.pi/6, np.inf, np.pi, 35, np.inf]),
+        self.observation_space = gym.spaces.Box(low=np.array([0, 0, -np.pi / 6, -np.inf, -np.pi, 0, -np.inf]),
+                                                high=np.array([35, 1.5, np.pi / 6, np.inf, np.pi, 35, np.inf]),
                                                 dtype=np.float32)
-        self.action_space = gym.spaces.Box(low=np.array([-np.pi/6, -5]),
-                                           high=np.array([np.pi/6, 3]),
+        self.action_space = gym.spaces.Box(low=np.array([-np.pi / 6, -5]),
+                                           high=np.array([np.pi / 6, 3]),
                                            dtype=np.float32)
         plt.ion()
 
@@ -179,11 +188,11 @@ class PathTrackingEnv(gym.Env, ABC):
         self.simulation_time = 0
         self.expected_v = np.random.rand() * 20
         init_x = np.random.rand() * 1000
-        init_path_y = self.path.compute_y(init_x)
-        init_path_phi = self.path.compute_phi(init_x)
+        init_path_y = self.path.compute_path_y(init_x).numpy()
+        init_path_phi = self.path.compute_path_phi(init_x).numpy()
         init_y = init_path_y + 5 * 2 * (np.random.rand() - 0.5)
         init_phi = init_path_phi + 0.8 * 2 * (np.random.rand() - 0.5)
-        init_v_x = np.random.rand() * 10
+        init_v_x = np.random.rand() * 20
         init_v_y = 0
         init_r = 0
         self.veh_state = np.array([init_v_y, init_r, init_v_x, init_phi, init_x, init_y])
@@ -192,11 +201,11 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def _get_obs(self):
         v_y, r, v_x, phi, x, y = self.veh_state
-        delta_y, delta_phi = self.path.compute_y_deviation(x, y), self.path.compute_phi_deviation(x, phi)
+        delta_y, delta_phi = self.path.compute_y_deviation(x, y).numpy(), self.path.compute_phi_deviation(x, phi).numpy()
         return np.array([v_x, v_y, r, delta_y, delta_phi, self.expected_v, x])
 
     def step(self, action):
-        self.simulation_time += 1/self.simulation_frequency
+        self.simulation_time += 1 / self.simulation_frequency
         self.action = action
         reward = self.compute_reward(self.obs, action)
 
@@ -212,10 +221,10 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def compute_reward(self, obs, action):
         v_x, v_y, r, delta_y, delta_phi, exp_v, x = obs
-        v = np.sqrt(v_x**2+v_y**2)
+        v = np.sqrt(v_x ** 2 + v_y ** 2)
         delta, a_x = action
 
-        devi_v = -pow(v-exp_v, 2)
+        devi_v = -pow(v - exp_v, 2)
         devi_y = -pow(delta_y, 2)
         devi_phi = -pow(delta_phi, 2)
         punish_yaw_rate = -abs(r)
@@ -230,24 +239,23 @@ class PathTrackingEnv(gym.Env, ABC):
         return reward
 
     def judge_done(self, obs):
-        v_y, r, v_x, phi, x, y, exp_v = obs
-        path_y, path_phi = self.path.compute_y(x), self.path.compute_phi(x)
-        if abs(y - path_y) > 10 or abs(phi - path_phi) > 1.6:
+        v_x, v_y, r, delta_y, delta_phi, expected_v, x = obs
+        if abs(delta_y) > 10 or abs(delta_phi) > 1.6:
             return 1
         else:
             return 0
 
     def render(self, mode='human'):
         plt.cla()
-        v_y, r, v_x, phi, x, y, exp_v = self.obs
-        path_y, path_phi = self.path.compute_y(x), self.path.compute_phi(x)
-        delta_y, delta_phi = self.path.compute_y_deviation(x, y), self.path.compute_phi_deviation(x, phi)
+        v_x, v_y, r, delta_y, delta_phi, exp_v, x = self.obs
+        y, phi = self.path.compute_y(x, delta_y).numpy(), self.path.compute_phi(x, delta_phi).numpy()
+        path_y, path_phi = self.path.compute_path_y(x).numpy(), self.path.compute_path_phi(x).numpy()
 
         plt.title("Demo")
         range_x, range_y = 100, 100
         plt.axis('equal')
         path_xs = np.linspace(x - range_x / 2, x + range_x / 2, 1000)
-        path_ys = self.path.compute_y(path_xs)
+        path_ys = self.path.compute_path_y(path_xs).numpy()
         plt.plot(path_xs, path_ys)
 
         def rotate_coordination(orig_x, orig_y, orig_d, coordi_rotate_d):
@@ -276,10 +284,10 @@ class PathTrackingEnv(gym.Env, ABC):
             plt.plot([LD_x + x, LU_x + x], [LD_y + y, LU_y + y], color=color)
 
         draw_rotate_rec(x, y, phi * 180 / np.pi, 4.8, 2.2)
-        plt.text(x - range_x / 2-20, range_y / 2 - 3, 'time: {:.2f}s'.format(self.simulation_time))
-        plt.text(x - range_x / 2-20, range_y / 2 - 3 * 2,
+        plt.text(x - range_x / 2 - 20, range_y / 2 - 3, 'time: {:.2f}s'.format(self.simulation_time))
+        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 2,
                  'x: {:.2f}, y: {:.2f}, path_y: {:.2f}, delta_y: {:.2f}m'.format(x, y, path_y, delta_y))
-        plt.text(x - range_x / 2-20, range_y / 2 - 3 * 3,
+        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 3,
                  r'phi: {:.2f}rad (${:.2f}\degree$), path_phi: {:.2f}rad (${:.2f}\degree$), delta_phi: {:.2f}rad (${:.2f}\degree$)'.format(
                      phi,
                      phi * 180 / np.pi,
@@ -288,13 +296,13 @@ class PathTrackingEnv(gym.Env, ABC):
                      delta_phi, delta_phi * 180 / np.pi,
                      delta_phi, delta_phi * 180 / np.pi))
 
-        plt.text(x - range_x / 2-20, range_y / 2 - 3 * 4,
+        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 4,
                  'v_x: {:.2f}m/s, v_y: {:.2f}m/s, v: {:.2f}m/s (expected: {:.2f}m/s)'.format(v_x, v_y, np.sqrt(
                      v_x ** 2 + v_y ** 2), exp_v))
-        plt.text(x - range_x / 2-20, range_y / 2 - 3 * 5, 'yaw_rate: {:.2f}rad/s'.format(r))
+        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 5, 'yaw_rate: {:.2f}rad/s'.format(r))
         if self.action is not None:
             delta, a_x = self.action
-            plt.text(x - range_x / 2-20, range_y / 2 - 3 * 6,
+            plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 6,
                      r'$\delta$: {:.2f}rad (${:.2f}\degree$), a_x: {:.2f}m/s^2'.format(delta, delta * 180 / np.pi, a_x))
 
         plt.axis([x - range_x / 2, x + range_x / 2, -range_y / 2, range_y / 2])
@@ -304,8 +312,11 @@ class PathTrackingEnv(gym.Env, ABC):
 
 
 def test_path_tracking_env():
+    from mixed_pg_learner import judge_is_nan
     env = PathTrackingEnv()
     obs = env.reset()
+    print(obs)
+    judge_is_nan([obs])
     action = np.array([0, 1])
     for _ in range(10):
         done = 0

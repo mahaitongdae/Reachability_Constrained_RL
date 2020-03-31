@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="" />
+    <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/mixed_pg.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/mixed_pg.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_for_debug.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_for_debug.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FavoritesManager">
+    <favorites_list name="mixed_pg" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -17,7 +34,15 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="IgnoredFileRootStore">
+    <option name="generatedRoots">
+      <set>
+        <option value="$PROJECT_DIR$/.idea" />
+      </set>
+    </option>
+  </component>
   <component name="ProjectId" id="1ZbLnyNf074uvTNXJ7cShPrP5l6" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showExcludedFiles" value="true" />
@@ -25,16 +50,18 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$USER_HOME$/Software/anaconda3/envs/tf2/lib/python3.7/site-packages/gym/envs/user_defined" />
     </key>
   </component>
   <component name="RunManager" selected="Python.train_script">
-    <configuration name="evaluator" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="path_tracking_env (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="mixed_pg" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -42,11 +69,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/evaluator.py" />
+      <option name="SCRIPT_NAME" value="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined/path_tracking_env.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -55,7 +82,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="model" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="path_tracking_env" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="mixed_pg" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -67,7 +94,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/model.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/path_tracking_env.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -97,6 +124,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="test_for_debug" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="mixed_pg" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="LD_LIBRARY_PATH" value="/usr/local/cuda/lib64:$USER_HOME$/.mujoco/mujoco200/bin:/usr/lib/nvidia-418" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test_for_debug.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="train_script" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="mixed_pg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -118,12 +167,20 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.path_tracking_env" />
+      <item itemvalue="Python.policy" />
+      <item itemvalue="Python.test_for_debug" />
+      <item itemvalue="Python.train_script" />
+      <item itemvalue="Python.path_tracking_env (1)" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.train_script" />
-        <item itemvalue="Python.evaluator" />
+        <item itemvalue="Python.path_tracking_env" />
+        <item itemvalue="Python.path_tracking_env (1)" />
+        <item itemvalue="Python.test_for_debug" />
         <item itemvalue="Python.policy" />
-        <item itemvalue="Python.model" />
       </list>
     </recent_temporary>
   </component>
@@ -150,40 +207,64 @@
       <option name="presentableId" value="Default" />
       <updated>1585103017129</updated>
     </task>
+    <task id="LOCAL-00001" summary="add version control">
+      <created>1585452458848</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1585452458848</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add version control" />
+    <option name="LAST_COMMIT_MESSAGE" value="add version control" />
+  </component>
   <component name="WindowStateProjectService">
-    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1585374310717">
+    <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1585374310717" />
-    <state width="1512" height="282" key="GridCell.Tab.0.bottom" timestamp="1585452184246">
+    <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1585452458717">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="282" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1585452184246" />
-    <state width="1512" height="282" key="GridCell.Tab.0.center" timestamp="1585452184245">
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1585452458717" />
+    <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="282" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1585452184245" />
-    <state width="1512" height="282" key="GridCell.Tab.0.left" timestamp="1585452184245">
+    <state x="369" y="314" key="EnvironmentVariablesDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479705393" />
+    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1585490565458">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="282" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1585452184245" />
-    <state width="1512" height="282" key="GridCell.Tab.0.right" timestamp="1585452184246">
+    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1585490565458" />
+    <state width="1512" height="71" key="GridCell.Tab.0.bottom" timestamp="1585633790962">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="282" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1585452184246" />
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1585449907312">
+    <state width="1512" height="71" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
+    <state width="1512" height="71" key="GridCell.Tab.0.center" timestamp="1585633790962">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1585449907312" />
+    <state width="1512" height="71" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
+    <state width="1512" height="71" key="GridCell.Tab.0.left" timestamp="1585633790962">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state width="1512" height="71" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
+    <state width="1512" height="71" key="GridCell.Tab.0.right" timestamp="1585633790962">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state width="1512" height="71" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1585621754215">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1585621754215" />
     <state x="479" y="183" width="707" height="528" key="find.popup" timestamp="1585452372041">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="479" y="183" width="707" height="528" key="find.popup/65.24.1535.876@65.24.1535.876" timestamp="1585452372041" />
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1585389474390">
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1585470136615">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1585389474390" />
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1585470136615" />
   </component>
 </project>

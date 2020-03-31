@@ -12,8 +12,12 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# logging.getLogger().setLevel(logging.INFO)
+
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def built_mixedpg_parser():
@@ -25,7 +29,7 @@ def built_mixedpg_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--sample_batch_size', type=int, default=128)
-    parser.add_argument("--mini_batch_size", type=int, default=32)
+    parser.add_argument("--mini_batch_size", type=int, default=20)
     parser.add_argument("--policy_lr_schedule", type=list,
                         default=[0.01, int(parser.parse_args().max_updated_steps / 2), 0.0001])
     parser.add_argument("--value_lr_schedule", type=list,
@@ -68,7 +72,7 @@ def built_mixedpg_parser():
 def main():
     args = built_mixedpg_parser()
     logger.info('begin training mixed pg agents with parameter {}'.format(str(args)))
-    ray.init(redis_max_memory=100*1024*1024, object_store_memory=100*1024*1024)
+    ray.init(redis_max_memory=200*1024*1024, object_store_memory=200*1024*1024)
     os.makedirs(args.result_dir)
     with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
         json.dump(vars(args), f, ensure_ascii=False, indent=4)

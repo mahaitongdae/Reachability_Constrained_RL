@@ -1,5 +1,4 @@
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.activations import relu
 from tensorflow.keras import Model, Sequential
 from tensorflow import Variable
 import tensorflow as tf
@@ -8,9 +7,9 @@ import tensorflow as tf
 class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
         super(MLPNet, self).__init__(**kwargs)
-        self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation=relu)
-        self.hidden = Sequential([Dense(num_hidden_units, activation=relu) for _ in range(num_hidden_layers-1)])
-        self.outputs = Dense(output_dim, activation=relu)
+        self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation='elu')
+        self.hidden = Sequential([Dense(num_hidden_units, activation='elu') for _ in range(num_hidden_layers-1)])
+        self.outputs = Dense(output_dim, activation='elu')
         self.build(input_shape=(None, input_dim))
 
     def call(self, x, **kwargs):

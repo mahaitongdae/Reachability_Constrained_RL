@@ -7,8 +7,23 @@ from preprocessor import Preprocessor
 import time
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
+# logger.setLevel(logging.INFO)
+
+def judge_is_nan(list_of_np_or_tensor):
+    for m in list_of_np_or_tensor:
+        if hasattr(m, 'numpy'):
+            assert not np.any(np.isnan(m.numpy()))
+        else:
+            assert not np.any(np.isnan(m))
+
+def judge_less_than(list_of_np_or_tensor, thres=0.001):
+    for m in list_of_np_or_tensor:
+        if hasattr(m, 'numpy'):
+            assert not np.all(m.numpy()<thres)
+        else:
+            assert not np.all(m<thres)
 
 class TimerStat:
     def __init__(self, window_size=10):
@@ -54,7 +69,7 @@ class MixedPGLearner(object):
         self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
         self.M = 1
-        self.num_rollout_list = [0, 20, 40, 60]
+        self.num_rollout_list = [20, 60]
         self.model = EnvironmentModel()
         self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
                                          self.args.reward_scale_factor, gamma=self.args.gamma)
@@ -75,6 +90,7 @@ class MixedPGLearner(object):
                'batch_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
                'batch_dones': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
                'batch_neglogps': np.asarray(list(map(lambda x: x[5], batch_data)), dtype=np.float32)}
+        print(tmp.keys())
         return tmp
 
     def batch_data_count(self):
@@ -109,14 +125,16 @@ class MixedPGLearner(object):
         batch_tdlambda_returns = batch_advs + batch_values
         return batch_advs, batch_tdlambda_returns
 
-    def model_rollout_return(self, num_traj, num_rollout_list, start_obses, start_actions):
-        max_num_rollout = max(num_rollout_list)
-        n = len(num_rollout_list)
+    def model_rollout_return(self, start_obses):
+        processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
+        start_actions, _ = self.policy_with_value.compute_action(processed_start_obses[:, :-1])
+        # judge_is_nan(start_actions)
 
-        self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-        obses_tile = self.tf.tile(start_obses, [num_traj, 1])
+        max_num_rollout = max(self.num_rollout_list)
+
+        obses_tile = self.tf.tile(start_obses, [self.M, 1])
         processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-        actions_tile = self.tf.tile(start_actions, [num_traj, 1])
+        actions_tile = self.tf.tile(start_actions, [self.M, 1])
         processed_obses_tile_list = [processed_obses_tile]
         actions_tile_list = [actions_tile]
         rewards_sum_tile = self.tf.zeros((obses_tile.shape[0], 1))
@@ -126,7 +144,6 @@ class MixedPGLearner(object):
         self.model.reset(obses_tile)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                print(ri)
                 obses_tile, rewards = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
                 processed_rewards = self.preprocessor.tf_process_rewards(rewards)
@@ -142,7 +159,7 @@ class MixedPGLearner(object):
         all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
         all_gammas = self.tf.concat(gammas_list, 0)
 
-        final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout+1, num_traj, -1))
+        final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout+1, self.M, -1))
         # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
         #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
         #        ...
@@ -150,15 +167,29 @@ class MixedPGLearner(object):
         #        ]
         model_returns = self.tf.reduce_mean(final, axis=1)
         out_returns = []
-        for num_rollout in num_rollout_list:
+        for num_rollout in self.num_rollout_list:
             out_returns.append(model_returns[num_rollout])
 
         out = self.tf.concat(out_returns, 0)
-
         return out
 
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
+
+    @tf.function
+    def forward_and_backward(self, mb_obs):
+        with self.tf.GradientTape(persistent=True) as tape:
+            model_returns = self.model_rollout_return(mb_obs)
+
+        jaco = tape.jacobian(model_returns,
+                             self.policy_with_value.policy.trainable_weights,
+                             # unconnected_gradients=self.tf.UnconnectedGradients.ZERO,
+                             experimental_use_pfor=True)
+        # shape is len(self.policy_with_value.models[1].trainable_weights) * len(model_returns)
+        # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
+        #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
+        #  ...]
+        return model_returns, jaco
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
@@ -168,33 +199,52 @@ class MixedPGLearner(object):
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         mb_neglogps = self.batch_data['batch_neglogps'][start_idx: end_idx]
+        judge_is_nan([mb_obs])
+        judge_is_nan([processed_mb_obs])
+        judge_is_nan([mb_advs])
+        judge_is_nan([mb_tdlambda_returns])
+        judge_is_nan([mb_actions])
+        judge_is_nan([mb_neglogps])
 
         with self.tf.GradientTape() as tape:
             q_pred = self.policy_with_value.compute_Qs(processed_mb_obs[:, :-1], mb_actions)[0]
             q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_tdlambda_returns))
         q_gradient = tape.gradient(q_loss,
                                    self.policy_with_value.models[0].trainable_weights,
-                                   unconnected_gradients=self.tf.UnconnectedGradients.ZERO)  # TODO
+                                   # unconnected_gradients=self.tf.UnconnectedGradients.ZERO,
+                                   )  # TODO
+        self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
+        model_returns, jaco = self.forward_and_backward(mb_obs)
 
         policy_gradient_list = []
         heuristic_bias_list = []
         var_list = []
 
-        with self.forward_timer:
-            with self.tf.GradientTape() as tape:
-                acts, _ = self.policy_with_value.compute_action(processed_mb_obs[:, :-1])
-                model_returns = self.model_rollout_return(self.M, self.num_rollout_list, mb_obs, acts)
-        logger.info('forward time: {}'.format(self.forward_timer.mean))
-        with self.backward_timer:
-            print(11111)
-            jaco = tape.jacobian(model_returns,
-                                 self.policy_with_value.models[1].trainable_weights,
-                                 unconnected_gradients=self.tf.UnconnectedGradients.ZERO,
-                                 experimental_use_pfor=True)  # TODO
-        # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
-        #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
-        #  ...]
-        logger.info('backward time: {}'.format(self.backward_timer.mean))
+
+
+
+        # tmp = []
+        # print(model_returns)
+        #
+        # with self.backward_timer:
+        #     for model_return in model_returns:
+        #         tmp.append(tape.gradient(model_return,
+        #                                  self.policy_with_value.policy.trainable_weights,
+        #                                  # unconnected_gradients=self.tf.UnconnectedGradients.ZERO,
+        #                                  )
+        #                    )
+        #         # judge_is_nan(tmp[-1])
+        #         # judge_less_than(tmp[-1], 0.001)
+        #
+        # # [[dy1/dx1, dy1/dx2, ...], [dy2/dx1, dy2/dx2, ...], ...]
+        # # shape is len(model_returns) * len(self.policy_with_value.models[1].trainable_weights)
+        # # print(tmp)
+        # jaco = []
+        # for x in range(len(self.policy_with_value.models[1].trainable_weights)):
+        #     tmp1 = []
+        #     for y in range(len(model_returns)):
+        #         tmp1.append(tmp[y][x])
+        #     jaco.append(tmp1)
 
         for rollout_index in range(len(self.num_rollout_list)):
             jaco_for_this_rollout = list(map(lambda x: x[rollout_index*self.args.mini_batch_size:
@@ -211,10 +261,19 @@ class MixedPGLearner(object):
                                                          (rollout_index+1)*self.args.mini_batch_size]
                                                       - mb_tdlambda_returns))
 
+            print(var)
+            judge_is_nan(gradient_mean)
+
+
             policy_gradient_list.append(gradient_mean)
             heuristic_bias_list.append(heuristic_bias)
             var_list.append(var)
+            judge_is_nan(var_list)
+            judge_is_nan(heuristic_bias_list)
 
+
+        print(var_list)
+        print(heuristic_bias_list)
         w_heur_bias_list = []
         w_var_list = []
         heuristic_bias_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1 / x, heuristic_bias_list)))
@@ -229,15 +288,24 @@ class MixedPGLearner(object):
         for i in range(len(self.num_rollout_list)):
             w_list.append((1 / w_heur_bias_list[i] + 1 / w_var_list[i]) / (w_heur_bias_inverse_sum + w_var_inverse_sum))
 
+        print(w_list)
+        judge_is_nan(w_list)
+
         final_policy_gradient = []
         for i in range(len(policy_gradient_list[0])):
             tmp = 0
             for j in range(len(policy_gradient_list)):
+                judge_is_nan(policy_gradient_list[j])
                 tmp += w_list[j] * policy_gradient_list[j][i]
             final_policy_gradient.append(tmp)
 
-        gradient_tensor = q_gradient + final_policy_gradient
+        judge_is_nan(q_gradient)
+        judge_is_nan(final_policy_gradient)
+
+        gradient_tensor = q_gradient + final_policy_gradient # q_gradient + final_policy_gradient
         return np.array(list(map(lambda x: x.numpy(), gradient_tensor)))
+
+
 
 
 def test_vehicle_dynamics():

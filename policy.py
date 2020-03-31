@@ -294,6 +294,53 @@ def test_policy2():
     env = gym.make('Pendulum-v0')
     policy_with_value = PolicyWithQs(env.observation_space, env.action_space, args)
 
+def test_policy_with_Qs():
+    from train_script import built_mixedpg_parser
+    import gym
+    import numpy as np
+    import tensorflow as tf
+    args = built_mixedpg_parser()
+    args.obs_dim = 3
+    env = gym.make('Pendulum-v0')
+    policy_with_value = PolicyWithQs(env.observation_space, env.action_space, args)
+    # print(policy_with_value.policy.trainable_weights)
+    # print(policy_with_value.Qs[0].trainable_weights)
+    obses = np.array([[1., 2., 3.], [3., 4., 5.]], dtype=np.float32)
+
+    with tf.GradientTape() as tape:
+        acts, _ = policy_with_value.compute_action(obses)
+        Qs = policy_with_value.compute_Qs(obses, acts)[0]
+        print(Qs)
+        loss = tf.reduce_mean(Qs)
+
+    gradient = tape.gradient(loss, policy_with_value.policy.trainable_weights)
+    print(gradient)
+
+def test_mlp():
+    import tensorflow as tf
+    import numpy as np
+    from model import MLPNet
+    policy = tf.keras.Sequential([tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
+                                  tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
+                                  tf.keras.layers.Dense(1, activation='elu')])
+    value = tf.keras.Sequential([tf.keras.layers.Dense(128, input_shape=(4,), activation='elu'),
+                                  tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
+                                  tf.keras.layers.Dense(1, activation='elu')])
+    print(policy.trainable_variables)
+    print(value.trainable_variables)
+    with tf.GradientTape() as tape:
+        obses = np.array([[1., 2., 3.], [3., 4., 5.]], dtype=np.float32)
+        obses = tf.convert_to_tensor(obses)
+        acts = policy(obses)
+        a = tf.reduce_mean(acts)
+        print(acts)
+        Qs = value(tf.concat([obses, acts], axis=-1))
+        print(Qs)
+        loss = tf.reduce_mean(Qs)
+
+    gradient = tape.gradient(loss, policy.trainable_weights)
+    print(gradient)
+
 
 if __name__ == '__main__':
-    test_policy2()
+    test_policy_with_Qs()

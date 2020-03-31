@@ -3,9 +3,12 @@ import gym
 import ray
 import logging
 from preprocessor import Preprocessor
+from mixed_pg_learner import judge_is_nan
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+
+# logger.setLevel(logging.INFO)
 
 
 class OnPolicyWorker(object):
@@ -18,7 +21,7 @@ class OnPolicyWorker(object):
     gpus = tf.config.experimental.list_physical_devices('GPU')
     tf.config.experimental.set_virtual_device_configuration(
         gpus[0],
-        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1500)])
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
 
     def __init__(self, policy_cls, learner_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
@@ -29,6 +32,7 @@ class OnPolicyWorker(object):
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
+        judge_is_nan([self.obs])
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
                                          self.args.reward_scale_factor, gamma=self.args.gamma)
@@ -66,12 +70,17 @@ class OnPolicyWorker(object):
         batch_data = []
         for _ in range(self.sample_batch_size):
             processed_obs = self.preprocessor.process_obs(self.obs)
+            judge_is_nan([processed_obs])
 
             action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :-1])  # TODO
+            judge_is_nan([action])
+            judge_is_nan([neglogp])
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+            judge_is_nan([obs_tp1])
 
             batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
+            judge_is_nan([self.obs])
 
         return batch_data
 
