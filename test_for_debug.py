@@ -153,7 +153,17 @@ def tape_gra():
     gradient = tape.jacobian(c, inp)
     print(gradient)
 
+def test_gym():
+    import gym
+    env = gym.make('PathTracking-v0')
+    obs = env.reset()
+    print(obs)
+    action = np.array([0, 10000])
+    obs = env.step(action)
+    print(obs)
+    a = 1
+
 
 if __name__ == '__main__':
-    tape_gra()
+    test_gym()
 

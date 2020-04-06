@@ -5,9 +5,10 @@ import os
 import logging
 import threading
 import queue
+import pprint
 from utils.task_pool import TaskPool
 import random
-
+from mixed_pg_learner import TimerStat
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -28,29 +29,51 @@ class AllReduceOptimizer(object):
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         self.writer = tf.summary.create_file_writer(self.log_dir)
+        self.stats = {}
+        self.sampling_timer = TimerStat()
+        self.optimizing_timer = TimerStat()
         logger.info('Optimizer initialized')
 
+    def get_stats(self):
+        return self.stats
+
     def step(self):
+        self.stats.update({'iteration': self.num_updated_steps,
+                           'num_samples': self.num_sampled_steps})
         logger.info('begin the {}-th optimizing step'.format(self.num_updated_steps))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
-        for worker in self.workers['remote_workers']:
-            worker.put_data_into_learner.remote(worker.sample.remote())
-        for i in range(self.args.epoch):
-            for minibatch_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
-                minibatch_grad_futures = [worker.compute_gradient_over_ith_minibatch.remote(minibatch_index)
-                                          for worker in self.workers['remote_workers']]
-                minibatch_grads = ray.get(minibatch_grad_futures)
-                final_grads = np.array(minibatch_grads).mean(axis=0)
-                self.workers['local_worker'].apply_gradients(self.num_updated_steps, final_grads)
-                self.sync_remote_workers()
+        with self.sampling_timer:
+            for worker in self.workers['remote_workers']:
+                worker.put_data_into_learner.remote(worker.sample.remote())
+        with self.optimizing_timer:
+            worker_stats = []
+            for i in range(self.args.epoch):
+                stats_list_per_epoch = []
+                for minibatch_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
+                    minibatch_grad_futures = [worker.compute_gradient_over_ith_minibatch.remote(minibatch_index)
+                                              for worker in self.workers['remote_workers']]
+                    stats_list_per_epoch.append(ray.get(self.workers['remote_workers'][0].get_stats.remote()))
+                    minibatch_grads = ray.get(minibatch_grad_futures)
+                    final_grads = np.array(minibatch_grads).mean(axis=0)
+                    self.workers['local_worker'].apply_gradients(self.num_updated_steps, final_grads)
+                    self.sync_remote_workers()
+                worker_stats.append(stats_list_per_epoch)
 
+        self.stats.update({'worker_stats': worker_stats,
+                           'sampling_time': self.sampling_timer.mean,
+                           'optimizing_time': self.optimizing_timer.mean})
+
+        if self.num_updated_steps % self.args.log_interval == 0:
+            logger.info('sampling time: {}, optimizing time: {}'.format(self.stats['sampling_time'],
+                                                                        self.stats['optimizing_time']))
+            logger.info(pprint.pformat(self.stats['worker_stats'][0][0]['learner_stats']))
         if self.num_updated_steps % self.args.eval_interval == 0:
             self.evaluator.set_weights.remote(self.workers['local_worker'].get_weights())
             self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
             self.evaluator.run_evaluation.remote(self.num_updated_steps)
         if self.num_updated_steps % self.args.save_interval == 0:
             self.workers['local_worker'].save_weights(self.model_dir, self.num_updated_steps)
-            # self.workers['remote_workers'][0].save_ppc_params.remote(self.args.model_dir)
+            self.workers['remote_workers'][0].save_ppc_params.remote(self.args.model_dir)
         self.num_sampled_steps += self.args.sample_batch_size * len(self.workers['remote_workers'])
         self.num_updated_steps += 1
 

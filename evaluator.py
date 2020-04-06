@@ -28,16 +28,16 @@ class Evaluator(object):
                                          self.args.reward_preprocess_type, gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)
+        self.stats = {}
 
     def run_an_episode(self):
         reward_list = []
         done = 0
         obs = self.env.reset()
         while not done:
-            # print('before', obs, type(obs))
-            # obs = self.preprocessor.process_obs(obs)
-            # print('after', obs, type(obs))
-            action, neglogp = self.policy_with_value.compute_action(obs[np.newaxis, :-1])
+            action, neglogp = self.policy_with_value.compute_action(obs[np.newaxis, :])
+            # print(action[0].numpy())
+
             # print('action', action)
             obs, reward, done, info = self.env.step(action[0].numpy())
             # print('obs', obs)

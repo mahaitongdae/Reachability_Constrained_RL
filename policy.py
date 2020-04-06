@@ -99,6 +99,8 @@ class PolicyWithQs(object):
             source_params = Q.get_weights()
             Q_target.set_weights(source_params)
 
+        self.target_models = self.Q_targets + (self.policy_target,)
+
         self.Q_optimizers = tuple(self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
             *self.args.value_lr_schedule)) for _ in range(len(self.Qs)))
 
@@ -127,7 +129,8 @@ class PolicyWithQs(object):
         ckpt.restore(load_dir + '/ckpt_ite' + str(iteration))
 
     def get_weights(self):
-        return [model.get_weights() if hasattr(model, 'get_weights') else model for model in self.models]
+        return [model.get_weights() if hasattr(model, 'get_weights') else model for model in self.models] + \
+               [model.get_weights() for model in self.target_models]
 
     @property
     def trainable_weights(self):
@@ -136,10 +139,13 @@ class PolicyWithQs(object):
 
     def set_weights(self, weights):
         for i, weight in enumerate(weights):
-            if hasattr(self.models[i], 'set_weights'):
-                self.models[i].set_weights(weight)
+            if i < len(self.models):
+                if hasattr(self.models[i], 'set_weights'):
+                    self.models[i].set_weights(weight)
+                else:
+                    self.models[i].assign(weight)
             else:
-                self.models[i].assign(weight)
+                self.target_models[i-len(self.models)].set_weights(weight)
 
     def apply_gradients(self, iteration, grads):
         for i in range(self.args.Q_num):

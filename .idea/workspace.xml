@@ -2,13 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/mixed_pg.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/mixed_pg.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test_for_debug.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_for_debug.py" afterDir="false" />
@@ -168,18 +166,18 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.path_tracking_env (1)" />
       <item itemvalue="Python.path_tracking_env" />
       <item itemvalue="Python.policy" />
       <item itemvalue="Python.test_for_debug" />
       <item itemvalue="Python.train_script" />
-      <item itemvalue="Python.path_tracking_env (1)" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.train_script" />
         <item itemvalue="Python.path_tracking_env" />
-        <item itemvalue="Python.path_tracking_env (1)" />
         <item itemvalue="Python.test_for_debug" />
+        <item itemvalue="Python.path_tracking_env (1)" />
         <item itemvalue="Python.policy" />
       </list>
     </recent_temporary>
@@ -214,22 +212,30 @@
       <option name="project" value="LOCAL" />
       <updated>1585452458848</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="first runnable">
+      <created>1585634375750</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1585634375750</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add version control" />
-    <option name="LAST_COMMIT_MESSAGE" value="add version control" />
+    <MESSAGE value="first runnable" />
+    <option name="LAST_COMMIT_MESSAGE" value="first runnable" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1585452458717">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1585634375571">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1585452458717" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1585634375571" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -238,33 +244,64 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1585490565458" />
-    <state width="1512" height="71" key="GridCell.Tab.0.bottom" timestamp="1585633790962">
+    <state width="818" height="312" key="GridCell.Tab.0.bottom" timestamp="1586098981493">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="71" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
-    <state width="1512" height="71" key="GridCell.Tab.0.center" timestamp="1585633790962">
+    <state width="818" height="312" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586098981493" />
+    <state width="818" height="312" key="GridCell.Tab.0.center" timestamp="1586098981491">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="71" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
-    <state width="1512" height="71" key="GridCell.Tab.0.left" timestamp="1585633790962">
+    <state width="818" height="312" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586098981491" />
+    <state width="818" height="312" key="GridCell.Tab.0.left" timestamp="1586098981485">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="71" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
-    <state width="1512" height="71" key="GridCell.Tab.0.right" timestamp="1585633790962">
+    <state width="818" height="312" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586098981485" />
+    <state width="818" height="312" key="GridCell.Tab.0.right" timestamp="1586098981492">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="71" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1585633790962" />
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1585621754215">
+    <state width="818" height="312" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586098981492" />
+    <state width="1512" height="242" key="GridCell.Tab.1.bottom" timestamp="1585722027047">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1585621754215" />
-    <state x="479" y="183" width="707" height="528" key="find.popup" timestamp="1585452372041">
+    <state width="1512" height="242" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1585722027047" />
+    <state width="1512" height="242" key="GridCell.Tab.1.center" timestamp="1585722027046">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="479" y="183" width="707" height="528" key="find.popup/65.24.1535.876@65.24.1535.876" timestamp="1585452372041" />
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1585470136615">
+    <state width="1512" height="242" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1585722027046" />
+    <state width="1512" height="242" key="GridCell.Tab.1.left" timestamp="1585722027046">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1585470136615" />
+    <state width="1512" height="242" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1585722027046" />
+    <state width="1512" height="242" key="GridCell.Tab.1.right" timestamp="1585722027047">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state width="1512" height="242" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1585722027047" />
+    <state width="254" height="198" key="ShowFilterAction_Filter_Popup" timestamp="1585747347662">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state width="254" height="198" key="ShowFilterAction_Filter_Popup/65.24.1535.876@65.24.1535.876" timestamp="1585747347662" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586140744349">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586140744349" />
+    <state x="479" y="183" width="707" height="702" key="find.popup" timestamp="1585747412446">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="479" y="183" width="707" height="702" key="find.popup/65.24.1535.876@65.24.1535.876" timestamp="1585747412446" />
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1585749692493">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1585749692493" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/test_for_debug.py</url>
+          <line>163</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

@@ -4,6 +4,43 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from collections import deque
+
+
+def shift_coordination(orig_x, orig_y, coordi_shift_x, coordi_shift_y):
+    '''
+    :param orig_x: original x
+    :param orig_y: original y
+    :param coordi_shift_x: coordi_shift_x along x axis
+    :param coordi_shift_y: coordi_shift_y along y axis
+    :return: shifted_x, shifted_y
+    '''
+    shifted_x = orig_x - coordi_shift_x
+    shifted_y = orig_y - coordi_shift_y
+    return shifted_x, shifted_y
+
+
+def rotate_coordination(orig_x, orig_y, orig_d, coordi_rotate_rad):
+    """
+    :param orig_x: original x
+    :param orig_y: original y
+    :param orig_d: original rad
+    :param coordi_rotate_d: coordination rotation d, positive if anti-clockwise, unit: rad
+    :return:
+    transformed_x, transformed_y, transformed_d
+    """
+
+    transformed_x = orig_x * tf.cos(coordi_rotate_rad) + orig_y * tf.sin(coordi_rotate_rad)
+    transformed_y = -orig_x * tf.sin(coordi_rotate_rad) + orig_y * tf.cos(coordi_rotate_rad)
+    transformed_d = orig_d - coordi_rotate_rad
+    return transformed_x, transformed_y, transformed_d
+
+
+def shift_and_rotate_coordination(orig_x, orig_y, orig_d, coordi_shift_x, coordi_shift_y, coordi_rotate_d):
+    shift_x, shift_y = shift_coordination(orig_x, orig_y, coordi_shift_x, coordi_shift_y)
+    transformed_x, transformed_y, transformed_d \
+        = rotate_coordination(shift_x, shift_y, orig_d, coordi_rotate_d)
+    return transformed_x, transformed_y, transformed_d
 
 
 class VehicleDynamics(object):
@@ -19,10 +56,19 @@ class VehicleDynamics(object):
                                           )
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
-        v_y, r, v_x, phi, x, y = states[:, 0], states[:, 1], states[:, 2], states[:, 3], states[:, 4], states[:, 5]
+        v_y, r, v_x, delta_phi, x, delta_y = states[:, 0], states[:, 1], states[:, 2], states[:, 3], states[:, 4],\
+                                             states[:, 5]
         delta, a_x = actions[:, 0], actions[:, 1]
-        C_f, C_r, a, b, mass, I_z, miu, g = list(
-            map(lambda x: tf.convert_to_tensor(x, dtype=tf.float32), list(self.vehicle_params.values())))
+
+        C_f = tf.convert_to_tensor(self.vehicle_params['C_f'], dtype=tf.float32)
+        C_r = tf.convert_to_tensor(self.vehicle_params['C_r'], dtype=tf.float32)
+        a = tf.convert_to_tensor(self.vehicle_params['a'], dtype=tf.float32)
+        b = tf.convert_to_tensor(self.vehicle_params['b'], dtype=tf.float32)
+        mass = tf.convert_to_tensor(self.vehicle_params['mass'], dtype=tf.float32)
+        I_z = tf.convert_to_tensor(self.vehicle_params['I_z'], dtype=tf.float32)
+        miu = tf.convert_to_tensor(self.vehicle_params['miu'], dtype=tf.float32)
+        g = tf.convert_to_tensor(self.vehicle_params['g'], dtype=tf.float32)
+
         F_zf, F_zr = b * mass * g / (a + b), a * mass * g / (a + b)
         F_xf = tf.where(a_x < 0, mass * a_x / 2, tf.zeros_like(a_x, dtype=tf.float32))
         F_xr = tf.where(a_x < 0, mass * a_x / 2, tf.zeros_like(mass * a_x, dtype=tf.float32))
@@ -42,8 +88,8 @@ class VehicleDynamics(object):
                        (a * F_yf * tf.cos(delta) - b * F_yr) / I_z,
                        a_x + v_y * r - F_yf * tf.sin(delta) / mass,
                        r,
-                       v_x * tf.cos(phi) + v_y * tf.sin(phi),
-                       v_x * tf.sin(phi) + v_y * tf.cos(phi),
+                       v_x * tf.cos(delta_phi) + v_y * tf.sin(delta_phi),
+                       v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
                        ]
         return tf.stack(state_deriv, axis=1)
 
@@ -76,7 +122,7 @@ class VehicleDynamics(object):
 
 class ReferencePath(object):
     def __init__(self):
-        self.curve_list = [(10, 100, 0), (15, 150, 0), (20, 200, 0)]
+        self.curve_list = [(10., 100., 0.), (15., 150., 0.), (20., 200., 0.)]
 
     def compute_path_y(self, x):
         y = tf.zeros_like(x, dtype=tf.float32)
@@ -93,21 +139,26 @@ class ReferencePath(object):
                 (x - shift) * 2 * tf.convert_to_tensor(np.pi) / T)
         return tf.atan(deriv)
 
-    def compute_y_deviation(self, x, y):
-        y_ref = self.compute_path_y(x)
-        return y - y_ref
-
     def compute_y(self, x, delta_y):
         y_ref = self.compute_path_y(x)
         return delta_y + y_ref
+
+    def compute_delta_y(self, x, y):
+        y_ref = self.compute_path_y(x)
+        return y - y_ref
 
     def compute_phi(self, x, delta_phi):
         phi_ref = self.compute_path_phi(x)
         return delta_phi + phi_ref
 
-    def compute_phi_deviation(self, x, phi):
+    def compute_delta_phi(self, x, phi):
         phi_ref = self.compute_path_phi(x)
         return phi - phi_ref
+
+    def compute_state_delta_y(self, x, y):
+        path_phi, path_y, path_x = self.compute_path_phi(x), self.compute_path_y(x), x
+        return (y - path_y - tf.tan(path_phi) * x + tf.tan(path_phi) * path_x) / tf.sqrt(
+            1. + tf.square(tf.tan(path_phi)))
 
 
 class EnvironmentModel(object):  # all tensors
@@ -119,45 +170,53 @@ class EnvironmentModel(object):  # all tensors
         self.out_frequency = 40
         self.obses = None
         self.veh_states = None
+        # v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs
+        self.observation_space = {'low': tf.constant([0, 0, -np.pi / 3, -np.inf, -np.pi, 0], dtype=tf.float32),
+                                  'high': tf.constant([35, 1.5, np.pi / 3, np.inf, np.pi, 35], dtype=tf.float32),
+                                  }
+        self.action_space = {'low': tf.constant([-np.pi / 3, -3], dtype=tf.float32),
+                             'high': tf.constant([np.pi / 3, 3], dtype=tf.float32),
+                             }
 
     def reset(self, obses):
-        self.obses = obses
+        self.obses = tf.clip_by_value(obses, self.observation_space['low'], self.observation_space['high'])
         self.veh_states = self._get_states(self.obses)
 
     def compute_rewards(self, obses, actions):  # obses and actions are tensors
-        v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs, xs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
-                                                           obses[:, 4], obses[:, 5], obses[:, 6]
+        v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
+                                                       obses[:, 4], obses[:, 5]
         v = tf.sqrt(tf.square(v_xs) + tf.square(v_ys))
         deltas, a_xs = actions[:, 0], actions[:, 1]
 
-        devi_v = -tf.pow(v - exp_vs, 2)
-        devi_y = -tf.pow(delta_ys, 2)
-        devi_phi = -tf.pow(delta_phis, 2)
-        punish_yaw_rate = -tf.abs(rs)
-        punish_delta = -tf.abs(deltas)
-        punish_a_x = -tf.abs(a_xs)
-
-        rewards = 1 * devi_v + 1 * devi_y + 1 * devi_phi + 1 * punish_yaw_rate + 1 * punish_delta + 1 * punish_a_x
+        devi_v = -tf.square(v - exp_vs)
+        devi_y = -tf.square(delta_ys)
+        devi_phi = -tf.square(delta_phis)
+        punish_yaw_rate = -tf.square(rs)
+        punish_delta = -tf.square(deltas)
+        punish_a_x = -tf.square(a_xs)
+        rewards = 0.01 * devi_v + 0.01 * devi_y + 0.2 * devi_phi + 0.5 * punish_yaw_rate + 0.2 * punish_delta + 0.05 * punish_a_x
 
         return rewards
 
     def _get_states(self, obses):  # obses are tensors
-        v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs, xs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
-                                                           obses[:, 4], obses[:, 5], obses[:, 6]
+        v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], \
+                                                       obses[:, 4], obses[:, 5]
         self.expected_vs = exp_vs
-        path_ys, path_phis = self.path.compute_path_y(xs), self.path.compute_path_phi(xs)
-        ys, phis = path_ys + delta_ys, path_phis + delta_phis
-        veh_states = tf.stack([v_ys, rs, v_xs, phis, xs, ys], axis=1)
+        xs = tf.zeros_like(v_xs)
+        veh_states = tf.stack([v_ys, rs, v_xs, delta_phis, xs, delta_ys], axis=1)
         return veh_states
 
     def _get_obses(self, veh_states):
-        v_ys, rs, v_xs, phis, xs, ys = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], veh_states[:, 3], \
-                                       veh_states[:, 4], veh_states[:, 5]
-        delta_ys, delta_phis = self.path.compute_y_deviation(xs, ys), self.path.compute_phi_deviation(xs, phis)
-        obses = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, self.expected_vs, xs], axis=1)
+        v_ys, rs, v_xs, delta_phis, xs, delta_ys = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], veh_states[:, 3], \
+                                                   veh_states[:, 4], veh_states[:, 5]
+        obses = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, self.expected_vs], axis=1)
+        obses = tf.clip_by_value(obses, self.observation_space['low'], self.observation_space['high'])
         return obses
 
-    def rollout_out(self, actions):  # obses and actions are tensors
+    def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
+        deltas_norm, a_xs_norm = actions[:, 0], actions[:, 1]
+        actions = tf.stack([deltas_norm * np.pi / 3, a_xs_norm * 3], axis=1)
+        actions = tf.clip_by_value(actions, self.action_space['low'], self.action_space['high'])
         rewards = self.compute_rewards(self.obses, actions)
         self.veh_states = self.vehicle_dynamics.model_next_states(self.veh_states, actions,
                                                                   self.base_frequency, self.out_frequency)
@@ -171,84 +230,107 @@ class PathTrackingEnv(gym.Env, ABC):
         self.veh_state = None
         self.obs = None
         self.path = ReferencePath()
-        self.expected_v = 10
+        self.expected_v = 20
+        self.x = None
+        self.y = None
+        self.phi = None
         self.action = None
         self.base_frequency = 200
         self.simulation_frequency = 40
         self.simulation_time = 0
-        self.observation_space = gym.spaces.Box(low=np.array([0, 0, -np.pi / 6, -np.inf, -np.pi, 0, -np.inf]),
-                                                high=np.array([35, 1.5, np.pi / 6, np.inf, np.pi, 35, np.inf]),
-                                                dtype=np.float32)
-        self.action_space = gym.spaces.Box(low=np.array([-np.pi / 6, -5]),
-                                           high=np.array([np.pi / 6, 3]),
-                                           dtype=np.float32)
+        # obs [v_x, v_y, r, delta_y, delta_phi, self.expected_v]
+        self.observation_space = gym.spaces.Box(low=np.array([0, 0, -np.pi / 3, -np.inf, -np.pi, 0]),
+                                                high=np.array([35, 1.5, np.pi / 3, np.inf, np.pi, 35]),
+                                                dtype=np.float64)
+        self.action_space = gym.spaces.Box(low=np.array([-np.pi / 3, -3]),
+                                           high=np.array([np.pi / 3, 3]),
+                                           dtype=np.float64)
+        self.episode_counter = 0
+        self.history_positions = deque(maxlen=100)
         plt.ion()
 
     def reset(self):
+        self.history_positions.clear()
         self.simulation_time = 0
-        self.expected_v = np.random.rand() * 20
-        init_x = np.random.rand() * 1000
-        init_path_y = self.path.compute_path_y(init_x).numpy()
-        init_path_phi = self.path.compute_path_phi(init_x).numpy()
-        init_y = init_path_y + 5 * 2 * (np.random.rand() - 0.5)
-        init_phi = init_path_phi + 0.8 * 2 * (np.random.rand() - 0.5)
-        init_v_x = np.random.rand() * 20
+        self.expected_v = 20
+        self.x = init_x = np.random.rand() * 1000
+
+        init_delta_y = 5 * 2 * (np.random.rand() - 0.5)
+        self.y = init_y = self.path.compute_y(init_x, init_delta_y).numpy()
+
+        init_delta_phi = 0.3 * 2 * (np.random.rand() - 0.5)
+        self.phi = init_phi = self.path.compute_phi(init_x, init_delta_phi)
+
+        init_v_x = np.random.rand() * 15 + 10
         init_v_y = 0
         init_r = 0
         self.veh_state = np.array([init_v_y, init_r, init_v_x, init_phi, init_x, init_y])
         self.obs = self._get_obs()
+        self.history_positions.append((self.veh_state[4], self.veh_state[5]))
         return self.obs
 
-    def _get_obs(self):
+    def _get_obs(self,):
         v_y, r, v_x, phi, x, y = self.veh_state
-        delta_y, delta_phi = self.path.compute_y_deviation(x, y).numpy(), self.path.compute_phi_deviation(x, phi).numpy()
-        return np.array([v_x, v_y, r, delta_y, delta_phi, self.expected_v, x])
+        delta_y_vertical = self.path.compute_state_delta_y(x, y).numpy()
+        delta_phi = self.path.compute_delta_phi(x, phi).numpy()
 
-    def step(self, action):
+        obs = np.array([v_x, v_y, r, delta_y_vertical, delta_phi, self.expected_v])
+        obs = np.clip(obs, self.observation_space.low, self.observation_space.high)
+        return obs
+
+    def step(self, action):  # think of action is in range [-1, 1]
+        delta_norm, a_x_norm = action
+        action = delta_norm * np.pi / 3, a_x_norm * 3
+        action = np.clip(action, self.action_space.low, self.action_space.high)
+        self.episode_counter += 1
         self.simulation_time += 1 / self.simulation_frequency
         self.action = action
-        reward = self.compute_reward(self.obs, action)
+        reward = self.compute_reward(self.obs, self.action)
 
         veh_state_tensor = tf.convert_to_tensor(self.veh_state[np.newaxis, :], dtype=tf.float32)
-        action_tensor = tf.convert_to_tensor(action[np.newaxis, :], dtype=tf.float32)
+        action_tensor = tf.convert_to_tensor(self.action[np.newaxis, :], dtype=tf.float32)
         self.veh_state = self.vehicle_dynamics.next_states(veh_state_tensor, action_tensor,
                                                            base_frequency=self.base_frequency,
                                                            out_frequency=self.simulation_frequency).numpy()[0]
+        self.history_positions.append((self.veh_state[4], self.veh_state[5]))
         self.obs = self._get_obs()
         done = self.judge_done(self.obs)
         info = {}
+        if done:
+            info.update({'l': self.episode_counter})
+            self.episode_counter = 0
         return self.obs, reward, done, info
 
     def compute_reward(self, obs, action):
-        v_x, v_y, r, delta_y, delta_phi, exp_v, x = obs
+        v_x, v_y, r, delta_y_vertical, delta_phi, exp_v = obs
         v = np.sqrt(v_x ** 2 + v_y ** 2)
         delta, a_x = action
 
         devi_v = -pow(v - exp_v, 2)
-        devi_y = -pow(delta_y, 2)
+        devi_y = -pow(delta_y_vertical, 2)
         devi_phi = -pow(delta_phi, 2)
-        punish_yaw_rate = -abs(r)
-        punish_delta = -abs(delta)
-        punish_a_x = -abs(a_x)
+        punish_yaw_rate = -pow(r, 2)
+        punish_delta = -pow(delta, 2)
+        punish_a_x = -pow(a_x, 2)
 
         rewards = np.array([devi_v, devi_y, devi_phi, punish_yaw_rate, punish_delta, punish_a_x])
-        coeffis = np.array([1, 1, 1, 1, 1, 1])
-
+        print(rewards)
+        coeffis = np.array([0.01, 0.01, 0.2, 0.5, 0.2, 0.05])
         reward = np.sum(rewards * coeffis)
 
         return reward
 
     def judge_done(self, obs):
-        v_x, v_y, r, delta_y, delta_phi, expected_v, x = obs
-        if abs(delta_y) > 10 or abs(delta_phi) > 1.6:
+        v_x, v_y, r, delta_y_vertical, delta_phi, exp_v = obs
+        if abs(delta_y_vertical) > 30 or abs(delta_phi) > 1.2 or v_x < 2:
             return 1
         else:
             return 0
 
     def render(self, mode='human'):
         plt.cla()
-        v_x, v_y, r, delta_y, delta_phi, exp_v, x = self.obs
-        y, phi = self.path.compute_y(x, delta_y).numpy(), self.path.compute_phi(x, delta_phi).numpy()
+        v_y, r, v_x, phi, x, y = self.veh_state
+        v_x, v_y, r, delta_y_vertical, delta_phi, exp_v= self.obs
         path_y, path_phi = self.path.compute_path_y(x).numpy(), self.path.compute_path_phi(x).numpy()
 
         plt.title("Demo")
@@ -258,20 +340,10 @@ class PathTrackingEnv(gym.Env, ABC):
         path_ys = self.path.compute_path_y(path_xs).numpy()
         plt.plot(path_xs, path_ys)
 
-        def rotate_coordination(orig_x, orig_y, orig_d, coordi_rotate_d):
-            coordi_rotate_d_in_rad = coordi_rotate_d * np.pi / 180
-            transformed_x = orig_x * np.cos(coordi_rotate_d_in_rad) + orig_y * np.sin(coordi_rotate_d_in_rad)
-            transformed_y = -orig_x * np.sin(coordi_rotate_d_in_rad) + orig_y * np.cos(coordi_rotate_d_in_rad)
-            transformed_d = orig_d - coordi_rotate_d
-            if transformed_d > 180:
-                while transformed_d > 180:
-                    transformed_d = transformed_d - 360
-            elif transformed_d <= -180:
-                while transformed_d <= -180:
-                    transformed_d = transformed_d + 360
-            else:
-                transformed_d = transformed_d
-            return transformed_x, transformed_y, transformed_d
+        history_positions = list(self.history_positions)
+        history_xs = np.array(list(map(lambda x: x[0], history_positions)))
+        history_ys = np.array(list(map(lambda x: x[1], history_positions)))
+        plt.plot(history_xs, history_ys, 'g')
 
         def draw_rotate_rec(x, y, a, l, w, color='black'):
             RU_x, RU_y, _ = rotate_coordination(l / 2, w / 2, 0, -a)
@@ -283,10 +355,10 @@ class PathTrackingEnv(gym.Env, ABC):
             plt.plot([LD_x + x, RD_x + x], [LD_y + y, RD_y + y], color=color)
             plt.plot([LD_x + x, LU_x + x], [LD_y + y, LU_y + y], color=color)
 
-        draw_rotate_rec(x, y, phi * 180 / np.pi, 4.8, 2.2)
+        draw_rotate_rec(x, y, phi, 4.8, 2.2)
         plt.text(x - range_x / 2 - 20, range_y / 2 - 3, 'time: {:.2f}s'.format(self.simulation_time))
         plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 2,
-                 'x: {:.2f}, y: {:.2f}, path_y: {:.2f}, delta_y: {:.2f}m'.format(x, y, path_y, delta_y))
+                 'x: {:.2f}, y: {:.2f}, path_y: {:.2f}, delta_y_vertical: {:.2f}m'.format(x, y, path_y, delta_y_vertical))
         plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 3,
                  r'phi: {:.2f}rad (${:.2f}\degree$), path_phi: {:.2f}rad (${:.2f}\degree$), delta_phi: {:.2f}rad (${:.2f}\degree$)'.format(
                      phi,
@@ -311,19 +383,32 @@ class PathTrackingEnv(gym.Env, ABC):
         plt.show()
 
 
+def test_path():
+    path = ReferencePath()
+    path_xs = np.linspace(500, 700, 1000)
+    path_ys = path.compute_path_y(path_xs).numpy()
+    plt.plot(path_xs, path_ys)
+    plt.show()
+
+
 def test_path_tracking_env():
     from mixed_pg_learner import judge_is_nan
     env = PathTrackingEnv()
     obs = env.reset()
     print(obs)
     judge_is_nan([obs])
-    action = np.array([0, 1])
+    action = 2 * np.random.random((2,)) - 1
+    action = [0, 1]
     for _ in range(10):
         done = 0
         while not done:
             obs, reward, done, info = env.step(action)
+            action = 2 * np.random.random((2,)) - 1
+            action = [0, 1]
             env.render()
         obs = env.reset()
+        action = 2 * np.random.random((2,)) - 1
+        action = [0, 1]
 
 
 if __name__ == '__main__':

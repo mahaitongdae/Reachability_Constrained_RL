@@ -16,12 +16,12 @@ class OnPolicyWorker(object):
     Act as both actor and learner
     """
     import tensorflow as tf
-    # tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.experimental.set_visible_devices([], 'GPU')
 
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    tf.config.experimental.set_virtual_device_configuration(
-        gpus[0],
-        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+    # gpus = tf.config.experimental.list_physical_devices('GPU')
+    # tf.config.experimental.set_virtual_device_configuration(
+    #     gpus[0],
+    #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
 
     def __init__(self, policy_cls, learner_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
@@ -32,12 +32,16 @@ class OnPolicyWorker(object):
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
-        judge_is_nan([self.obs])
+        # judge_is_nan([self.obs])
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
                                          self.args.reward_scale_factor, gamma=self.args.gamma)
 
+        self.stats = {}
         logger.info('Worker initialized')
+
+    def get_stats(self):
+        return self.stats
 
     def save_weights(self, save_dir, iteration):
         self.policy_with_value.save_weights(save_dir, iteration)
@@ -70,17 +74,21 @@ class OnPolicyWorker(object):
         batch_data = []
         for _ in range(self.sample_batch_size):
             processed_obs = self.preprocessor.process_obs(self.obs)
-            judge_is_nan([processed_obs])
+            # judge_is_nan([processed_obs])
 
-            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :-1])  # TODO
-            judge_is_nan([action])
-            judge_is_nan([neglogp])
+            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])  # TODO
+            # judge_is_nan([action])
+            # judge_is_nan([neglogp])
+            # print(action[0].numpy())
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
-            judge_is_nan([obs_tp1])
+            processed_rew = self.preprocessor.process_rew(reward, self.done)
+            # judge_is_nan([obs_tp1])
+            l = info.get('l')
+            # if l: print(l)
 
             batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
-            judge_is_nan([self.obs])
+            # judge_is_nan([self.obs])
 
         return batch_data
 
@@ -90,7 +98,10 @@ class OnPolicyWorker(object):
 
     def compute_gradient_over_ith_minibatch(self, i):
         self.learner.set_weights(self.get_weights())
-        return self.learner.compute_gradient_over_ith_minibatch(i)
+        grad = self.learner.compute_gradient_over_ith_minibatch(i)
+        learner_stats = self.learner.get_stats()
+        self.stats.update(dict(learner_stats=learner_stats))
+        return grad
 
 
 class OffPolicyWorker(object):
