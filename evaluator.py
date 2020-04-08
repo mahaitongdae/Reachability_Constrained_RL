@@ -27,7 +27,7 @@ class Evaluator(object):
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_normalize,
                                          self.args.reward_preprocess_type, gamma=self.args.gamma)
 
-        self.writer = self.tf.summary.create_file_writer(self.log_dir)
+        self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
 
     def run_an_episode(self):

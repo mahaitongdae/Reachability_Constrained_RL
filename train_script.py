@@ -1,6 +1,6 @@
 import ray
 from policy import PolicyWithValue, PolicyWithQs
-from optimizer import AllReduceOptimizer, OffPolicyAsyncOptimizer
+from optimizer import AllReduceOptimizer
 from mixed_pg_learner import MixedPGLearner
 from trainer import Trainer
 import argparse
@@ -31,15 +31,16 @@ def built_mixedpg_parser():
     parser.add_argument('--sample_batch_size', type=int, default=1024)
     parser.add_argument("--mini_batch_size", type=int, default=64)
     parser.add_argument("--policy_lr_schedule", type=list,
-                        default=[0.01, int(parser.parse_args().max_updated_steps / 2), 0.0001])
+                        default=[0.0001, int(parser.parse_args().max_updated_steps / 2), 0.0001])
     parser.add_argument("--value_lr_schedule", type=list,
-                        default=[0.005, int(parser.parse_args().max_updated_steps/2), 0.00005])
+                        default=[0.0005, int(parser.parse_args().max_updated_steps/2), 0.0005])
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--model_based", default=True, action='store_true')
 
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=1)
+    parser.add_argument("--eval_interval", type=int, default=10)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
 
@@ -67,7 +68,7 @@ def built_mixedpg_parser():
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
 
-    parser.add_argument("--evaluate_epi_num", type=int, default=5)
+    parser.add_argument("--evaluate_epi_num", type=int, default=2)
     return parser.parse_args()
 
 

@@ -100,23 +100,25 @@ class Preprocessor(object):
             return rewards
 
     def tf_process_obses(self, obses):
-        obses = tf.convert_to_tensor(obses)
-        if self.ob_rms:
-            obses = tf.clip_by_value((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
-                                      self.clipob)
-            return obses
-        else:
-            return obses
+        with tf.name_scope('obs_process') as scope:
+            obses = tf.convert_to_tensor(obses)
+            if self.ob_rms:
+                obses = tf.clip_by_value((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
+                                          self.clipob)
+                return obses
+            else:
+                return obses
 
     def tf_process_rewards(self, rewards):
-        rewards = tf.convert_to_tensor(rewards)
-        if self.rew_ptype == 'normalize':
-            rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-            return rewards
-        elif self.rew_ptype == 'scale':
-            return rewards / self.factor
-        else:
-            return rewards
+        with tf.name_scope('reward_process') as scope:
+            rewards = tf.convert_to_tensor(rewards)
+            if self.rew_ptype == 'normalize':
+                rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+                return rewards
+            elif self.rew_ptype == 'scale':
+                return rewards / self.factor
+            else:
+                return rewards
 
     def set_params(self, params):
         if self.ob_rms:

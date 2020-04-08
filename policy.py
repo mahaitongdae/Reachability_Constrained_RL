@@ -183,14 +183,16 @@ class PolicyWithQs(object):
         ])
 
     def compute_action(self, obs):
-        logits = self.policy(obs)
+        with self.tf.name_scope('compute_action') as scope:
+            logits = self.policy(obs)
 
-        act_dist = self.act_dist_cls(logits)
-        action = act_dist.sample()
-        neglogp = act_dist.neglogp(action)
-        return action, neglogp
+            act_dist = self.act_dist_cls(logits)
+            action = act_dist.sample()
+            neglogp = act_dist.neglogp(action)
+            return action, neglogp
 
     def compute_logits(self, obs):
+
         return self.policy(obs)
 
     def compute_neglogp(self, obs, act):
@@ -199,14 +201,14 @@ class PolicyWithQs(object):
         return act_dist.neglogp(act)
 
     def compute_Qs(self, obs, act):
-        Q_inputs = self.tf.concat([obs, act], axis=-1)
-        # print(self.tf.shape(obs), self.tf.shape(act), self.tf.shape(Q_inputs))
-        # print(self.tf.shape(self.Qs[0](Q_inputs)))
-        return [Q(Q_inputs) for Q in self.Qs]
+        with self.tf.name_scope('compute_Qs') as scope:
+            Q_inputs = self.tf.concat([obs, act], axis=-1)
+            return [Q(Q_inputs) for Q in self.Qs]
 
     def compute_Q_targets(self, obs, act):
-        Q_inputs = self.tf.concat([obs, act], axis=-1)
-        return [Q_target(Q_inputs) for Q_target in self.Q_targets]
+        with self.tf.name_scope('compute_Q_targets') as scope:
+            Q_inputs = self.tf.concat([obs, act], axis=-1)
+            return [Q_target(Q_inputs) for Q_target in self.Q_targets]
 
     def get_log_alpha(self):
         return self.log_alpha
