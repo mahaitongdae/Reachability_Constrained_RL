@@ -78,12 +78,13 @@ class MixedPGLearner(object):
         self.batch_data = {}
         self.epinfos = {}
         self.M = 1
-        self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [1]
-        self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [1]
+        self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [20]
+        self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [20]
 
         self.model = EnvironmentModel()
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
-                                         self.args.reward_scale_factor, gamma=self.args.gamma)
+        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
         self.w_timer = TimerStat()
@@ -171,35 +172,33 @@ class MixedPGLearner(object):
         return batch_advs, batch_tdlambda_returns
 
     def model_rollout_for_q_estimation(self, start_obses, start_actions):
-        model = EnvironmentModel()
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
         actions_tile = self.tf.tile(start_actions, [self.M, 1])
 
         processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
         processed_obses_tile_list = [processed_obses_tile]
         actions_tile_list = [actions_tile]
-        rewards_sum_tile = self.tf.zeros((obses_tile.shape[0], 1))
+        rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
         rewards_sum_list = [rewards_sum_tile]
-        gammas_list = [self.tf.ones((obses_tile.shape[0], 1))]
+        gammas_list = [self.tf.ones((obses_tile.shape[0],))]
 
-        model.reset(obses_tile)
+        self.model.reset(obses_tile)
         max_num_rollout = max(self.num_rollout_list_for_q_estimation)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                with self.tf.name_scope('rollout{}'.format(ri)) as scope:
-                    obses_tile, rewards = model.rollout_out(actions_tile)
-                    processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                    processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                    rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * self.tf.reshape(processed_rewards, (-1, 1))
-                    rewards_sum_list.append(rewards_sum_tile)
-                    actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
-                    processed_obses_tile_list.append(processed_obses_tile)
-                    actions_tile_list.append(actions_tile)
-                    gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0], 1)))
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
+                processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+                rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
+                rewards_sum_list.append(rewards_sum_tile)
+                actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
+                processed_obses_tile_list.append(processed_obses_tile)
+                actions_tile_list.append(actions_tile)
+                gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0],)))
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q_targets(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[0]
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[0][:, 0]
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
 
@@ -224,28 +223,27 @@ class MixedPGLearner(object):
         actions_tile = self.tf.tile(start_actions, [self.M, 1])
         processed_obses_tile_list = [processed_obses_tile]
         actions_tile_list = [actions_tile]
-        rewards_sum_tile = self.tf.zeros((obses_tile.shape[0], 1))
+        rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
         rewards_sum_list = [rewards_sum_tile]
-        gammas_list = [self.tf.ones((obses_tile.shape[0], 1))]
+        gammas_list = [self.tf.ones((obses_tile.shape[0],))]
 
         self.model.reset(obses_tile)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                with self.tf.name_scope('rollout{}'.format(ri)) as scope:
-                    obses_tile, rewards = self.model.rollout_out(actions_tile)
-                    processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                    processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                    rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * self.tf.reshape(processed_rewards, (-1, 1))
-                    rewards_sum_list.append(rewards_sum_tile)
-                    actions_tile, _ = self.policy_for_rollout.compute_action(processed_obses_tile) if not\
-                        self.args.model_based else self.policy_with_value.compute_action(processed_obses_tile)
-                    processed_obses_tile_list.append(processed_obses_tile)
-                    actions_tile_list.append(actions_tile)
-                    gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0], 1)))
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
+                processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+                rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
+                rewards_sum_list.append(rewards_sum_tile)
+                actions_tile, _ = self.policy_for_rollout.compute_action(processed_obses_tile) if not\
+                    self.args.model_based else self.policy_with_value.compute_action(processed_obses_tile)
+                processed_obses_tile_list.append(processed_obses_tile)
+                actions_tile_list.append(actions_tile)
+                gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0],)))
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Qs(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[0]
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[0][:, 0]
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
 
@@ -281,7 +279,7 @@ class MixedPGLearner(object):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
-                q_pred = self.policy_with_value.compute_Qs(processed_mb_obs, mb_actions)[0]
+                q_pred = self.policy_with_value.compute_Qs(processed_mb_obs, mb_actions)[0][:, 0]
                 with tape.stop_recording():
                     bias_list = [self.tf.reduce_mean(self.tf.square(q_pred - data_target))] if not\
                         self.args.model_based else []
@@ -324,18 +322,76 @@ class MixedPGLearner(object):
                                                   self.policy_with_value.policy.trainable_weights)
             return final_policy_gradient, value_mean
 
+    @tf.function
+    def model_based_policy_forward_and_backward(self, mb_obs):
+        with self.tf.GradientTape() as tape:
+            obses = mb_obs
+            self.model.reset(obses)
+            reward_sum = self.tf.zeros((obses.shape[0],))
+            rewards_list = []
+            for i in range(30):
+                processed_obses = self.preprocessor.tf_process_obses(obses)
+                actions, _ = self.policy_with_value.compute_action(processed_obses)
+                obses, rewards = self.model.rollout_out(actions)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+                rewards_list.append(processed_rewards)
+                # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
+            for i in range(len(rewards_list)):
+                reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
+            processed_obses = self.preprocessor.tf_process_obses(obses)
+            actions, _ = self.policy_with_value.compute_action(processed_obses)
+            Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+            target = reward_sum + self.tf.pow(self.args.gamma, 30) * Qs
+            policy_loss = -self.tf.reduce_mean(target)
+
+        policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
+        return policy_gradient, policy_loss
+
+    @tf.function
+    def model_based_q_forward_and_backward(self, mb_obs, mb_action):
+        with self.tf.GradientTape() as tape:
+            obses = mb_obs
+            self.model.reset(obses)
+            processed_obses = self.preprocessor.tf_process_obses(obses)
+            actions = mb_action
+            q_pred = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+            reward_sum = self.tf.zeros((obses.shape[0],))
+            rewards_list = []
+            for i in range(30):
+                obses, rewards = self.model.rollout_out(actions)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+                # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
+                rewards_list.append(processed_rewards)
+
+                processed_obses = self.preprocessor.tf_process_obses(obses)
+                actions, _ = self.policy_with_value.compute_action(processed_obses)
+            for i in range(len(rewards_list)):
+                reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
+            Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+            target = self.tf.stop_gradient(reward_sum + self.tf.pow(self.args.gamma, 30) * Qs)
+            q_loss = self.tf.reduce_mean(self.tf.square(target-q_pred))
+
+        q_gradient = tape.gradient(q_loss, self.policy_with_value.models[0].trainable_weights)
+        return q_gradient, q_loss
+
     def export_graph(self, writer):
         start_idx, end_idx = 0, self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
+        if self.args.model_based:
+            self.model_based_q_forward_and_backward(mb_obs, mb_actions)
+        else:
+            self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
         with writer.as_default():
             self.tf.summary.trace_export(name="q_forward_and_backward", step=0)
 
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.policy_forward_and_backward(mb_obs)
+        if self.args.model_based:
+            self.model_based_policy_forward_and_backward(mb_obs)
+        else:
+            self.policy_forward_and_backward(mb_obs)
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
@@ -354,13 +410,19 @@ class MixedPGLearner(object):
         # print(self.preprocessor.get_params())
 
         with self.q_gradient_timer:
-            model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
+            if self.args.model_based:
+                q_gradient, q_loss = self.model_based_q_forward_and_backward(mb_obs, mb_actions)
+                w_q_list = [1.]
+            else:
+                model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
             q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
             self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-            # model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
-            final_policy_gradient, value_mean = self.policy_forward_and_backward(mb_obs)
+            if self.args.model_based:
+                final_policy_gradient, value_mean = self.model_based_policy_forward_and_backward(mb_obs)
+            else:
+                model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
         # print(jaco, type(jaco))
         # print(model_returns, type(model_returns))
         # judge_is_nan([model_returns])
@@ -430,7 +492,7 @@ class MixedPGLearner(object):
                                pg_time=self.policy_gradient_timer.mean,
                                q_loss=q_loss.numpy(),
                                value_mean=value_mean.numpy(),
-                               w_q_list=list(map(lambda x: x.numpy(), w_q_list)),
+                               w_q_list=[],  # list(map(lambda x: x.numpy(), w_q_list)),
                                var_list=var_list,
                                heuristic_bias_list=heuristic_bias_list,
                                w_var_list=w_var_list,

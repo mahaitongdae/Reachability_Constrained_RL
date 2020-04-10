@@ -2,16 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/utils/misc.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/monitor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/buffer.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/todolist" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
@@ -32,6 +31,11 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IgnoredFileRootStore">
@@ -228,72 +232,84 @@
       <option name="project" value="LOCAL" />
       <updated>1586140815158</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="version040816">
+      <created>1586335395894</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1586335395894</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add version control" />
     <MESSAGE value="first runnable" />
     <MESSAGE value="version040610" />
-    <option name="LAST_COMMIT_MESSAGE" value="version040610" />
+    <MESSAGE value="version040816" />
+    <option name="LAST_COMMIT_MESSAGE" value="version040816" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586140814973">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586335395692">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586140814973" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586335395692" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="369" y="314" key="EnvironmentVariablesDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479705393" />
-    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586320180354">
+    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586490645967">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586320180354" />
-    <state width="1512" height="134" key="GridCell.Tab.0.bottom" timestamp="1586321972694">
+    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586490645967" />
+    <state width="970" height="118" key="GridCell.Tab.0.bottom" timestamp="1586448894280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="134" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586321972694" />
-    <state width="1512" height="134" key="GridCell.Tab.0.center" timestamp="1586321972694">
+    <state width="970" height="118" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586448894280" />
+    <state width="970" height="118" key="GridCell.Tab.0.center" timestamp="1586448894273">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="134" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586321972694" />
-    <state width="1512" height="134" key="GridCell.Tab.0.left" timestamp="1586321972694">
+    <state width="970" height="118" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586448894273" />
+    <state width="970" height="118" key="GridCell.Tab.0.left" timestamp="1586448894273">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="134" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586321972694" />
-    <state width="1512" height="134" key="GridCell.Tab.0.right" timestamp="1586321972694">
+    <state width="970" height="118" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586448894273" />
+    <state width="970" height="118" key="GridCell.Tab.0.right" timestamp="1586448894279">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="134" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586321972694" />
-    <state width="1512" height="242" key="GridCell.Tab.1.bottom" timestamp="1585722027047">
+    <state width="970" height="118" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586448894279" />
+    <state width="1512" height="219" key="GridCell.Tab.1.bottom" timestamp="1586412009841">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="242" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1585722027047" />
-    <state width="1512" height="242" key="GridCell.Tab.1.center" timestamp="1585722027046">
+    <state width="1512" height="219" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
+    <state width="1512" height="219" key="GridCell.Tab.1.center" timestamp="1586412009841">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="242" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1585722027046" />
-    <state width="1512" height="242" key="GridCell.Tab.1.left" timestamp="1585722027046">
+    <state width="1512" height="219" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
+    <state width="1512" height="219" key="GridCell.Tab.1.left" timestamp="1586412009841">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="242" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1585722027046" />
-    <state width="1512" height="242" key="GridCell.Tab.1.right" timestamp="1585722027047">
+    <state width="1512" height="219" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
+    <state width="1512" height="219" key="GridCell.Tab.1.right" timestamp="1586412009841">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="242" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1585722027047" />
+    <state width="1512" height="219" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup" timestamp="1585747347662">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup/65.24.1535.876@65.24.1535.876" timestamp="1585747347662" />
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586308524256">
+    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1586404297190">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586308524256" />
+    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586404297190" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586487899919">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586487899919" />
     <state x="479" y="183" width="707" height="702" key="find.popup" timestamp="1586229242681">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -310,6 +326,26 @@
           <url>file://$PROJECT_DIR$/test_for_debug.py</url>
           <line>163</line>
           <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/optimizer.py</url>
+          <line>90</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/optimizer.py</url>
+          <line>92</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>278</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/policy.py</url>
+          <line>78</line>
+          <option name="timeStamp" value="9" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

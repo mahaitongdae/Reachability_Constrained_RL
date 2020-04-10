@@ -43,12 +43,14 @@ class RunningMeanStd(object):
 
 
 class Preprocessor(object):
-    def __init__(self, ob_space, ob=True, rew_ptype='normalize', factor=None, clipob=10., cliprew=10., gamma=0.99,
-                 epsilon=1e-8):
-        self.ob_rms = RunningMeanStd(shape=ob_space.shape) if ob else None
+    def __init__(self, ob_space, obs_ptype='normalize', rew_ptype='normalize', obs_factor=None,
+                 rew_factor=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+        self.obs_ptype = obs_ptype
+        self.ob_rms = RunningMeanStd(shape=ob_space.shape) if self.obs_ptype == 'normalize' else None
         self.rew_ptype = rew_ptype
         self.ret_rms = RunningMeanStd(shape=()) if self.rew_ptype == 'normalize' else None
-        self.factor = factor if self.rew_ptype == 'scale' else None
+        self.obs_factor = np.array(obs_factor) if self.obs_ptype == 'scale' else None
+        self.rew_factor = rew_factor if self.rew_ptype == 'scale' else None
 
         self.clipob = clipob
         self.cliprew = cliprew
@@ -67,26 +69,27 @@ class Preprocessor(object):
 
             return rew
         elif self.rew_ptype == 'scale':
-            return rew / self.factor
+            return rew * self.rew_factor
         else:
             return rew
 
-    def _obfilt(self, obs):
-        if self.ob_rms:
+    def process_obs(self, obs):
+        if self.obs_ptype == 'normalize':
             self.ob_rms.update(np.array([obs]))
             obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obs
+        elif self.obs_ptype == 'scale':
+            return obs * self.obs_factor
         else:
             return obs
 
-    def process_obs(self, obs):
-        return self._obfilt(obs)
-
     def np_process_obses(self, obses):
-        if self.ob_rms:
+        if self.obs_ptype == 'normalize':
             obses = np.clip((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
                                       self.clipob)
             return obses
+        elif self.obs_ptype == 'scale':
+            return obses * self.obs_factor
         else:
             return obses
 
@@ -95,17 +98,19 @@ class Preprocessor(object):
             rewards = np.clip(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
             return rewards
         elif self.rew_ptype == 'scale':
-            return rewards / self.factor
+            return rewards * self.rew_factor
         else:
             return rewards
 
     def tf_process_obses(self, obses):
         with tf.name_scope('obs_process') as scope:
             obses = tf.convert_to_tensor(obses)
-            if self.ob_rms:
+            if self.obs_ptype == 'normalize':
                 obses = tf.clip_by_value((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
                                           self.clipob)
                 return obses
+            elif self.obs_ptype == 'scale':
+                return obses * self.obs_factor
             else:
                 return obses
 
@@ -116,7 +121,7 @@ class Preprocessor(object):
                 rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 return rewards
             elif self.rew_ptype == 'scale':
-                return rewards / self.factor
+                return rewards * self.rew_factor
             else:
                 return rewards
 

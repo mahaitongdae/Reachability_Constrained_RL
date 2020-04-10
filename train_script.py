@@ -1,5 +1,4 @@
-import ray
-from policy import PolicyWithValue, PolicyWithQs
+from policy import PolicyWithQs
 from optimizer import AllReduceOptimizer
 from mixed_pg_learner import MixedPGLearner
 from trainer import Trainer
@@ -29,18 +28,19 @@ def built_mixedpg_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--sample_batch_size', type=int, default=1024)
-    parser.add_argument("--mini_batch_size", type=int, default=64)
+    parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
-                        default=[0.0001, int(parser.parse_args().max_updated_steps / 2), 0.0001])
+                        default=[0.0003, int(parser.parse_args().max_updated_steps / 2), 0.0003])
     parser.add_argument("--value_lr_schedule", type=list,
-                        default=[0.0005, int(parser.parse_args().max_updated_steps/2), 0.0005])
+                        default=[0.0008, int(parser.parse_args().max_updated_steps/2), 0.0008])
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
     parser.add_argument("--model_based", default=True, action='store_true')
+    parser.add_argument("--deterministic_policy", default=True, action='store_true')
 
     parser.add_argument("--lam", type=float, default=0.95)
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=10)
+    parser.add_argument("--eval_interval", type=int, default=3)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
 
@@ -53,9 +53,10 @@ def built_mixedpg_parser():
 
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_normalize', default=True, action='store_true')
-    parser.add_argument("--reward_preprocess_type", type=str, default='normalize')
-    parser.add_argument("--reward_scale_factor", type=float, default=1)
+    parser.add_argument("--obs_preprocess_type", type=str, default='scale')
+    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 0.05])
+    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--buffer_type', type=str, default='None')
@@ -75,7 +76,6 @@ def built_mixedpg_parser():
 def main():
     args = built_mixedpg_parser()
     logger.info('begin training mixed pg agents with parameter {}'.format(str(args)))
-    ray.init(redis_max_memory=200*1024*1024, object_store_memory=200*1024*1024)
     os.makedirs(args.result_dir)
     with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
         json.dump(vars(args), f, ensure_ascii=False, indent=4)

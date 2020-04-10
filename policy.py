@@ -5,78 +5,6 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 
 
-class PolicyWithValue(object):
-    import tensorflow as tf
-
-    def __init__(self, obs_space, act_space, args):
-        self.args = args
-        assert isinstance(obs_space, spaces.Box)
-        assert isinstance(act_space, spaces.Box) or isinstance(act_space, spaces.Discrete)
-        obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
-        if isinstance(act_space, spaces.Discrete):
-            self.act_dist_cls = DiscreteDistribution
-            act_dim = act_space.n if args.act_dim is None else self.args.act_dim
-        else:
-            self.act_dist_cls = GuassianDistribution
-            act_dim = act_space.shape[0] * 2 if args.act_dim is None else self.args.act_dim * 2
-        self.policy = MLPNet(obs_dim, 2, 128, act_dim)
-        self.value = MLPNet(obs_dim, 2, 128, 1)
-        self.models = [self.policy, self.value]
-        policy_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.policy_lr_schedule)
-        value_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.value_lr_schedule)
-        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule)
-        self.value_optimizer = self.tf.keras.optimizers.Adam(value_lr_schedule)
-        self.optimizers = [self.policy_optimizer, self.value_optimizer]
-
-    def save_weights(self, save_dir, iteration):
-        for model in self.models:
-            model.save_weights(save_dir + '/' + model.name + 'ite' + str(iteration))
-
-    def load_weights(self, load_dir, iteration):
-        for model in self.models:
-            model.load_weights(load_dir + '/' + model.name + 'ite' + str(iteration))
-
-    def get_weights(self):
-        return [model.get_weights() for model in self.models]
-
-    @property
-    def trainable_weights(self):
-        return self.tf.nest.flatten([model.trainable_weights for model in self.models])
-
-    def set_weights(self, weights):
-        for i, weight in enumerate(weights):
-            self.models[i].set_weights(weight)
-
-    def apply_gradients(self, iteration, grads):
-        gradi_start = 0
-        for i in range(len(self.models)):
-            len_weights = len(self.models[i].trainable_weights)
-            gradi_end = gradi_start + len_weights
-            self.optimizers[i].apply_gradients(zip(grads[gradi_start: gradi_end], self.models[i].trainable_weights))
-            gradi_start = gradi_end
-
-    def compute_action(self, obs):
-        logits = self.policy(obs)
-        act_dist = self.act_dist_cls(logits)
-        action = act_dist.sample()
-        neglogp = act_dist.neglogp(action)
-
-        return action, neglogp
-
-    def compute_neglogp(self, obs, action):
-        # print(action)
-        logits = self.policy(obs)
-        assert not np.isnan(logits[0][0])
-
-        act_dist = self.act_dist_cls(logits)
-        # assert not np.isnan(neglogp[0][0])
-
-        return act_dist.neglogp(action)
-
-    def compute_vf(self, obs):
-        return self.value(obs)
-
-
 class PolicyWithQs(object):
     import tensorflow as tf
 
@@ -87,14 +15,14 @@ class PolicyWithQs(object):
         obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
         self.act_dist_cls = GuassianDistribution
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
-        self.policy = MLPNet(obs_dim, 2, 128, act_dim * 2, name='policy')
-        self.policy_target = MLPNet(obs_dim, 2, 128, act_dim * 2, name='policy_target')
+        self.policy = MLPNet(obs_dim, 5, 32, act_dim * 2, name='policy', output_activation='tanh')
+        self.policy_target = MLPNet(obs_dim, 5, 32, act_dim * 2, name='policy_target', output_activation='tanh')
         policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
 
-        self.Qs = tuple(MLPNet(obs_dim + act_dim, 2, 128, 1, name='Q' + str(i)) for i in range(self.args.Q_num))
+        self.Qs = tuple(MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q' + str(i)) for i in range(self.args.Q_num))
         self.Q_targets = tuple(
-            MLPNet(obs_dim + act_dim, 2, 128, 1, name='Q_target' + str(i)) for i in range(self.args.Q_num))
+            MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q_target' + str(i)) for i in range(self.args.Q_num))
         for Q, Q_target in zip(self.Qs, self.Q_targets):
             source_params = Q.get_weights()
             Q_target.set_weights(source_params)
@@ -185,14 +113,12 @@ class PolicyWithQs(object):
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
-
             act_dist = self.act_dist_cls(logits)
-            action = act_dist.sample()
+            action = act_dist.mode() if self.args.deterministic_policy else act_dist.sample()
             neglogp = act_dist.neglogp(action)
             return action, neglogp
 
     def compute_logits(self, obs):
-
         return self.policy(obs)
 
     def compute_neglogp(self, obs, act):

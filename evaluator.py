@@ -24,8 +24,9 @@ class Evaluator(object):
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
-        self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_normalize,
-                                         self.args.reward_preprocess_type, gamma=self.args.gamma)
+        self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
@@ -34,7 +35,8 @@ class Evaluator(object):
         reward_list = []
         done = 0
         obs = self.env.reset()
-        while not done:
+        # while not done:
+        for _ in range(200):
             action, neglogp = self.policy_with_value.compute_action(obs[np.newaxis, :])
             # print(action[0].numpy())
 
@@ -75,13 +77,6 @@ class Evaluator(object):
             self.tf.summary.scalar("evaluation/average_len", average_len, step=self.iteration)
             self.writer.flush()
 
-
-def test_evaluator():
-    from policy import PolicyWithValue
-    from algorithms.ppo.train import built_ppo_parser
-    args = built_ppo_parser()
-    evaluator = Evaluator(PolicyWithValue, 'CartPole-v1', args)
-    evaluator.run_n_episode(100)
 
 def test_gpu():
     from train_script import built_mixedpg_parser

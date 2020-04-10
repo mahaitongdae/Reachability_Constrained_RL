@@ -18,7 +18,7 @@ class OnPolicyWorker(object):
     Act as both actor and learner
     """
     import tensorflow as tf
-    tf.config.experimental.set_visible_devices([], 'GPU')
+    # tf.config.experimental.set_visible_devices([], 'GPU')
 
     # gpus = tf.config.experimental.list_physical_devices('GPU')
     # tf.config.experimental.set_virtual_device_configuration(
@@ -38,14 +38,15 @@ class OnPolicyWorker(object):
         self.obs = self.env.reset()
         # judge_is_nan([self.obs])
         self.done = False
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
-                                         self.args.reward_scale_factor, gamma=self.args.gamma)
+        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         gamma=self.args.gamma)
         self.log_dir = self.args.log_dir
 
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
-        if self.worker_id == 1:
+        if self.worker_id == 0:
             self.writer = self.tf.summary.create_file_writer(self.log_dir + '/worker')
             self.put_data_into_learner(*(self.sample()))
             self.learner.export_graph(self.writer)

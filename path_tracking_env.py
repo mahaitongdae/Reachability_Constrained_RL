@@ -45,14 +45,14 @@ def shift_and_rotate_coordination(orig_x, orig_y, orig_d, coordi_shift_x, coordi
 
 class VehicleDynamics(object):
     def __init__(self, ):
-        self.vehicle_params = OrderedDict(C_f=88000,  # front wheel cornering stiffness [N/rad]
-                                          C_r=94000,  # rear wheel cornering stiffness [N/rad]
+        self.vehicle_params = OrderedDict(C_f=88000.,  # front wheel cornering stiffness [N/rad]
+                                          C_r=94000.,  # rear wheel cornering stiffness [N/rad]
                                           a=1.14,  # distance from CG to front axle [m]
                                           b=1.40,  # distance from CG to rear axle [m]
-                                          mass=1500,  # mass [kg]
-                                          I_z=2420,  # Polar moment of inertia at CG [kg*m^2]
+                                          mass=1500.,  # mass [kg]
+                                          I_z=2420.,  # Polar moment of inertia at CG [kg*m^2]
                                           miu=1.0,  # tire-road friction coefficient
-                                          g=9.8,  # acceleration of gravity [m/s^2]
+                                          g=9.81,  # acceleration of gravity [m/s^2]
                                           )
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
@@ -72,22 +72,42 @@ class VehicleDynamics(object):
 
             F_zf, F_zr = b * mass * g / (a + b), a * mass * g / (a + b)
             F_xf = tf.where(a_x < 0, mass * a_x / 2, tf.zeros_like(a_x, dtype=tf.float32))
-            F_xr = tf.where(a_x < 0, mass * a_x / 2, tf.zeros_like(mass * a_x, dtype=tf.float32))
+            F_xr = tf.where(a_x < 0, mass * a_x / 2, mass * a_x)
             miu_f = tf.sqrt(tf.square(miu * F_zf) - tf.square(F_xf)) / F_zf
             miu_r = tf.sqrt(tf.square(miu * F_zr) - tf.square(F_xr)) / F_zr
             alpha_f = tf.atan((v_y + a * r) / v_x) - delta
             alpha_r = tf.atan((v_y - b * r) / v_x)
-            tmp_f = tf.square(C_f * tf.tan(alpha_f)) / (27 * tf.square(miu_f * F_zf)) - C_f * tf.abs(tf.tan(alpha_f)) / (
-                    3 * miu_f * F_zf) + 1
-            tmp_r = tf.square(C_r * tf.tan(alpha_r)) / (27 * tf.square(miu_r * F_zr)) - C_r * tf.abs(tf.tan(alpha_r)) / (
-                    3 * miu_r * F_zr) + 1
 
-            F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
-            F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
+            Ff_w1 = tf.square(C_f) / (3 * F_zf * miu_f)
+            Ff_w2 = tf.pow(C_f, 3) / (27 * tf.pow(F_zf * miu_f, 2))
+            F_yf_max = F_zf * miu_f
+
+            Fr_w1 = tf.square(C_r) / (3 * F_zr * miu_r)
+            Fr_w2 = tf.pow(C_r, 3) / (27 * tf.pow(F_zr * miu_r, 2))
+            F_yr_max = F_zr * miu_r
+
+            F_yf = - C_f * tf.tan(alpha_f) + Ff_w1 * tf.tan(alpha_f) * tf.abs(
+                tf.tan(alpha_f)) - Ff_w2 * tf.pow(tf.tan(alpha_f), 3)
+            F_yr = - C_r * tf.tan(alpha_r) + Fr_w1 * tf.tan(alpha_r) * tf.abs(
+                tf.tan(alpha_r)) - Fr_w2 * tf.pow(tf.tan(alpha_r), 3)
+
+            F_yf = tf.minimum(F_yf, F_yf_max)
+            F_yf = tf.maximum(F_yf, -F_yf_max)
+
+            F_yr = tf.minimum(F_yr, F_yr_max)
+            F_yr = tf.maximum(F_yr, -F_yr_max)
+
+            # tmp_f = tf.square(C_f * tf.tan(alpha_f)) / (27 * tf.square(miu_f * F_zf)) - C_f * tf.abs(tf.tan(alpha_f)) / (
+            #         3 * miu_f * F_zf) + 1
+            # tmp_r = tf.square(C_r * tf.tan(alpha_r)) / (27 * tf.square(miu_r * F_zr)) - C_r * tf.abs(tf.tan(alpha_r)) / (
+            #         3 * miu_r * F_zr) + 1
+            #
+            # F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
+            # F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
 
             state_deriv = [(F_yf * tf.cos(delta) + F_yr) / mass - v_x * r,
                            (a * F_yf * tf.cos(delta) - b * F_yr) / I_z,
-                           a_x + v_y * r - F_yf * tf.sin(delta) / mass,
+                           a_x + v_y * r,  # - F_yf * tf.sin(delta) / mass,
                            r,
                            v_x * tf.cos(delta_phi) + v_y * tf.sin(delta_phi),
                            v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
@@ -125,7 +145,7 @@ class VehicleDynamics(object):
 
 class ReferencePath(object):
     def __init__(self):
-        self.curve_list = [(7.5, 35., 0.), (2.5, 40., 0.), (-5., 70., 0.)]
+        self.curve_list = [(7.5, 200, 0.), (2.5, 300., 0.), (-5., 400., 0.)]
 
     def compute_path_y(self, x):
         y = tf.zeros_like(x, dtype=tf.float32)
@@ -174,11 +194,11 @@ class EnvironmentModel(object):  # all tensors
         self.obses = None
         self.veh_states = None
         # v_xs, v_ys, rs, delta_ys, delta_phis, exp_vs
-        self.observation_space = {'low': np.array([0, 0, -np.pi / 3, -np.inf, -np.pi, 0], dtype=np.float32),
-                                  'high': np.array([35, 1.5, np.pi / 3, np.inf, np.pi, 35], dtype=np.float32),
+        self.observation_space = {'low': np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.pi, -np.inf], dtype=np.float32),
+                                  'high': np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf], dtype=np.float32),
                                   }
-        self.action_space = {'low': np.array([-np.pi / 3, -3], dtype=np.float32),
-                             'high': np.array([np.pi / 3, 3], dtype=np.float32),
+        self.action_space = {'low': np.array([-np.pi / 6, -3], dtype=np.float32),
+                             'high': np.array([np.pi / 6, 3], dtype=np.float32),
                              }
         # self.history_positions = deque(maxlen=100)
         # plt.ion()
@@ -203,6 +223,7 @@ class EnvironmentModel(object):  # all tensors
             punish_delta = -tf.square(deltas)
             punish_a_x = -tf.square(a_xs)
             rewards = 0.001 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + 0.1 * punish_delta + 0.001 * punish_a_x
+            # rewards = 0.001 * devi_v + 0.04 * devi_y
 
         return rewards
 
@@ -226,7 +247,7 @@ class EnvironmentModel(object):  # all tensors
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
             deltas_norm, a_xs_norm = actions[:, 0], actions[:, 1]
-            actions = tf.stack([deltas_norm * np.pi / 3, a_xs_norm * 3], axis=1)
+            actions = tf.stack([deltas_norm * np.pi / 6, a_xs_norm * 3], axis=1)
             actions = tf.clip_by_value(actions, self.action_space['low'], self.action_space['high'])
             rewards = self.compute_rewards(self.obses, actions)
             self.veh_states = self.vehicle_dynamics.model_next_states(self.veh_states, actions,
@@ -301,11 +322,11 @@ class PathTrackingEnv(gym.Env, ABC):
         self.simulation_frequency = 40
         self.simulation_time = 0
         # obs [v_x, v_y, r, delta_y, delta_phi, self.expected_v]
-        self.observation_space = gym.spaces.Box(low=np.array([0, 0, -np.pi / 3, -np.inf, -np.pi, 0]),
-                                                high=np.array([35, 1.5, np.pi / 3, np.inf, np.pi, 35]),
+        self.observation_space = gym.spaces.Box(low=np.array([0, -10., -10., -np.inf, -10, 0]),
+                                                high=np.array([35, 10., 10., np.inf, 10, 35]),
                                                 dtype=np.float64)
-        self.action_space = gym.spaces.Box(low=np.array([-np.pi / 3, -3]),
-                                           high=np.array([np.pi / 3, 3]),
+        self.action_space = gym.spaces.Box(low=np.array([-np.pi / 6, -3]),
+                                           high=np.array([np.pi / 6, 3]),
                                            dtype=np.float64)
         self.history_positions = deque(maxlen=100)
         plt.ion()
@@ -316,13 +337,13 @@ class PathTrackingEnv(gym.Env, ABC):
         self.expected_v = 20
         self.x = init_x = np.random.uniform(0, 600)
 
-        init_delta_y = np.random.uniform(-5, 5)
+        init_delta_y = np.random.normal(0, 1)
         self.y = init_y = self.path.compute_y(init_x, init_delta_y).numpy()
 
         init_delta_phi = np.random.normal(0, np.pi / 9)
         self.phi = init_phi = self.path.compute_phi(init_x, init_delta_phi)
 
-        init_v_x = np.random.uniform(10, 25)
+        init_v_x = np.random.uniform(20, 25)
         beta = np.random.normal(0, 0.15)
         init_v_y = init_v_x * np.tan(beta)
         init_r = np.random.normal(0, 0.3)
@@ -342,7 +363,7 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def step(self, action):  # think of action is in range [-1, 1]
         delta_norm, a_x_norm = action
-        action = delta_norm * np.pi / 3, a_x_norm * 3
+        action = delta_norm * np.pi / 6, a_x_norm * 3
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self.simulation_time += 1 / self.simulation_frequency
         self.action = action
@@ -361,10 +382,9 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def compute_reward(self, obs, action):
         v_x, v_y, r, delta_y, delta_phi, exp_v = obs
-        v = np.sqrt(v_x ** 2 + v_y ** 2)
         delta, a_x = action
 
-        devi_v = -pow(v - exp_v, 2)
+        devi_v = -pow(v_x - exp_v, 2)
         devi_y = -pow(delta_y, 2)
         devi_phi = -pow(delta_phi, 2)
         punish_yaw_rate = -pow(r, 2)
@@ -373,6 +393,7 @@ class PathTrackingEnv(gym.Env, ABC):
 
         rewards = np.array([devi_v, devi_y, devi_phi, punish_yaw_rate, punish_delta, punish_a_x])
         coeffis = np.array([0.001, 0.04, 0.1, 0.02, 0.1, 0.001])
+        # coeffis = np.array([0.001, 0.04, 0., 0., 0., 0.])
 
         reward = np.sum(rewards * coeffis)
 
@@ -380,7 +401,7 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def judge_done(self, obs):
         v_x, v_y, r, delta_y, delta_phi, exp_v = obs
-        if abs(delta_y) > 30 or abs(delta_phi) > 1.2 or v_x < 2:
+        if abs(delta_y) > 3 or abs(delta_phi) > np.pi / 4. or v_x < 2 or abs(r) > 0.8:
             return 1
         else:
             return 0
@@ -480,4 +501,4 @@ def test_environment_model():
 
 
 if __name__ == '__main__':
-    test_environment_model()
+    test_path_tracking_env()

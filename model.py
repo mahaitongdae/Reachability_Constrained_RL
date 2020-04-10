@@ -6,10 +6,11 @@ import tensorflow as tf
 
 class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
-        super(MLPNet, self).__init__(**kwargs)
+        super(MLPNet, self).__init__()
         self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation='tanh', dtype=tf.float32)
         self.hidden = Sequential([Dense(num_hidden_units, activation='tanh', dtype=tf.float32) for _ in range(num_hidden_layers-1)])
-        self.outputs = Dense(output_dim, activation='linear', dtype=tf.float32)
+        output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
+        self.outputs = Dense(output_dim, activation=output_activation, dtype=tf.float32)
         self.build(input_shape=(None, input_dim))
 
     def call(self, x, **kwargs):
