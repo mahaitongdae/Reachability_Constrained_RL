@@ -91,15 +91,7 @@ class MixedPGLearner(object):
         self.reduced_num_minibatch = 4
         assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
         self.epinfobuf = deque(maxlen=100)
-        self.obs_forward = []
-        self.action_forward = []
-        self.reward_forward = []
-        self.forward_step = 30
-        for i in range(self.forward_step):
-            self.obs_forward.append([])
-            self.action_forward.append([])
-            self.reward_forward.append([])
-        self.obs_forward.append([])
+
 
     def get_stats(self):
         return self.stats
@@ -245,24 +237,35 @@ class MixedPGLearner(object):
     #     policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
     #     return policy_gradient, policy_loss
 
-    @tf.function
+    # @tf.function
     def model_based_policy_forward_and_backward(self, mb_obs):
+        self.obs_forward = []
+        self.action_forward = []
+        self.reward_forward = []
+        self.forward_step = 30
+        for i in range(self.forward_step):
+            self.obs_forward.append([])
+            self.action_forward.append([])
+            self.reward_forward.append([])
+        self.obs_forward.append([])
         with self.tf.GradientTape() as tape:
             for i in range(self.forward_step):
                 if i == 0:
-                    self.obs_forward[i] = self.preprocessor.tf_process_obses(mb_obs)
-                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
-                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
-                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.obs_forward[i] = mb_obs
+                    action, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[i]))
+                    self.action_forward[i] = np.stack([action[:, 0] * np.pi / 9, action[:, 1] * 2], 1)
+
+                    self.obs_forward[i + 1] = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
                 else:
-                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
-                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
-                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    action, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[i]))
+                    self.action_forward[i] = np.stack([action[:, 0] * np.pi / 9, action[:, 1] * 2], 1)
+                    self.obs_forward[i + 1] = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
 
-            action_next, _ = self.policy_with_value.compute_action(self.obs_forward[-1])
-            q_next = self.policy_with_value.compute_Qs(self.obs_forward[-1], action_next)[0][:, 0]
+            action_next, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[-1]))
+            q_next = self.policy_with_value.compute_Qs(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
+                                                       action_next)[0][:, 0]
             target = self.tf.zeros_like(q_next)
             for i in range(self.forward_step):
                 target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]
@@ -272,24 +275,33 @@ class MixedPGLearner(object):
         policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
         return policy_gradient, policy_loss
 
-    @tf.function
+    # @tf.function
     def model_based_q_forward_and_backward(self, mb_obs, mb_action):
+        self.obs_forward = []
+        self.action_forward = []
+        self.reward_forward = []
+        self.forward_step = 30
+        for i in range(self.forward_step):
+            self.obs_forward.append([])
+            self.action_forward.append([])
+            self.reward_forward.append([])
+        self.obs_forward.append([])
         with self.tf.GradientTape() as tape:
             for i in range(self.forward_step):
                 if i == 0:
-                    self.obs_forward[i] = self.preprocessor.tf_process_obses(mb_obs)
-                    self.action_forward[i] = mb_action
-                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
-                    self.obs_forward[i+1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.obs_forward[i] = mb_obs
+                    self.action_forward[i] = np.stack([mb_action[:, 0] * np.pi / 9, mb_action[:, 1] * 2], 1)
+                    self.obs_forward[i+1] = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
                 else:
-                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
-                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
-                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    action, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[i]))
+                    self.action_forward[i] = np.stack([action[:, 0] * np.pi / 9, action[:, 1] * 2], 1)
+                    self.obs_forward[i + 1] = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
 
-            action_next, _ = self.policy_with_value.compute_action(self.obs_forward[-1])
-            q_next = self.policy_with_value.compute_Qs(self.obs_forward[-1], action_next)[0][:, 0]
+            action_next, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[-1]))
+            q_next = self.policy_with_value.compute_Qs(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
+                                                       action_next)[0][:, 0]
             target = self.tf.zeros_like(q_next)
             for i in range(self.forward_step):
                 target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]

@@ -49,7 +49,7 @@ class OnPolicyWorker(object):
         if self.worker_id == 0:
             self.writer = self.tf.summary.create_file_writer(self.log_dir + '/worker')
             self.put_data_into_learner(*(self.sample()))
-            self.learner.export_graph(self.writer)
+            # self.learner.export_graph(self.writer)
 
         self.stats = {}
         logger.info('Worker initialized')

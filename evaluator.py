@@ -37,7 +37,8 @@ class Evaluator(object):
         obs = self.env.reset()
         # while not done:
         for _ in range(200):
-            action, neglogp = self.policy_with_value.compute_action(obs)
+            processed_obs = self.preprocessor.tf_process_obses(obs)
+            action, neglogp = self.policy_with_value.compute_action(processed_obs)
             # print(action[0].numpy())
             # print('action', action)
             obs, reward, done, info = self.env.step(action.numpy())
