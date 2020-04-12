@@ -3,15 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/monitor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,7 +23,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="master" />
+        <entry key="$PROJECT_DIR$" value="debug" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -252,10 +244,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586490928681">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586667622219">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586490928681" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586667622219" />
     <state x="219" y="82" key="DiffContextDialog" timestamp="1586490954659">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -308,10 +300,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586404297190" />
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586487899919">
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586671457171">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586487899919" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586671457171" />
     <state x="479" y="183" width="707" height="702" key="find.popup" timestamp="1586229242681">
       <screen x="65" y="24" width="1535" height="876" />
     </state>

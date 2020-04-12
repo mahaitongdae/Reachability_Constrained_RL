@@ -54,14 +54,16 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
+        self.expected_vs = 25
+        self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
         with tf.name_scope('f_xu') as scope:
-            # obs:       v_xs, v_ys, rs, delta_ys, delta_phis, steer, a_x
-            # veh_state: v_ys, rs, v_xs, delta_phis, xs, delta_ys
-            v_y, r, v_x, delta_phi, x, delta_y, steer, a_x = states[:, 0], states[:, 1], states[:, 2],\
+            # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+            # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+            v_y, r, v_x, delta_phi, delta_y, steer, a_x = states[:, 0], states[:, 1], states[:, 2],\
                                                              states[:, 3], states[:, 4], states[:, 5], \
-                                                             states[:, 6], states[:, 7]
+                                                             states[:, 6]
             steer_rate, a_x_rate = actions[:, 0], actions[:, 1]
 
             C_f = tf.convert_to_tensor(self.vehicle_params['C_f'], dtype=tf.float32)
@@ -112,7 +114,6 @@ class VehicleDynamics(object):
                            (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
                            a_x + v_y * r,  # - F_yf * tf.sin(delta) / mass,
                            r,
-                           v_x * tf.cos(delta_phi) + v_y * tf.sin(delta_phi),
                            v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
                            steer_rate,
                            a_x_rate
@@ -165,6 +166,93 @@ class VehicleDynamics(object):
                 # states = tf.stack([v_y, r, v_x, changed_phis, x, delta_y, cliped_steer, cliped_a_x], 1)
 
         return states
+
+    def prediction(self, x_1, u_1, frequency, RK):
+        if RK == 1:
+            f_xu_1 = self.f_xu(x_1, u_1)
+            x_next = f_xu_1 / frequency + x_1
+
+        elif RK == 2:
+            f_xu_1 = self.f_xu(x_1, u_1)
+            K1 = (1 / frequency) * f_xu_1
+            x_2 = x_1 + K1
+            f_xu_2 = self.f_xu(x_2, u_1)
+            K2 = (1 / frequency) * f_xu_2
+            x_next = x_1 + (K1 + K2) / 2
+        else:
+            assert RK == 4
+            f_xu_1 = self.f_xu(x_1, u_1)
+            K1 = (1 / frequency) * f_xu_1
+            x_2 = x_1 + K1 / 2
+            f_xu_2 = self.f_xu(x_2, u_1)
+            K2 = (1 / frequency) * f_xu_2
+            x_3 = x_1 + K2 / 2
+            f_xu_3 = self.f_xu(x_3, u_1)
+            K3 = (1 / frequency) * f_xu_3
+            x_4 = x_1 + K3
+            f_xu_4 = self.f_xu(x_4, u_1)
+            K4 = (1 / frequency) * f_xu_4
+            x_next = x_1 + (K1 + 2 * K2 + 2 * K3 + K4) / 6
+        return x_next
+
+    def Simulation(self, states, full_states, actions, base_freq, simu_times):
+        for i in range(self.simu_times):
+            x = torch.from_numpy(x_state_.copy()).float()
+            x, F_yf, F_yr, a_f, a_r, u_f, u_r = self.prediction(states, actions, base_freq, 1)
+            # print(x.requires_grad)
+            x_state_ = x.detach().numpy().copy()
+            v_long = x_agent_[:, 0]
+            v_lat = x_agent_[:, 1]
+            v_ang = x_agent_[:, 2]
+            head_ang = x_agent_[:, 3]
+
+            x_state_[:, 0][x_state_[:, 0] > StateConfig.v_max] = StateConfig.v_max
+            x_state_[:, 0][x_state_[:, 0] < 1] = 1
+            x_state_[:, 5][x_state_[:, 5] > StateConfig.action_bound[0].item()] = StateConfig.action_bound[0]
+            x_state_[:, 5][x_state_[:, 5] < -StateConfig.action_bound[0].item()] = -StateConfig.action_bound[0]
+            x_state_[:, 6][x_state_[:, 6] > StateConfig.action_bound[1].item()] = StateConfig.action_bound[1]
+            x_state_[:, 6][x_state_[:, 6] < -StateConfig.action_bound[1].item()] = -StateConfig.action_bound[1]
+
+            x_agent_[:, 3] += v_ang / self.frequency_simulation
+            x_agent_[:, 4] += (v_long * np.sin(head_ang) + v_lat * np.cos(head_ang)) / self.frequency_simulation
+            x_agent_[:, 7] += (v_long * np.cos(head_ang) - v_lat * np.sin(head_ang)) / self.frequency_simulation
+            x_agent_[:, 0:3] = x_state_[:, 0:3].copy()
+            x_agent_[:, 5:7] = x_state_[:, 5:7].copy()
+
+            lane_position, lane_angle = self.Trajectory(x_agent_[:, -1], x_agent_[:, 4])
+
+            x_agent_[:, 3][x_agent_[:, 3] > math.pi] -= 2 * math.pi
+            x_agent_[:, 3][x_agent_[:, 3] <= -math.pi] += 2 * math.pi
+            x_state_[:, 3] = x_agent_[:, 3] - lane_angle
+            x_state_[:, 4] = x_agent_[:, 4] - lane_position
+            x_state_[:, 3][x_state_[:, 3] > math.pi] -= 2 * math.pi
+            x_state_[:, 3][x_state_[:, 3] <= -math.pi] += 2 * math.pi
+
+        return x_state_, x_agent_, F_yf, F_yr, a_f, a_r, u_f, u_r
+
+    def compute_rewards(self, states, actions):  # obses and actions are tensors
+        with tf.name_scope('compute_reward') as scope:
+            # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+            # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+            v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs = states[:, 0], states[:, 1], states[:, 2], \
+                                                                 states[:, 3], states[:, 4], states[:, 5], \
+                                                                 states[:, 6]
+            steer_rates, a_x_rates = actions[:, 0], actions[:, 1]
+
+            devi_v = -tf.square(v_xs - self.expected_vs)
+            devi_y = -tf.square(delta_ys)
+            devi_phi = -tf.square(delta_phis)
+            punish_yaw_rate = -tf.square(rs)
+            punish_steer = -tf.square(steers)
+            punish_a_x = -tf.square(a_xs)
+            punish_steer_rate = -tf.square(steer_rates)
+            punish_a_x_rate = -tf.square(a_x_rates)
+
+            rewards = 0.001 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + \
+                      0.05 * punish_steer + 0.0005 * punish_a_x + 0.05 * punish_steer_rate + 0.0005 * punish_a_x_rate
+
+        return rewards
+
 
 
 class ReferencePath(object):
