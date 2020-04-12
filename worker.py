@@ -29,18 +29,18 @@ class OnPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        env = gym.make(env_id)
+        env = gym.make(env_id, num_agent=self.args.num_agent)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.learner = learner_cls(policy_cls, self.args)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        self.sample_batch_size = self.args.sample_batch_size
+        self.sample_n_step = self.args.sample_n_step
         self.obs = self.env.reset()
         # judge_is_nan([self.obs])
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma)
+                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
         self.log_dir = self.args.log_dir
 
         if not os.path.exists(self.log_dir):
@@ -87,22 +87,22 @@ class OnPolicyWorker(object):
     def sample(self):
         batch_data = []
         epinfos = []
-        for _ in range(self.sample_batch_size):
+        for _ in range(self.sample_n_step):
             processed_obs = self.preprocessor.process_obs(self.obs)
             # judge_is_nan([processed_obs])
 
-            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])  # TODO
+            action, neglogp = self.policy_with_value.compute_action(processed_obs)  # TODO
             # judge_is_nan([action])
             # judge_is_nan([neglogp])
             # print(action[0].numpy())
-            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+            obs_tp1, reward, self.done, info = self.env.step(action.numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             # judge_is_nan([obs_tp1])
 
-            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
-            self.obs = self.env.reset() if self.done else obs_tp1.copy()
-            maybeepinfo = info.get('episode')
-            if maybeepinfo: epinfos.append(maybeepinfo)
+            batch_data.append((self.obs, action.numpy(), reward, obs_tp1, self.done, neglogp.numpy()))
+            self.obs = self.env.reset()
+            maybeepinfos = info.get('episode')
+            if maybeepinfos: epinfos.extend(maybeepinfos)
             # judge_is_nan([self.obs])
 
         return batch_data, epinfos

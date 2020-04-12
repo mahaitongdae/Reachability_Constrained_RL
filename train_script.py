@@ -27,22 +27,24 @@ def built_mixedpg_parser():
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
-    parser.add_argument('--sample_batch_size', type=int, default=1024)
+    parser.add_argument('--sample_n_step', type=int, default=1)
+    parser.add_argument('--num_agent', type=int, default=256)
+
     parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
                         default=[0.0003, int(parser.parse_args().max_updated_steps / 2), 0.0003])
     parser.add_argument("--value_lr_schedule", type=list,
                         default=[0.0008, int(parser.parse_args().max_updated_steps/2), 0.0008])
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--model_based", default=True, action='store_true')
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
 
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.98)
-    parser.add_argument("--epoch", type=int, default=10)
-    parser.add_argument("--eval_interval", type=int, default=3)
-    parser.add_argument("--save_interval", type=int, default=10)
-    parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument("--epoch", type=int, default=1)
+    parser.add_argument("--eval_interval", type=int, default=100)
+    parser.add_argument("--save_interval", type=int, default=100)
+    parser.add_argument("--log_interval", type=int, default=100)
 
     parser.add_argument('--log_alpha', default=-np.inf)
     parser.add_argument('--init_log_alpha', type=float, default=0)
@@ -54,8 +56,8 @@ def built_mixedpg_parser():
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 0.05])
-    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
+    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 2, 0.4])
+    parser.add_argument("--reward_preprocess_type", type=str, default=None)
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')

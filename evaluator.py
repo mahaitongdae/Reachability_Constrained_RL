@@ -17,7 +17,7 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id)
+        self.env = gym.make(env_id, num_agent=self.args.num_agent)
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
         self.log_dir = self.args.log_dir
@@ -26,7 +26,7 @@ class Evaluator(object):
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma)
+                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
@@ -37,14 +37,13 @@ class Evaluator(object):
         obs = self.env.reset()
         # while not done:
         for _ in range(200):
-            action, neglogp = self.policy_with_value.compute_action(obs[np.newaxis, :])
+            action, neglogp = self.policy_with_value.compute_action(obs)
             # print(action[0].numpy())
-
             # print('action', action)
-            obs, reward, done, info = self.env.step(action[0].numpy())
+            obs, reward, done, info = self.env.step(action.numpy())
             # print('obs', obs)
             self.env.render()
-            reward_list.append(reward)
+            reward_list.append(reward[0])
         self.env.close()
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
@@ -78,15 +77,5 @@ class Evaluator(object):
             self.writer.flush()
 
 
-def test_gpu():
-    from train_script import built_mixedpg_parser
-    from policy import PolicyWithValue, PolicyWithQs
-    import time
-    args = built_mixedpg_parser()
-    a = Evaluator(PolicyWithQs, 'Pendulum-v0', args)
-    time.sleep(10000)
-
-
 if __name__ == '__main__':
-    test_gpu()
-
+    pass

@@ -3,16 +3,14 @@
   <component name="ChangeListManager">
     <list default="true" id="ed262913-b1e2-4bc6-b2d4-b32a50450d5a" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buffer.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/monitor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -182,8 +180,8 @@
       <list>
         <item itemvalue="Python.train_script" />
         <item itemvalue="Python.path_tracking_env" />
-        <item itemvalue="Python.test_for_debug" />
         <item itemvalue="Python.path_tracking_env (1)" />
+        <item itemvalue="Python.test_for_debug" />
         <item itemvalue="Python.policy" />
       </list>
     </recent_temporary>
@@ -270,38 +268,38 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586490645967" />
-    <state width="970" height="118" key="GridCell.Tab.0.bottom" timestamp="1586448894280">
+    <state width="1512" height="266" key="GridCell.Tab.0.bottom" timestamp="1586666942407">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="970" height="118" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586448894280" />
-    <state width="970" height="118" key="GridCell.Tab.0.center" timestamp="1586448894273">
+    <state width="1512" height="266" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586666942407" />
+    <state width="1512" height="266" key="GridCell.Tab.0.center" timestamp="1586666942407">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="970" height="118" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586448894273" />
-    <state width="970" height="118" key="GridCell.Tab.0.left" timestamp="1586448894273">
+    <state width="1512" height="266" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586666942407" />
+    <state width="1512" height="266" key="GridCell.Tab.0.left" timestamp="1586666942406">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="970" height="118" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586448894273" />
-    <state width="970" height="118" key="GridCell.Tab.0.right" timestamp="1586448894279">
+    <state width="1512" height="266" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586666942406" />
+    <state width="1512" height="266" key="GridCell.Tab.0.right" timestamp="1586666942407">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="970" height="118" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586448894279" />
-    <state width="1512" height="219" key="GridCell.Tab.1.bottom" timestamp="1586412009841">
+    <state width="1512" height="266" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586666942407" />
+    <state width="1512" height="384" key="GridCell.Tab.1.bottom" timestamp="1586661097870">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="219" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
-    <state width="1512" height="219" key="GridCell.Tab.1.center" timestamp="1586412009841">
+    <state width="1512" height="384" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586661097870" />
+    <state width="1512" height="384" key="GridCell.Tab.1.center" timestamp="1586661097870">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="219" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
-    <state width="1512" height="219" key="GridCell.Tab.1.left" timestamp="1586412009841">
+    <state width="1512" height="384" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586661097870" />
+    <state width="1512" height="384" key="GridCell.Tab.1.left" timestamp="1586661097870">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="219" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
-    <state width="1512" height="219" key="GridCell.Tab.1.right" timestamp="1586412009841">
+    <state width="1512" height="384" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586661097870" />
+    <state width="1512" height="384" key="GridCell.Tab.1.right" timestamp="1586661097870">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="219" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586412009841" />
+    <state width="1512" height="384" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586661097870" />
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup" timestamp="1585747347662">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -347,13 +345,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>278</line>
+          <line>290</line>
           <option name="timeStamp" value="8" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/policy.py</url>
-          <line>78</line>
-          <option name="timeStamp" value="9" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

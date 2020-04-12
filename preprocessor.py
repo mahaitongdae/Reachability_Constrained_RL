@@ -44,7 +44,7 @@ class RunningMeanStd(object):
 
 class Preprocessor(object):
     def __init__(self, ob_space, obs_ptype='normalize', rew_ptype='normalize', obs_factor=None,
-                 rew_factor=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+                 rew_factor=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, **kwargs):
         self.obs_ptype = obs_ptype
         self.ob_rms = RunningMeanStd(shape=ob_space.shape) if self.obs_ptype == 'normalize' else None
         self.rew_ptype = rew_ptype
@@ -57,15 +57,16 @@ class Preprocessor(object):
 
         self.gamma = gamma
         self.epsilon = epsilon
-        self.ret = 0.
+        num_agent = kwargs['num_agent']
+        self.ret = np.zeros(num_agent)
+
 
     def process_rew(self, rew, done):
         if self.rew_ptype == 'normalize':
             self.ret = self.ret * self.gamma + rew
             self.ret_rms.update(np.array([self.ret]))
             rew = np.clip(rew / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-            if done:
-                self.ret = 0.
+            self.ret = np.where(done == 1, np.zeros(self.ret), self.ret)
 
             return rew
         elif self.rew_ptype == 'scale':
@@ -75,7 +76,7 @@ class Preprocessor(object):
 
     def process_obs(self, obs):
         if self.obs_ptype == 'normalize':
-            self.ob_rms.update(np.array([obs]))
+            self.ob_rms.update(obs)
             obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obs
         elif self.obs_ptype == 'scale':
@@ -110,7 +111,9 @@ class Preprocessor(object):
                                           self.clipob)
                 return obses
             elif self.obs_ptype == 'scale':
-                return obses * self.obs_factor
+                # return obses * tf.convert_to_tensor(self.obs_factor, dtype=tf.float32)
+                return obses * tf.constant([0.2, 1., 2., 1., 2.4, 2, 0.4], dtype=tf.float32)
+
             else:
                 return obses
 
@@ -121,7 +124,7 @@ class Preprocessor(object):
                 rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 return rewards
             elif self.rew_ptype == 'scale':
-                return rewards * self.rew_factor
+                return rewards * tf.convert_to_tensor(self.rew_factor, dtype=tf.float32)
             else:
                 return rewards
 
