@@ -195,27 +195,20 @@ class VehicleDynamics(object):
             x_next = x_1 + (K1 + 2 * K2 + 2 * K3 + K4) / 6
         return x_next
 
-    def Simulation(self, states, full_states, actions, base_freq, simu_times):
-        for i in range(self.simu_times):
-            x = torch.from_numpy(x_state_.copy()).float()
-            x, F_yf, F_yr, a_f, a_r, u_f, u_r = self.prediction(states, actions, base_freq, 1)
-            # print(x.requires_grad)
-            x_state_ = x.detach().numpy().copy()
-            v_long = x_agent_[:, 0]
-            v_lat = x_agent_[:, 1]
-            v_ang = x_agent_[:, 2]
-            head_ang = x_agent_[:, 3]
+    def simulation(self, states, full_states, actions, base_freq, simu_times):
+        # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+        # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+        for i in range(simu_times):
+            states = tf.convert_to_tensor(states.copy())
+            states = self.prediction(states, actions, base_freq, 1).numpy().copy()
+            states[:, 2] = np.clip(states[:, 2], 1, 35)
+            states[:, 5] = np.clip(states[:, 5], -1.2 * np.pi / 9, 1.2 * np.pi / 9)
+            states[:, 6] = np.clip(states[:, 6], -4.4, 4.4)
+            v_ys, rs, v_xs, phis = full_states[:, 0], full_states[:, 1], full_states[:, 2], full_states[:, 3]
 
-            x_state_[:, 0][x_state_[:, 0] > StateConfig.v_max] = StateConfig.v_max
-            x_state_[:, 0][x_state_[:, 0] < 1] = 1
-            x_state_[:, 5][x_state_[:, 5] > StateConfig.action_bound[0].item()] = StateConfig.action_bound[0]
-            x_state_[:, 5][x_state_[:, 5] < -StateConfig.action_bound[0].item()] = -StateConfig.action_bound[0]
-            x_state_[:, 6][x_state_[:, 6] > StateConfig.action_bound[1].item()] = StateConfig.action_bound[1]
-            x_state_[:, 6][x_state_[:, 6] < -StateConfig.action_bound[1].item()] = -StateConfig.action_bound[1]
-
-            x_agent_[:, 3] += v_ang / self.frequency_simulation
-            x_agent_[:, 4] += (v_long * np.sin(head_ang) + v_lat * np.cos(head_ang)) / self.frequency_simulation
-            x_agent_[:, 7] += (v_long * np.cos(head_ang) - v_lat * np.sin(head_ang)) / self.frequency_simulation
+            full_states[:, 3] += rs / base_freq
+            full_states[:, 4] += (v_ys * np.sin(phis) + v_xs * np.cos(phis)) / base_freq
+            full_states[:, 7] += (v_ys * np.cos(phis) - v_xs * np.sin(phis)) / base_freq
             x_agent_[:, 0:3] = x_state_[:, 0:3].copy()
             x_agent_[:, 5:7] = x_state_[:, 5:7].copy()
 
