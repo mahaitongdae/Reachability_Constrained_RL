@@ -111,8 +111,7 @@ class Preprocessor(object):
                                           self.clipob)
                 return obses
             elif self.obs_ptype == 'scale':
-                # return obses * tf.convert_to_tensor(self.obs_factor, dtype=tf.float32)
-                return obses * tf.constant([0.2, 1., 2., 1., 2.4, 2, 0.4], dtype=tf.float32)
+                return obses * tf.convert_to_tensor(self.obs_factor, dtype=tf.float32)
 
             else:
                 return obses

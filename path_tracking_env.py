@@ -60,6 +60,10 @@ class VehicleDynamics(object):
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
         with tf.name_scope('f_xu') as scope:
             # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+            # 1, 2, 0.2, 2.4, 1, 2, 0.4
+
+            # 0.2 * torch.tensor([1, 5, 10, 12, 5, 10, 2]
+            # vx, vy, r, delta_phi, delta_y, steer, acc
             # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
             v_y, r, v_x, delta_phi, delta_y, steer, a_x = states[:, 0], states[:, 1], states[:, 2], \
                                                           states[:, 3], states[:, 4], states[:, 5], \

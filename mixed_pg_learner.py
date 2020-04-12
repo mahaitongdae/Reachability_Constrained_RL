@@ -1,6 +1,6 @@
 import numpy as np
 import gym
-from gym.envs.user_defined.path_tracking_env import EnvironmentModel
+from gym.envs.user_defined.path_tracking_env import VehicleDynamics
 from preprocessor import Preprocessor
 import time
 import logging
@@ -71,7 +71,6 @@ class MixedPGLearner(object):
         self.args = args
         env = gym.make(self.args.env_id, num_agent=self.args.num_agent)
         obs_space, act_space = env.observation_space, env.action_space
-        self.path = env.path
         env.close()
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
@@ -81,7 +80,7 @@ class MixedPGLearner(object):
         self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [20]
         self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [20]
 
-        self.model = EnvironmentModel()
+        self.model = VehicleDynamics()
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
@@ -92,6 +91,15 @@ class MixedPGLearner(object):
         self.reduced_num_minibatch = 4
         assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
         self.epinfobuf = deque(maxlen=100)
+        self.obs_forward = []
+        self.action_forward = []
+        self.reward_forward = []
+        self.forward_step = 30
+        for i in range(self.forward_step):
+            self.obs_forward.append([])
+            self.action_forward.append([])
+            self.reward_forward.append([])
+        self.obs_forward.append([])
 
     def get_stats(self):
         return self.stats
@@ -186,26 +194,79 @@ class MixedPGLearner(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
+
+    # def model_based_q_forward_and_backward(self, mb_obs, mb_action):
+    #     with self.tf.GradientTape() as tape:
+    #         obses = mb_obs
+    #         self.model.reset(obses)
+    #         processed_obses = self.preprocessor.tf_process_obses(obses)
+    #         actions = mb_action
+    #         q_pred = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+    #         reward_sum = self.tf.zeros((obses.shape[0],))
+    #         rewards_list = []
+    #         for i in range(30):
+    #             obses, rewards = self.model.rollout_out(actions)
+    #             processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+    #             # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
+    #             rewards_list.append(processed_rewards)
+    #
+    #             processed_obses = self.preprocessor.tf_process_obses(obses)
+    #             actions, _ = self.policy_with_value.compute_action(processed_obses)
+    #         for i in range(len(rewards_list)):
+    #             reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
+    #         Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+    #         target = self.tf.stop_gradient(reward_sum + self.tf.pow(self.args.gamma, 30) * Qs)
+    #         q_loss = self.tf.reduce_mean(self.tf.square(target - q_pred))
+    #
+    #     q_gradient = tape.gradient(q_loss, self.policy_with_value.models[0].trainable_weights)
+    #     return q_gradient, q_loss
+
+    # def model_based_policy_forward_and_backward(self, mb_obs):
+    #     with self.tf.GradientTape() as tape:
+    #         obses = mb_obs
+    #         self.model.reset(obses)
+    #         reward_sum = self.tf.zeros((obses.shape[0],))
+    #         rewards_list = []
+    #         for i in range(30):
+    #             processed_obses = self.preprocessor.tf_process_obses(obses)
+    #             actions, _ = self.policy_with_value.compute_action(processed_obses)
+    #             obses, rewards = self.model.rollout_out(actions)
+    #             processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+    #             rewards_list.append(processed_rewards)
+    #             # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
+    #         for i in range(len(rewards_list)):
+    #             reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
+    #         processed_obses = self.preprocessor.tf_process_obses(obses)
+    #         actions, _ = self.policy_with_value.compute_action(processed_obses)
+    #         Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
+    #         target = reward_sum + self.tf.pow(self.args.gamma, 30) * Qs
+    #         policy_loss = -self.tf.reduce_mean(target)
+    #
+    #     policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
+    #     return policy_gradient, policy_loss
+
     @tf.function
     def model_based_policy_forward_and_backward(self, mb_obs):
         with self.tf.GradientTape() as tape:
-            obses = mb_obs
-            self.model.reset(obses)
-            reward_sum = self.tf.zeros((obses.shape[0],))
-            rewards_list = []
-            for i in range(30):
-                processed_obses = self.preprocessor.tf_process_obses(obses)
-                actions, _ = self.policy_with_value.compute_action(processed_obses)
-                obses, rewards = self.model.rollout_out(actions)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                rewards_list.append(processed_rewards)
-                # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
-            for i in range(len(rewards_list)):
-                reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
-            processed_obses = self.preprocessor.tf_process_obses(obses)
-            actions, _ = self.policy_with_value.compute_action(processed_obses)
-            Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
-            target = reward_sum + self.tf.pow(self.args.gamma, 30) * Qs
+            for i in range(self.forward_step):
+                if i == 0:
+                    self.obs_forward[i] = self.preprocessor.tf_process_obses(mb_obs)
+                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
+                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
+                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
+                else:
+                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
+                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
+                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
+
+            action_next, _ = self.policy_with_value.compute_action(self.obs_forward[-1])
+            q_next = self.policy_with_value.compute_Qs(self.obs_forward[-1], action_next)[0][:, 0]
+            target = self.tf.zeros_like(q_next)
+            for i in range(self.forward_step):
+                target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]
+            target += self.tf.pow(self.args.gamma, self.forward_step) * q_next
             policy_loss = -self.tf.reduce_mean(target)
 
         policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
@@ -214,26 +275,28 @@ class MixedPGLearner(object):
     @tf.function
     def model_based_q_forward_and_backward(self, mb_obs, mb_action):
         with self.tf.GradientTape() as tape:
-            obses = mb_obs
-            self.model.reset(obses)
-            processed_obses = self.preprocessor.tf_process_obses(obses)
-            actions = mb_action
-            q_pred = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
-            reward_sum = self.tf.zeros((obses.shape[0],))
-            rewards_list = []
-            for i in range(30):
-                obses, rewards = self.model.rollout_out(actions)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                # reward_sum += self.tf.pow(self.args.gamma, i) * processed_rewards
-                rewards_list.append(processed_rewards)
+            for i in range(self.forward_step):
+                if i == 0:
+                    self.obs_forward[i] = self.preprocessor.tf_process_obses(mb_obs)
+                    self.action_forward[i] = mb_action
+                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
+                    self.obs_forward[i+1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
+                else:
+                    self.action_forward[i], _ = self.policy_with_value.compute_action(self.obs_forward[i])
+                    obs_next = self.model.prediction(self.obs_forward[i], self.action_forward[i], 40., 1)
+                    self.obs_forward[i + 1] = self.preprocessor.tf_process_obses(obs_next)
+                    self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
 
-                processed_obses = self.preprocessor.tf_process_obses(obses)
-                actions, _ = self.policy_with_value.compute_action(processed_obses)
-            for i in range(len(rewards_list)):
-                reward_sum += self.tf.pow(self.args.gamma, i) * rewards_list[i]
-            Qs = self.policy_with_value.compute_Qs(processed_obses, actions)[0][:, 0]
-            target = self.tf.stop_gradient(reward_sum + self.tf.pow(self.args.gamma, 30) * Qs)
-            q_loss = self.tf.reduce_mean(self.tf.square(target - q_pred))
+            action_next, _ = self.policy_with_value.compute_action(self.obs_forward[-1])
+            q_next = self.policy_with_value.compute_Qs(self.obs_forward[-1], action_next)[0][:, 0]
+            target = self.tf.zeros_like(q_next)
+            for i in range(self.forward_step):
+                target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]
+            target += self.tf.pow(self.args.gamma, self.forward_step) * q_next
+            q_pred = self.policy_with_value.compute_Qs(self.preprocessor.process_obs(mb_obs),
+                                                       mb_action)[0][:, 0]
+            q_loss = self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(target)-q_pred))
 
         q_gradient = tape.gradient(q_loss, self.policy_with_value.models[0].trainable_weights)
         return q_gradient, q_loss
