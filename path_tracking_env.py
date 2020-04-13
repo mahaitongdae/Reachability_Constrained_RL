@@ -54,7 +54,7 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
-        self.expected_vs = 20
+        self.expected_vs = 20.
         self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
@@ -175,11 +175,11 @@ class VehicleDynamics(object):
 
             path_y, path_phi = self.path.compute_path_y(full_states[:, -1]), \
                                self.path.compute_path_phi(full_states[:, -1])
-            full_states[:, 4][full_states[:, 4] > np.pi] -= 2 * np.pi
-            full_states[:, 4][full_states[:, 4] <= -np.pi] += 2 * np.pi
-
             states[:, 4] = full_states[:, 4] - path_phi
             states[:, 3] = full_states[:, 3] - path_y
+
+            full_states[:, 4][full_states[:, 4] > np.pi] -= 2 * np.pi
+            full_states[:, 4][full_states[:, 4] <= -np.pi] += 2 * np.pi
 
             states[:, 4][states[:, 4] > np.pi] -= 2 * np.pi
             states[:, 4][states[:, 4] <= -np.pi] += 2 * np.pi
@@ -211,7 +211,6 @@ class VehicleDynamics(object):
                       0.05 * punish_steer + 0.0005 * punish_a_x + 0.05 * punish_steer_rate + 0.0005 * punish_a_x_rate
 
         return rewards
-
 
 
 class ReferencePath(object):
@@ -269,7 +268,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.simulation_time = 0
         self.action = None
         self.num_agent = kwargs['num_agent']
-        self.expected_vs = 25.
+        self.expected_vs = 20.
         self.done = np.zeros((self.num_agent,), dtype=np.int)
         self.base_frequency = 200
         self.interval_times = 5
@@ -309,7 +308,7 @@ class PathTrackingEnv(gym.Env, ABC):
             for i, done in enumerate(self.done):
                 self.veh_full_state[i, :] = np.where(done == 1, init_veh_full_state[i, :], self.veh_full_state[i, :])
         self.veh_state = self.veh_full_state[:, 0:-1].copy()
-        path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(self.veh_full_state[:, -1]),\
+        path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(self.veh_full_state[:, -1]), \
                            self.vehicle_dynamics.path.compute_path_phi(self.veh_full_state[:, -1])
         self.veh_state[:, 4] = self.veh_full_state[:, 4] - path_phi
         self.veh_state[:, 3] = self.veh_full_state[:, 3] - path_y
@@ -426,6 +425,7 @@ def test_path_tracking_env():
         obs, reward, done, info = env.step(action)
         env.render()
         # env.reset()
+
 
 if __name__ == '__main__':
     test_path_tracking_env()
