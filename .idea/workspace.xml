@@ -5,6 +5,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
@@ -48,7 +51,8 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../CDADP_20200227_merge_20+copy/CDADP_20200227_merge_20 copy" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/path_tracking_env.py" />
+    <property name="two.files.diff.last.used.file" value="$PROJECT_DIR$/path_tracking_env.py" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -271,62 +275,62 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="1533" height="440" key="DebuggerActiveHint/65.24.1535.876@65.24.1535.876" timestamp="1586682263280" />
-    <state x="219" y="82" key="DiffContextDialog" timestamp="1586490954659">
+    <state x="219" y="82" width="1228" height="700" key="DiffContextDialog" timestamp="1586758909479">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="219" y="82" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1586490954659" />
+    <state x="219" y="82" width="1228" height="700" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1586758909479" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="369" y="314" key="EnvironmentVariablesDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479705393" />
-    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586490645967">
+    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586758909038">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586490645967" />
-    <state width="1512" height="186" key="GridCell.Tab.0.bottom" timestamp="1586683246908">
+    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586758909038" />
+    <state width="1512" height="339" key="GridCell.Tab.0.bottom" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.0.center" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
+    <state width="1512" height="339" key="GridCell.Tab.0.center" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.0.left" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
+    <state width="1512" height="339" key="GridCell.Tab.0.left" timestamp="1586758292965">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.0.right" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586758292965" />
+    <state width="1512" height="339" key="GridCell.Tab.0.right" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.1.bottom" timestamp="1586683246909">
+    <state width="1512" height="339" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
+    <state width="1512" height="339" key="GridCell.Tab.1.bottom" timestamp="1586758292967">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586683246909" />
-    <state width="1512" height="186" key="GridCell.Tab.1.center" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586758292967" />
+    <state width="1512" height="339" key="GridCell.Tab.1.center" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.1.left" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
+    <state width="1512" height="339" key="GridCell.Tab.1.left" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
-    <state width="1512" height="186" key="GridCell.Tab.1.right" timestamp="1586683246908">
+    <state width="1512" height="339" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
+    <state width="1512" height="339" key="GridCell.Tab.1.right" timestamp="1586758292966">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="186" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586683246908" />
+    <state width="1512" height="339" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586758292966" />
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup" timestamp="1585747347662">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup/65.24.1535.876@65.24.1535.876" timestamp="1585747347662" />
-    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1586404297190">
+    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1586757400561">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586404297190" />
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586671457171">
+    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586757400561" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586753547540">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586671457171" />
+    <state x="493" y="277" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1586753547540" />
     <state x="387" y="186" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1586682371397">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -364,23 +368,28 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>265</line>
-          <option name="timeStamp" value="5" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>301</line>
+          <line>300</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>307</line>
+          <line>306</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>271</line>
-          <option name="timeStamp" value="8" />
+          <url>file://$PROJECT_DIR$/optimizer.py</url>
+          <line>42</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined/path_tracking_env.py</url>
+          <line>309</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/optimizer.py</url>
+          <line>47</line>
+          <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

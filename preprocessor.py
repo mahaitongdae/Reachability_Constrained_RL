@@ -105,7 +105,7 @@ class Preprocessor(object):
 
     def tf_process_obses(self, obses):
         with tf.name_scope('obs_process') as scope:
-            obses = tf.convert_to_tensor(obses)
+            # obses = tf.convert_to_tensor(obses)
             if self.obs_ptype == 'normalize':
                 obses = tf.clip_by_value((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
                                           self.clipob)
@@ -118,7 +118,7 @@ class Preprocessor(object):
 
     def tf_process_rewards(self, rewards):
         with tf.name_scope('reward_process') as scope:
-            rewards = tf.convert_to_tensor(rewards)
+            # rewards = tf.convert_to_tensor(rewards)
             if self.rew_ptype == 'normalize':
                 rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 return rewards

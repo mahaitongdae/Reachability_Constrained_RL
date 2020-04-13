@@ -35,14 +35,10 @@ class Evaluator(object):
         reward_list = []
         done = 0
         obs = self.env.reset()
-        # while not done:
         for _ in range(200):
             processed_obs = self.preprocessor.tf_process_obses(obs)
             action, neglogp = self.policy_with_value.compute_action(processed_obs)
-            # print(action[0].numpy())
-            # print('action', action)
             obs, reward, done, info = self.env.step(action.numpy())
-            # print('obs', obs)
             self.env.render()
             reward_list.append(reward[0])
         self.env.close()
@@ -65,8 +61,8 @@ class Evaluator(object):
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
 
-    def set_ppc_params(self, params):
-        self.preprocessor.set_params(params)
+    # def set_ppc_params(self, params):
+    #     self.preprocessor.set_params(params)
 
     def run_evaluation(self, iteration):
         self.iteration = iteration

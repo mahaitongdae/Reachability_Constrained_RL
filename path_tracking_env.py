@@ -54,7 +54,7 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
-        self.expected_vs = 25
+        self.expected_vs = 20
         self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
@@ -65,7 +65,7 @@ class VehicleDynamics(object):
             # 0.2 * torch.tensor([1, 5, 10, 12, 5, 10, 2]
             # vx, vy, r, delta_phi, delta_y, steer, acc
             # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
-            v_y, r, v_x, delta_phi, delta_y, steer, a_x = states[:, 0], states[:, 1], states[:, 2], \
+            v_x, v_y, r, delta_y, delta_phi, steer, a_x = states[:, 0], states[:, 1], states[:, 2], \
                                                           states[:, 3], states[:, 4], states[:, 5], \
                                                           states[:, 6]
             steer_rate, a_x_rate = actions[:, 0], actions[:, 1]
@@ -114,11 +114,11 @@ class VehicleDynamics(object):
             # F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
             # F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
 
-            state_deriv = [(F_yf * tf.cos(steer) + F_yr) / mass - v_x * r,
+            state_deriv = [a_x + v_y * r,
+                           (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r,
                            (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
-                           a_x + v_y * r,  # - F_yf * tf.sin(delta) / mass,
-                           r,
                            v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
+                           r,
                            steer_rate,
                            a_x_rate
                            ]
@@ -154,40 +154,46 @@ class VehicleDynamics(object):
         return x_next
 
     def simulation(self, states, full_states, actions, base_freq, simu_times):
-        # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
-        # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+        # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+        # veh_full_state_old: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+
+        # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
         for i in range(simu_times):
             states = tf.convert_to_tensor(states.copy(), dtype=tf.float32)
             states = self.prediction(states, actions, base_freq, 1).numpy().copy()
-            states[:, 2] = np.clip(states[:, 2], 1, 35)
+            states[:, 0] = np.clip(states[:, 0], 1, 35)
             states[:, 5] = np.clip(states[:, 5], -1.2 * np.pi / 9, 1.2 * np.pi / 9)
             states[:, 6] = np.clip(states[:, 6], -4.4, 4.4)
-            v_ys, rs, v_xs, phis = full_states[:, 0], full_states[:, 1], full_states[:, 2], full_states[:, 3]
+            v_xs, v_ys, rs, phis = full_states[:, 0], full_states[:, 1], full_states[:, 2], full_states[:, 4]
 
-            full_states[:, 3] += rs / base_freq
-            full_states[:, 4] += (v_xs * np.sin(phis) + v_ys * np.cos(phis)) / base_freq
-            full_states[:, 7] += (v_xs * np.cos(phis) - v_ys * np.sin(phis)) / base_freq
+            full_states[:, 4] += rs / base_freq
+            full_states[:, 3] += (v_xs * np.sin(phis) + v_ys * np.cos(phis)) / base_freq
+            full_states[:, -1] += (v_xs * np.cos(phis) - v_ys * np.sin(phis)) / base_freq
             full_states[:, 0:3] = states[:, 0:3].copy()
             full_states[:, 5:7] = states[:, 5:7].copy()
 
             path_y, path_phi = self.path.compute_path_y(full_states[:, -1]), \
                                self.path.compute_path_phi(full_states[:, -1])
-            states[:, 3] = full_states[:, 3] - path_phi
-            states[:, 4] = full_states[:, 4] - path_y
+            full_states[:, 4][full_states[:, 4] > np.pi] -= 2 * np.pi
+            full_states[:, 4][full_states[:, 4] <= -np.pi] += 2 * np.pi
 
-            full_states[:, 3][full_states[:, 3] > np.pi] -= 2 * np.pi
-            full_states[:, 3][full_states[:, 3] <= -np.pi] += 2 * np.pi
+            states[:, 4] = full_states[:, 4] - path_phi
+            states[:, 3] = full_states[:, 3] - path_y
 
-            states[:, 3][states[:, 3] > np.pi] -= 2 * np.pi
-            states[:, 3][states[:, 3] <= -np.pi] += 2 * np.pi
+            states[:, 4][states[:, 4] > np.pi] -= 2 * np.pi
+            states[:, 4][states[:, 4] <= -np.pi] += 2 * np.pi
 
         return states, full_states
 
     def compute_rewards(self, states, actions):  # obses and actions are tensors
         with tf.name_scope('compute_reward') as scope:
-            # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
-            # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
-            v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs = states[:, 0], states[:, 1], states[:, 2], \
+            # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+            # veh_full_state_old: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+
+            # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+            # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
+            v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = states[:, 0], states[:, 1], states[:, 2], \
                                                                  states[:, 3], states[:, 4], states[:, 5], \
                                                                  states[:, 6]
             steer_rates, a_x_rates = actions[:, 0], actions[:, 1]
@@ -252,8 +258,11 @@ class ReferencePath(object):
 
 class PathTrackingEnv(gym.Env, ABC):
     def __init__(self, **kwargs):
-        # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
-        # veh_full_state: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+        # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+        # veh_full_state_old: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
+
+        # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
         self.vehicle_dynamics = VehicleDynamics()
         self.veh_state = None
         self.veh_full_state = None
@@ -293,7 +302,7 @@ class PathTrackingEnv(gym.Env, ABC):
         init_steer = np.random.uniform(-np.pi / 18, np.pi / 18, (self.num_agent,)).astype(np.float32)
         init_a_x = np.random.uniform(-2, 2, (self.num_agent,)).astype(np.float32)
 
-        init_veh_full_state = np.stack([init_v_y, init_r, init_v_x, init_phi, init_y, init_steer, init_a_x, init_x], 1)
+        init_veh_full_state = np.stack([init_v_x, init_v_y, init_r, init_y, init_phi, init_steer, init_a_x, init_x], 1)
         if self.veh_full_state is None:
             self.veh_full_state = init_veh_full_state
         else:
@@ -302,10 +311,10 @@ class PathTrackingEnv(gym.Env, ABC):
         self.veh_state = self.veh_full_state[:, 0:-1].copy()
         path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(self.veh_full_state[:, -1]),\
                            self.vehicle_dynamics.path.compute_path_phi(self.veh_full_state[:, -1])
-        self.veh_state[:, 3] = self.veh_full_state[:, 3] - path_phi
-        self.veh_state[:, 4] = self.veh_full_state[:, 4] - path_y
+        self.veh_state[:, 4] = self.veh_full_state[:, 4] - path_phi
+        self.veh_state[:, 3] = self.veh_full_state[:, 3] - path_y
 
-        self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 4]))
+        self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 3]))
         return self.veh_state
 
     def step(self, action):  # think of action is in range [-1, 1]
@@ -320,13 +329,13 @@ class PathTrackingEnv(gym.Env, ABC):
         self.veh_state, self.veh_full_state = \
             self.vehicle_dynamics.simulation(self.veh_state, self.veh_full_state, self.action,
                                              base_freq=self.base_frequency, simu_times=self.interval_times)
-        self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 4]))
+        self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 3]))
         self.done = self.judge_done(self.veh_state)
         info = {}
         return self.veh_state, reward, self.done, info
 
     def judge_done(self, veh_state):
-        v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \
+        v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \
                                                              veh_state[:, 3], veh_state[:, 4], veh_state[:, 5], \
                                                              veh_state[:, 6]
         done = (np.abs(delta_ys) > 3) | (np.abs(delta_phis) > np.pi / 4.) | (v_xs < 2) | \
@@ -335,10 +344,10 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def render(self, mode='human'):
         plt.cla()
-        v_y, r, v_x, delta_phi, delta_y, steer, a_x = self.veh_state[0, 0], self.veh_state[0, 1], self.veh_state[0, 2], \
+        v_x, v_y, r, delta_y, delta_phi, steer, a_x = self.veh_state[0, 0], self.veh_state[0, 1], self.veh_state[0, 2], \
                                                       self.veh_state[0, 3], self.veh_state[0, 4], self.veh_state[0, 5], \
                                                       self.veh_state[0, 6]
-        v_y, r, v_x, phi, y, steer, a_x, x = self.veh_full_state[0, 0], self.veh_full_state[0, 1], \
+        v_x, v_y, r, y, phi, steer, a_x, x = self.veh_full_state[0, 0], self.veh_full_state[0, 1], \
                                              self.veh_full_state[0, 2], self.veh_full_state[0, 3], \
                                              self.veh_full_state[0, 4], self.veh_full_state[0, 5], \
                                              self.veh_full_state[0, 6], self.veh_full_state[0, 7]

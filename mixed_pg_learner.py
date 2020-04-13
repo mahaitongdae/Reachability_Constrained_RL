@@ -13,24 +13,24 @@ logging.basicConfig(level=logging.INFO)
 
 # logger.setLevel(logging.INFO)
 
-def judge_is_nan(list_of_np_or_tensor):
-    for m in list_of_np_or_tensor:
-        if hasattr(m, 'numpy'):
-            if np.any(np.isnan(m.numpy())):
-                print(list_of_np_or_tensor)
-                raise ValueError
-        else:
-            if np.any(np.isnan(m)):
-                print(list_of_np_or_tensor)
-                raise ValueError
-
-
-def judge_less_than(list_of_np_or_tensor, thres=0.001):
-    for m in list_of_np_or_tensor:
-        if hasattr(m, 'numpy'):
-            assert not np.all(m.numpy() < thres)
-        else:
-            assert not np.all(m < thres)
+# def judge_is_nan(list_of_np_or_tensor):
+#     for m in list_of_np_or_tensor:
+#         if hasattr(m, 'numpy'):
+#             if np.any(np.isnan(m.numpy())):
+#                 print(list_of_np_or_tensor)
+#                 raise ValueError
+#         else:
+#             if np.any(np.isnan(m)):
+#                 print(list_of_np_or_tensor)
+#                 raise ValueError
+#
+#
+# def judge_less_than(list_of_np_or_tensor, thres=0.001):
+#     for m in list_of_np_or_tensor:
+#         if hasattr(m, 'numpy'):
+#             assert not np.all(m.numpy() < thres)
+#         else:
+#             assert not np.all(m < thres)
 
 
 class TimerStat:
@@ -73,12 +73,12 @@ class MixedPGLearner(object):
         obs_space, act_space = env.observation_space, env.action_space
         env.close()
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
-        self.epinfos = {}
-        self.M = 1
-        self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [20]
-        self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [20]
+        # self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
+        # self.epinfos = {}
+        # self.M = 1
+        # self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [20]
+        # self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [20]
 
         self.model = VehicleDynamics()
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
@@ -86,30 +86,29 @@ class MixedPGLearner(object):
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
-        self.w_timer = TimerStat()
+        # self.w_timer = TimerStat()
         self.stats = {}
-        self.reduced_num_minibatch = 4
-        assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
-        self.epinfobuf = deque(maxlen=100)
-
+        # self.reduced_num_minibatch = 4
+        # assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
+        # self.epinfobuf = deque(maxlen=100)
 
     def get_stats(self):
         return self.stats
 
     def get_batch_data(self, batch_data, epinfos):
         self.batch_data = self.post_processing(batch_data)
-        self.epinfobuf.extend(epinfos)
-        eprewmean = safemean([epinfo['r'] for epinfo in self.epinfobuf])
-        eplenmean = safemean([epinfo['l'] for epinfo in self.epinfobuf])
-        self.stats.update(dict(eprewmean=eprewmean,
-                               eplenmean=eplenmean))
-        batch_advs, batch_tdlambda_returns = self.compute_advantage()
-        batch_one_step_td_target = self.compute_one_step_td_target()
-
-        self.batch_data.update(dict(batch_advs=batch_advs,
-                                    batch_tdlambda_returns=batch_tdlambda_returns,
-                                    batch_one_step_td_target=batch_one_step_td_target,
-                                    ))
+        # self.epinfobuf.extend(epinfos)
+        # eprewmean = safemean([epinfo['r'] for epinfo in self.epinfobuf])
+        # eplenmean = safemean([epinfo['l'] for epinfo in self.epinfobuf])
+        # self.stats.update(dict(eprewmean=eprewmean,
+        #                        eplenmean=eplenmean))
+        # batch_advs, batch_tdlambda_returns = self.compute_advantage()
+        # batch_one_step_td_target = self.compute_one_step_td_target()
+        #
+        # self.batch_data.update(dict(batch_advs=batch_advs,
+        #                             batch_tdlambda_returns=batch_tdlambda_returns,
+        #                             batch_one_step_td_target=batch_one_step_td_target,
+        #                             ))
         self.flatten_and_shuffle()
 
     def post_processing(self, batch_data):
@@ -136,55 +135,55 @@ class MixedPGLearner(object):
     def set_weights(self, weights):
         return self.policy_with_value.set_weights(weights)
 
-    def compute_one_step_td_target(self):
-        processed_batch_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-        processed_batch_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-
-        act_tp1, _ = self.policy_with_value.compute_action(processed_batch_obs_tp1.reshape(self.args.sample_n_step * self.args.num_agent, -1))
-        batch_values_tp1 = self.policy_with_value.compute_Q_targets(processed_batch_obs_tp1.reshape(self.args.sample_n_step * self.args.num_agent, -1),
-                                                                    act_tp1.numpy())[0].numpy().reshape(self.args.sample_n_step, self.args.num_agent)
-
-        batch_one_step_td_target = processed_batch_rewards + self.args.gamma * batch_values_tp1
-        return batch_one_step_td_target
-
-    def compute_advantage(self):  # require data is in order
-        n_steps = len(self.batch_data['batch_rewards'])  # n_step * num_agent
-        # print(self.batch_data['batch_rewards'].shape)
-        # print(self.batch_data['batch_obs'].shape)
-        # print(self.batch_data['batch_actions'].shape)
-        # print(self.batch_data['batch_obs_tp1'].shape)
-        # print(self.batch_data['batch_dones'].shape)
-        # print(self.batch_data['batch_neglogps'].shape)
-
-        processed_batch_obs = self.preprocessor.tf_process_obses(
-            self.batch_data['batch_obs']).numpy()  # # n_step * num_agent * obs_dim
-        processed_batch_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-
-        processed_batch_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-
-        batch_values = \
-        self.policy_with_value.compute_Q_targets(processed_batch_obs.reshape(n_steps * self.args.num_agent, -1),
-                                                 self.batch_data['batch_actions'].reshape(n_steps * self.args.num_agent,
-                                                                                          -1))[0].numpy().reshape(
-            n_steps, self.args.num_agent)
-        act_tp1, _ = self.policy_with_value.compute_action(
-            processed_batch_obs_tp1.reshape(n_steps * self.args.num_agent, -1))
-        batch_values_tp1 = \
-        self.policy_with_value.compute_Q_targets(processed_batch_obs_tp1.reshape(n_steps * self.args.num_agent, -1),
-                                                 act_tp1.numpy())[0].numpy().reshape(n_steps, self.args.num_agent)
-
-        batch_advs = np.zeros_like(self.batch_data['batch_rewards'], dtype=np.float32)
-        lastgaelam = np.zeros_like(self.batch_data['batch_rewards'][0, :], dtype=np.float32)
-        for t in reversed(range(n_steps-1)):
-            nextnonterminal = 1 - self.batch_data['batch_dones'][t]
-            delta = processed_batch_rewards[t] + self.args.gamma * np.where(nextnonterminal < 0.1, batch_values_tp1[t],
-                                                                            batch_values[t + 1]) - batch_values[t]
-            batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
-        batch_tdlambda_returns = batch_advs + batch_values
-        return batch_advs, batch_tdlambda_returns
-
-    def set_ppc_params(self, params):
-        self.preprocessor.set_params(params)
+    # def compute_one_step_td_target(self):
+    #     processed_batch_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+    #     processed_batch_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
+    #
+    #     act_tp1, _ = self.policy_with_value.compute_action(processed_batch_obs_tp1.reshape(self.args.sample_n_step * self.args.num_agent, -1))
+    #     batch_values_tp1 = self.policy_with_value.compute_Q_targets(processed_batch_obs_tp1.reshape(self.args.sample_n_step * self.args.num_agent, -1),
+    #                                                                 act_tp1.numpy())[0].numpy().reshape(self.args.sample_n_step, self.args.num_agent)
+    #
+    #     batch_one_step_td_target = processed_batch_rewards + self.args.gamma * batch_values_tp1
+    #     return batch_one_step_td_target
+    #
+    # def compute_advantage(self):  # require data is in order
+    #     n_steps = len(self.batch_data['batch_rewards'])  # n_step * num_agent
+    #     # print(self.batch_data['batch_rewards'].shape)
+    #     # print(self.batch_data['batch_obs'].shape)
+    #     # print(self.batch_data['batch_actions'].shape)
+    #     # print(self.batch_data['batch_obs_tp1'].shape)
+    #     # print(self.batch_data['batch_dones'].shape)
+    #     # print(self.batch_data['batch_neglogps'].shape)
+    #
+    #     processed_batch_obs = self.preprocessor.tf_process_obses(
+    #         self.batch_data['batch_obs']).numpy()  # # n_step * num_agent * obs_dim
+    #     processed_batch_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+    #
+    #     processed_batch_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
+    #
+    #     batch_values = \
+    #     self.policy_with_value.compute_Q_targets(processed_batch_obs.reshape(n_steps * self.args.num_agent, -1),
+    #                                              self.batch_data['batch_actions'].reshape(n_steps * self.args.num_agent,
+    #                                                                                       -1))[0].numpy().reshape(
+    #         n_steps, self.args.num_agent)
+    #     act_tp1, _ = self.policy_with_value.compute_action(
+    #         processed_batch_obs_tp1.reshape(n_steps * self.args.num_agent, -1))
+    #     batch_values_tp1 = \
+    #     self.policy_with_value.compute_Q_targets(processed_batch_obs_tp1.reshape(n_steps * self.args.num_agent, -1),
+    #                                              act_tp1.numpy())[0].numpy().reshape(n_steps, self.args.num_agent)
+    #
+    #     batch_advs = np.zeros_like(self.batch_data['batch_rewards'], dtype=np.float32)
+    #     lastgaelam = np.zeros_like(self.batch_data['batch_rewards'][0, :], dtype=np.float32)
+    #     for t in reversed(range(n_steps-1)):
+    #         nextnonterminal = 1 - self.batch_data['batch_dones'][t]
+    #         delta = processed_batch_rewards[t] + self.args.gamma * np.where(nextnonterminal < 0.1, batch_values_tp1[t],
+    #                                                                         batch_values[t + 1]) - batch_values[t]
+    #         batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
+    #     batch_tdlambda_returns = batch_advs + batch_values
+    #     return batch_advs, batch_tdlambda_returns
+    #
+    # def set_ppc_params(self, params):
+    #     self.preprocessor.set_params(params)
 
 
     # def model_based_q_forward_and_backward(self, mb_obs, mb_action):
@@ -321,24 +320,24 @@ class MixedPGLearner(object):
         self.tf.summary.trace_on(graph=True, profiler=False)
         if self.args.model_based:
             self.model_based_q_forward_and_backward(mb_obs, mb_actions)
-        else:
-            self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
+        # else:
+        #     self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
         with writer.as_default():
             self.tf.summary.trace_export(name="q_forward_and_backward", step=0)
 
         self.tf.summary.trace_on(graph=True, profiler=False)
         if self.args.model_based:
             self.model_based_policy_forward_and_backward(mb_obs)
-        else:
-            self.policy_forward_and_backward(mb_obs)
+        # else:
+        #     self.policy_forward_and_backward(mb_obs)
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
-        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
+        # mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         # judge_is_nan([mb_obs])
         # judge_is_nan([processed_mb_obs])
         # judge_is_nan([mb_advs])
@@ -351,30 +350,33 @@ class MixedPGLearner(object):
         with self.q_gradient_timer:
             if self.args.model_based:
                 q_gradient, q_loss = self.model_based_q_forward_and_backward(mb_obs, mb_actions)
-                w_q_list = [1.]
-            else:
-                model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions,
-                                                                                          mb_tdlambda_returns)
+            #     w_q_list = [1.]
+            # else:
+            #     model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions,
+            #                                                                               mb_tdlambda_returns)
             q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
 
+        self.policy_with_value.Q_optimizers[0].apply_gradients(zip(q_gradient,
+                                                                   self.policy_with_value.Qs[0].trainable_weights))
+
         with self.policy_gradient_timer:
-            self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
+            # self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
             if self.args.model_based:
                 final_policy_gradient, value_mean = self.model_based_policy_forward_and_backward(mb_obs)
-            else:
-                model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
+            # else:
+            #     model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
         # print(jaco, type(jaco))
         # print(model_returns, type(model_returns))
         # judge_is_nan([model_returns])
         # judge_is_nan(jaco)
 
-        policy_gradient_list = []
-        heuristic_bias_list = []
-        var_list = []
+        # policy_gradient_list = []
+        # heuristic_bias_list = []
+        # var_list = []
         # final_policy_gradient = []
-        w_heur_bias_list = []
-        w_var_list = []
-        w_list = []
+        # w_heur_bias_list = []
+        # w_var_list = []
+        # w_list = []
         #
         # for rollout_index in range(len(self.num_rollout_list_for_policy_update)):
         #     jaco_for_this_rollout = list(map(lambda x: x[rollout_index * self.reduced_num_minibatch:
@@ -426,23 +428,29 @@ class MixedPGLearner(object):
         final_policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(final_policy_gradient,
                                                                                   self.args.gradient_clip_norm)
 
-        self.stats.update(dict(num_traj_rollout=self.M,
-                               num_rollout_list=self.num_rollout_list_for_policy_update,
-                               q_timer=self.q_gradient_timer.mean,
-                               pg_time=self.policy_gradient_timer.mean,
-                               q_loss=q_loss.numpy(),
-                               value_mean=value_mean.numpy(),
-                               w_q_list=[],  # list(map(lambda x: x.numpy(), w_q_list)),
-                               var_list=var_list,
-                               heuristic_bias_list=heuristic_bias_list,
-                               w_var_list=w_var_list,
-                               w_heur_bias_list=w_heur_bias_list,
-                               w_list=w_list,
-                               q_gradient_norm=q_gradient_norm.numpy(),
-                               policy_gradient_norm=policy_gradient_norm.numpy()))
+        self.stats.update(dict(
 
-        gradient_tensor = q_gradient + final_policy_gradient  # q_gradient + final_policy_gradient
-        return np.array(list(map(lambda x: x.numpy(), gradient_tensor)))
+            q_timer=self.q_gradient_timer.mean,
+            pg_time=self.policy_gradient_timer.mean,
+            q_loss=q_loss.numpy(),
+            value_mean=value_mean.numpy(),
+            q_gradient_norm=q_gradient_norm.numpy(),
+            policy_gradient_norm=policy_gradient_norm.numpy()
+            # num_traj_rollout=self.M,
+            # num_rollout_list=self.num_rollout_list_for_policy_update,
+            # w_q_list=[],  # list(map(lambda x: x.numpy(), w_q_list)),
+            # var_list=var_list,
+            # heuristic_bias_list=heuristic_bias_list,
+            # w_var_list=w_var_list,
+            # w_heur_bias_list=w_heur_bias_list,
+            # w_list=w_list,
+        ))
+        self.policy_with_value.policy_optimizer.apply_gradients(zip(final_policy_gradient,
+                                                                    self.policy_with_value.policy.trainable_weights))
+
+
+        # gradient_tensor = q_gradient + final_policy_gradient  # q_gradient + final_policy_gradient
+        # return np.array(list(map(lambda x: x.numpy(), gradient_tensor)))
 
 
 if __name__ == '__main__':
