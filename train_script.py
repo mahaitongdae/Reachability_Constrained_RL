@@ -54,7 +54,7 @@ def built_mixedpg_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 2., 0.4])
-    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
+    parser.add_argument("--reward_preprocess_type", type=str, default=None)
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')

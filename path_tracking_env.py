@@ -260,6 +260,28 @@ class ReferencePath(object):
         return delta_phi
 
 
+class EnvironmentModel(object):  # all tensors
+    def __init__(self):
+        self.vehicle_dynamics = VehicleDynamics()
+        self.base_frequency = 40
+        self.obses = None
+        # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
+
+    def reset(self, obses):
+        self.obses = obses
+
+    def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
+        with tf.name_scope('model_step') as scope:
+            steer_rate_norm, a_xs_rate_norm = actions[:, 0], actions[:, 1]
+            actions = tf.stack([steer_rate_norm * np.pi / 9, a_xs_rate_norm * 2], axis=1)
+            rewards = self.vehicle_dynamics.compute_rewards(self.obses, actions)
+            self.obses = self.vehicle_dynamics.prediction(self.obses, actions,
+                                                          self.base_frequency, 1)
+
+        return self.obses, rewards
+
+
 class PathTrackingEnv(gym.Env, ABC):
     def __init__(self, **kwargs):
         # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
@@ -273,7 +295,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.simulation_time = 0
         self.action = None
         self.num_agent = kwargs['num_agent']
-        self.expected_vs = 30.
+        self.expected_vs = 20.
         self.done = np.zeros((self.num_agent,), dtype=np.int)
         self.base_frequency = 200
         self.interval_times = 5

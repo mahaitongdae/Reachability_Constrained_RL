@@ -114,7 +114,7 @@ class Preprocessor(object):
                 return obses * tf.convert_to_tensor(self.obs_factor, dtype=tf.float32)
 
             else:
-                return obses
+                return tf.convert_to_tensor(obses, dtype=tf.float32)
 
     def tf_process_rewards(self, rewards):
         with tf.name_scope('reward_process') as scope:
@@ -125,7 +125,7 @@ class Preprocessor(object):
             elif self.rew_ptype == 'scale':
                 return rewards * tf.convert_to_tensor(self.rew_factor, dtype=tf.float32)
             else:
-                return rewards
+                return tf.convert_to_tensor(rewards, dtype=tf.float32)
 
     def set_params(self, params):
         if self.ob_rms:

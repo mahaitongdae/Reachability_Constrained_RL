@@ -66,10 +66,10 @@ class PolicyWithQs(object):
         self.Q_optimizer.apply_gradients(zip(q_grad, self.Q.trainable_weights))
         if iteration % self.args.delay_update == 0:
             self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-            # self.update_policy_target()
-            # self.update_Q_targets()
+            self.update_policy_target()
+            self.update_Q_target()
 
-    def update_Q_targets(self):
+    def update_Q_target(self):
         tau = self.args.tau
         source_params = self.Q.get_weights()
         target_params = self.Q_target.get_weights()

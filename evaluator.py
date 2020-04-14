@@ -61,8 +61,8 @@ class Evaluator(object):
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
 
-    # def set_ppc_params(self, params):
-    #     self.preprocessor.set_params(params)
+    def set_ppc_params(self, params):
+        self.preprocessor.set_params(params)
 
     def run_evaluation(self, iteration):
         self.iteration = iteration
