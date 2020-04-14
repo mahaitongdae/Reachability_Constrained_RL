@@ -54,7 +54,7 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
-        self.expected_vs = 20.
+        self.expected_vs = 30.
         self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
@@ -154,6 +154,10 @@ class VehicleDynamics(object):
         return x_next
 
     def simulation(self, states, full_states, actions, base_freq, simu_times):
+        def cal_steer_bound(v):
+            bounds = -1.2*np.pi/180. * (v-10.) + 1.2*np.pi/9.
+            bounds[v < 10] = 1.2 * np.pi / 9
+            bounds[v > 20] = 1.2*np.pi/18.
         # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
         # veh_full_state_old: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
 
@@ -163,8 +167,9 @@ class VehicleDynamics(object):
             states = tf.convert_to_tensor(states.copy(), dtype=tf.float32)
             states = self.prediction(states, actions, base_freq, 1).numpy().copy()
             states[:, 0] = np.clip(states[:, 0], 1, 35)
+            # states[:, 1] = np.clip(states[:, 1], -2, 2)
             states[:, 5] = np.clip(states[:, 5], -1.2 * np.pi / 9, 1.2 * np.pi / 9)
-            states[:, 6] = np.clip(states[:, 6], -4.4, 4.4)
+            states[:, 6] = np.clip(states[:, 6], -3, 3)
             v_xs, v_ys, rs, phis = full_states[:, 0], full_states[:, 1], full_states[:, 2], full_states[:, 4]
 
             full_states[:, 4] += rs / base_freq
@@ -268,7 +273,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.simulation_time = 0
         self.action = None
         self.num_agent = kwargs['num_agent']
-        self.expected_vs = 20.
+        self.expected_vs = 30.
         self.done = np.zeros((self.num_agent,), dtype=np.int)
         self.base_frequency = 200
         self.interval_times = 5
