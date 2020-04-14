@@ -20,29 +20,17 @@ class PolicyWithQs(object):
         policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
 
-        self.Qs = tuple(MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q' + str(i)) for i in range(self.args.Q_num))
-        self.Q_targets = tuple(
-            MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q_target' + str(i)) for i in range(self.args.Q_num))
-        for Q, Q_target in zip(self.Qs, self.Q_targets):
-            source_params = Q.get_weights()
-            Q_target.set_weights(source_params)
+        self.Q = MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q')
+        self.Q_target = MLPNet(obs_dim + act_dim, 5, 32, 1, name='Q_target')
+        self.Q_target.set_weights(self.Q.get_weights())
 
-        self.target_models = self.Q_targets + (self.policy_target,)
+        self.target_models = (self.Q_target, self.policy_target,)
 
-        self.Q_optimizers = tuple(self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
-            *self.args.value_lr_schedule)) for _ in range(len(self.Qs)))
+        self.Q_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
+            *self.args.value_lr_schedule))
 
-        if self.args.log_alpha == 'auto':
-            self.log_alpha = self.tf.Variable(self.args.init_log_alpha, dtype=self.tf.float32, name='log_alpha')
-            log_alpha_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.log_alpha_lr_schedule)
-            self.log_alpha_optimizer = self.tf.keras.optimizers.Adam(log_alpha_lr_schedule, name='log_alpha_adam_opt')
-            self.models = self.Qs + (self.policy, self.log_alpha,)
-            self.optimizers = self.Q_optimizers + (self.policy_optimizer, self.log_alpha_optimizer)
-
-        else:
-            self.log_alpha = self.args.log_alpha
-            self.models = self.Qs + (self.policy,)
-            self.optimizers = self.Q_optimizers + (self.policy_optimizer,)
+        self.models = (self.Q, self.policy,)
+        self.optimizers = (self.Q_optimizer, self.policy_optimizer,)
 
     def save_weights(self, save_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
@@ -57,55 +45,44 @@ class PolicyWithQs(object):
         ckpt.restore(load_dir + '/ckpt_ite' + str(iteration))
 
     def get_weights(self):
-        return [model.get_weights() if hasattr(model, 'get_weights') else model for model in self.models] + \
+        return [model.get_weights() for model in self.models] + \
                [model.get_weights() for model in self.target_models]
 
     @property
     def trainable_weights(self):
         return self.tf.nest.flatten(
-            [model.trainable_weights if hasattr(model, 'trainable_weights') else [model] for model in self.models])
+            [model.trainable_weights for model in self.models])
 
     def set_weights(self, weights):
         for i, weight in enumerate(weights):
             if i < len(self.models):
-                if hasattr(self.models[i], 'set_weights'):
-                    self.models[i].set_weights(weight)
-                else:
-                    self.models[i].assign(weight)
+                self.models[i].set_weights(weight)
             else:
                 self.target_models[i-len(self.models)].set_weights(weight)
 
     def apply_gradients(self, iteration, grads):
-        for i in range(self.args.Q_num):
-            weights = self.models[i].trainable_weights
-            len_weights = len(weights)
-            self.optimizers[i].apply_gradients(zip(grads[i*len_weights:(i+1)*len_weights], weights))
+        q_weights_len = len(self.Q.trainable_weights)
+        q_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:]
+        self.Q_optimizer.apply_gradients(zip(q_grad, self.Q.trainable_weights))
         if iteration % self.args.delay_update == 0:
-            gradi_start = len(self.models[0].trainable_weights) * self.args.Q_num
-            for i in range(self.args.Q_num, len(self.models)):
-                weights = self.models[i].trainable_weights if hasattr(self.models[i], 'trainable_weights') \
-                    else [self.models[i]]
-                gradi_end = gradi_start + len(weights)
-                self.optimizers[i].apply_gradients(zip(grads[gradi_start:gradi_end], weights))
-                gradi_start = gradi_end
-            self.update_policy_target()
-            self.update_Q_targets()
+            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+            # self.update_policy_target()
+            # self.update_Q_targets()
 
     def update_Q_targets(self):
         tau = self.args.tau
-        for Q, Q_target in zip(self.Qs, self.Q_targets):
-            source_params = Q.get_weights()
-            target_params = Q_target.get_weights()
-            Q_target.set_weights([
-                tau * source + (1.0 - tau) * target
-                for source, target in zip(source_params, target_params)
-            ])
+        source_params = self.Q.get_weights()
+        target_params = self.Q_target.get_weights()
+        self.Q_target.set_weights([
+            tau * source + (1.0 - tau) * target
+            for source, target in zip(source_params, target_params)
+        ])
 
     def update_policy_target(self):
         tau = self.args.tau
         source_params = self.policy.get_weights()
         target_params = self.policy_target.get_weights()
-        self.policy.set_weights([
+        self.policy_target.set_weights([
             tau * source + (1.0 - tau) * target
             for source, target in zip(source_params, target_params)
         ])
@@ -126,18 +103,15 @@ class PolicyWithQs(object):
         act_dist = self.act_dist_cls(logits)
         return act_dist.neglogp(act)
 
-    def compute_Qs(self, obs, act):
+    def compute_Q(self, obs, act):
         with self.tf.name_scope('compute_Qs') as scope:
             Q_inputs = self.tf.concat([obs, act], axis=-1)
-            return [Q(Q_inputs) for Q in self.Qs]
+            return self.Q(Q_inputs)
 
-    def compute_Q_targets(self, obs, act):
+    def compute_Q_target(self, obs, act):
         with self.tf.name_scope('compute_Q_targets') as scope:
             Q_inputs = self.tf.concat([obs, act], axis=-1)
-            return [Q_target(Q_inputs) for Q_target in self.Q_targets]
-
-    def get_log_alpha(self):
-        return self.log_alpha
+            return self.Q_target(Q_inputs)
 
 
 class GuassianDistribution(object):

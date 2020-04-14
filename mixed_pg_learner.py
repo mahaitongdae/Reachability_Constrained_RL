@@ -263,8 +263,8 @@ class MixedPGLearner(object):
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
 
             action_next, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[-1]))
-            q_next = self.policy_with_value.compute_Qs(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
-                                                       action_next)[0][:, 0]
+            q_next = self.policy_with_value.compute_Q(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
+                                                      action_next)[:, 0]
             target = self.tf.zeros_like(q_next)
             for i in range(self.forward_step):
                 target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]
@@ -299,17 +299,17 @@ class MixedPGLearner(object):
                     self.reward_forward[i] = self.model.compute_rewards(self.obs_forward[i], self.action_forward[i])
 
             action_next, _ = self.policy_with_value.compute_action(self.preprocessor.tf_process_obses(self.obs_forward[-1]))
-            q_next = self.policy_with_value.compute_Qs(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
-                                                       action_next)[0][:, 0]
+            q_next = self.policy_with_value.compute_Q(self.preprocessor.tf_process_obses(self.obs_forward[-1]),
+                                                      action_next)[:, 0]
             target = self.tf.zeros_like(q_next)
             for i in range(self.forward_step):
                 target += self.tf.pow(self.args.gamma, i) * self.reward_forward[i]
             target += self.tf.pow(self.args.gamma, self.forward_step) * q_next
-            q_pred = self.policy_with_value.compute_Qs(self.preprocessor.process_obs(mb_obs),
-                                                       mb_action)[0][:, 0]
+            q_pred = self.policy_with_value.compute_Q(self.preprocessor.process_obs(mb_obs),
+                                                      mb_action)[:, 0]
             q_loss = self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(target)-q_pred))
 
-        q_gradient = tape.gradient(q_loss, self.policy_with_value.models[0].trainable_weights)
+        q_gradient = tape.gradient(q_loss, self.policy_with_value.Q.trainable_weights)
         return q_gradient, q_loss
 
     def export_graph(self, writer):
@@ -356,8 +356,6 @@ class MixedPGLearner(object):
             #                                                                               mb_tdlambda_returns)
             q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
 
-        self.policy_with_value.Q_optimizers[0].apply_gradients(zip(q_gradient,
-                                                                   self.policy_with_value.Qs[0].trainable_weights))
 
         with self.policy_gradient_timer:
             # self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
@@ -445,12 +443,15 @@ class MixedPGLearner(object):
             # w_heur_bias_list=w_heur_bias_list,
             # w_list=w_list,
         ))
-        self.policy_with_value.policy_optimizer.apply_gradients(zip(final_policy_gradient,
-                                                                    self.policy_with_value.policy.trainable_weights))
 
+        # self.policy_with_value.Q_optimizer.apply_gradients(zip(q_gradient,
+        #                                                        self.policy_with_value.Q.trainable_weights))
+        #
+        # self.policy_with_value.policy_optimizer.apply_gradients(zip(final_policy_gradient,
+        #                                                             self.policy_with_value.policy.trainable_weights))
 
-        # gradient_tensor = q_gradient + final_policy_gradient  # q_gradient + final_policy_gradient
-        # return np.array(list(map(lambda x: x.numpy(), gradient_tensor)))
+        gradient_tensor = q_gradient + final_policy_gradient  # q_gradient + final_policy_gradient
+        return list(map(lambda x: x.numpy(), gradient_tensor))
 
 
 if __name__ == '__main__':

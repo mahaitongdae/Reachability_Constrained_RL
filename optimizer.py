@@ -51,9 +51,9 @@ class AllReduceOptimizer(object):
             for i in range(self.args.epoch):
                 stats_list_per_epoch = []
                 for minibatch_index in range(int(self.args.sample_n_step * self.args.num_agent / self.args.mini_batch_size)):
-                    self.local_worker.compute_gradient_over_ith_minibatch(minibatch_index)
+                    minibatch_grads = self.local_worker.compute_gradient_over_ith_minibatch(minibatch_index)
                     stats_list_per_epoch.append(self.local_worker.get_stats())
-                    # self.local_worker.apply_gradients(self.num_updated_steps, minibatch_grads)
+                    self.local_worker.apply_gradients(self.num_updated_steps, minibatch_grads)
                 worker_stats.append(stats_list_per_epoch)
 
         self.stats.update({'worker_stats': worker_stats,

@@ -3,9 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -260,7 +262,14 @@
       <option name="project" value="LOCAL" />
       <updated>1586760041513</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="a good version">
+      <created>1586831037551</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1586831037551</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -271,17 +280,18 @@
     <MESSAGE value="111" />
     <MESSAGE value="change env" />
     <MESSAGE value="something good happens!" />
-    <option name="LAST_COMMIT_MESSAGE" value="something good happens!" />
+    <MESSAGE value="a good version" />
+    <option name="LAST_COMMIT_MESSAGE" value="a good version" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586760041429">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586831037408">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586760041429" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586831037408" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -298,46 +308,50 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586758909038" />
-    <state width="1512" height="306" key="GridCell.Tab.0.bottom" timestamp="1586789720657">
+    <state width="1512" height="78" key="GridCell.Tab.0.bottom" timestamp="1586852576570">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="306" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586789720657" />
-    <state width="1512" height="306" key="GridCell.Tab.0.center" timestamp="1586789720654">
+    <state width="1512" height="78" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586852576570" />
+    <state width="1512" height="78" key="GridCell.Tab.0.center" timestamp="1586852576570">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="306" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586789720654" />
-    <state width="1512" height="306" key="GridCell.Tab.0.left" timestamp="1586789720653">
+    <state width="1512" height="78" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586852576570" />
+    <state width="1512" height="78" key="GridCell.Tab.0.left" timestamp="1586852576570">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="306" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586789720653" />
-    <state width="1512" height="306" key="GridCell.Tab.0.right" timestamp="1586789720655">
+    <state width="1512" height="78" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586852576570" />
+    <state width="1512" height="78" key="GridCell.Tab.0.right" timestamp="1586852576570">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="306" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586789720655" />
-    <state width="1512" height="241" key="GridCell.Tab.1.bottom" timestamp="1586789720643">
+    <state width="1512" height="78" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586852576570" />
+    <state width="1512" height="289" key="GridCell.Tab.1.bottom" timestamp="1586841394033">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="241" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586789720643" />
-    <state width="1512" height="241" key="GridCell.Tab.1.center" timestamp="1586789720642">
+    <state width="1512" height="289" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586841394033" />
+    <state width="1512" height="289" key="GridCell.Tab.1.center" timestamp="1586841394031">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="241" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586789720642" />
-    <state width="1512" height="241" key="GridCell.Tab.1.left" timestamp="1586789720641">
+    <state width="1512" height="289" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1586841394031" />
+    <state width="1512" height="289" key="GridCell.Tab.1.left" timestamp="1586841394031">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="241" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586789720641" />
-    <state width="1512" height="241" key="GridCell.Tab.1.right" timestamp="1586789720642">
+    <state width="1512" height="289" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1586841394031" />
+    <state width="1512" height="289" key="GridCell.Tab.1.right" timestamp="1586841394032">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="241" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586789720642" />
+    <state width="1512" height="289" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1586841394032" />
+    <state x="552" y="160" key="RollbackChangesDialog" timestamp="1586849033506">
+      <screen x="65" y="24" width="1535" height="876" />
+    </state>
+    <state x="552" y="160" key="RollbackChangesDialog/65.24.1535.876@65.24.1535.876" timestamp="1586849033506" />
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup" timestamp="1585747347662">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup/65.24.1535.876@65.24.1535.876" timestamp="1585747347662" />
-    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1586757400561">
+    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1586834946070">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586757400561" />
+    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1586834946070" />
     <state x="493" y="277" key="com.intellij.ide.util.TipDialog" timestamp="1586753547540">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -378,24 +392,9 @@
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>300</line>
-          <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>306</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>
           <line>42</line>
           <option name="timeStamp" value="11" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined/path_tracking_env.py</url>
-          <line>316</line>
-          <option name="timeStamp" value="12" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>

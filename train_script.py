@@ -27,8 +27,8 @@ def built_mixedpg_parser():
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
-    parser.add_argument('--sample_n_step', type=int, default=128)
-    parser.add_argument('--num_agent', type=int, default=64)
+    parser.add_argument('--sample_n_step', type=int, default=64)
+    parser.add_argument('--num_agent', type=int, default=256)
 
     parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
@@ -46,9 +46,6 @@ def built_mixedpg_parser():
     parser.add_argument("--save_interval", type=int, default=100)
     parser.add_argument("--log_interval", type=int, default=100)
 
-    parser.add_argument('--log_alpha', default=-np.inf)
-    parser.add_argument('--init_log_alpha', type=float, default=0)
-    parser.add_argument('--target_entropy', default='auto')
     parser.add_argument('--Q_num', type=int, default=1)
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--tau', type=float, default=0.005)

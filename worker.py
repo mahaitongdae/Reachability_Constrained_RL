@@ -104,12 +104,12 @@ class OnPolicyWorker(object):
         self.learner.get_batch_data(batch_data, epinfos)
 
     def compute_gradient_over_ith_minibatch(self, i):
-        # self.learner.set_weights(self.get_weights())
-        self.learner.compute_gradient_over_ith_minibatch(i)
-        self.set_weights(self.learner.get_weights())
+        self.learner.set_weights(self.get_weights())
+        grad = self.learner.compute_gradient_over_ith_minibatch(i)
+        # self.set_weights(self.learner.get_weights())
         learner_stats = self.learner.get_stats()
         self.stats.update(dict(learner_stats=learner_stats))
-        # return grad
+        return grad
 
 
 if __name__ == '__main__':
