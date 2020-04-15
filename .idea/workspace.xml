@@ -4,9 +4,7 @@
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -275,7 +273,14 @@
       <option name="project" value="LOCAL" />
       <updated>1586861509712</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="a worked version">
+      <created>1586952395180</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1586952395180</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -295,10 +300,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586861509618">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586952395067">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586861509618" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586952395067" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -315,22 +320,22 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586952305417" />
-    <state width="1512" height="427" key="GridCell.Tab.0.bottom" timestamp="1586949630117">
+    <state width="1512" height="423" key="GridCell.Tab.0.bottom" timestamp="1586955779952">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="427" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
-    <state width="1512" height="427" key="GridCell.Tab.0.center" timestamp="1586949630117">
+    <state width="1512" height="423" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586955779952" />
+    <state width="1512" height="423" key="GridCell.Tab.0.center" timestamp="1586955779952">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="427" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
-    <state width="1512" height="427" key="GridCell.Tab.0.left" timestamp="1586949630116">
+    <state width="1512" height="423" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586955779952" />
+    <state width="1512" height="423" key="GridCell.Tab.0.left" timestamp="1586955779951">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="427" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586949630116" />
-    <state width="1512" height="427" key="GridCell.Tab.0.right" timestamp="1586949630117">
+    <state width="1512" height="423" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586955779951" />
+    <state width="1512" height="423" key="GridCell.Tab.0.right" timestamp="1586955779952">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="427" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
+    <state width="1512" height="423" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586955779952" />
     <state width="1512" height="289" key="GridCell.Tab.1.bottom" timestamp="1586841394033">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -387,16 +392,6 @@
           <url>file://$PROJECT_DIR$/test_for_debug.py</url>
           <line>163</line>
           <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>87</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>89</line>
-          <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>

@@ -459,7 +459,7 @@ class MixedPGLearner(object):
     def export_graph(self, writer):
         start_idx, end_idx = 0, self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
-        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
+        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx, 0]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         self.tf.summary.trace_on(graph=True, profiler=False)
         self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
@@ -475,7 +475,7 @@ class MixedPGLearner(object):
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
-        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
+        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx, 0]
 
         with self.q_gradient_timer:
             model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions,
