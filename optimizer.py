@@ -44,8 +44,7 @@ class AllReduceOptimizer(object):
         logger.info('begin the {}-th optimizing step'.format(self.num_updated_steps))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
         with self.sampling_timer:
-            batch_data = self.local_worker.sample()
-            self.local_worker.put_data_into_learner(batch_data, [])
+            self.local_worker.put_data_into_learner(*self.local_worker.sample())
         with self.optimizing_timer:
             worker_stats = []
             for i in range(self.args.epoch):
@@ -61,38 +60,36 @@ class AllReduceOptimizer(object):
                            'optimizing_time': self.optimizing_timer.mean})
 
         if self.num_updated_steps % self.args.log_interval == 0:
-            # mbvals = []
-            # mbwlists = []
-            # vals_name = ['eplenmean', 'eprewmean', 'value_mean', 'q_loss', 'policy_gradient_norm',
-            #              'q_gradient_norm', 'pg_time', 'q_timer']
-            # lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list', 'w_q_list']
+            mbvals = []
+            mbwlists = []
+            vals_name = ['eplenmean', 'eprewmean', 'value_mean', 'q_loss', 'policy_gradient_norm',
+                         'q_gradient_norm', 'pg_time', 'q_timer']
+            lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list', 'w_q_list']
             logger.info('sampling time: {}, optimizing time: {}'.format(self.stats['sampling_time'],
                                                                         self.stats['optimizing_time']))
             logger.info(pprint.pformat(self.stats['worker_stats'][0][0]['learner_stats']))
-            # for i in range(self.args.epoch):
-            #     for j in range(int(self.args.sample_n_step * self.args.num_agent/self.args.mini_batch_size)):
-            #         learner_stats_ij = self.stats['worker_stats'][i][j]['learner_stats']
-            #         mbvals.append([learner_stats_ij[val_name] for val_name in vals_name])
-            #         mbwlists.append([np.array(learner_stats_ij[list_name]) for list_name in lists_name])
-            # print(mbwlists)
-            # vals = np.mean(mbvals, axis=0)
-            # lists = np.mean(mbwlists, axis=0)
-            # print(lists)
-            # with self.writer.as_default():
-            #     for val_name, val in zip(vals_name, vals):
-            #         tf.summary.scalar('optimizer/{}'.format(val_name), val, step=self.num_updated_steps)
-            #     for list_name, l in zip(lists_name, lists):
-            #         tmps = [[ind] * int(1000 * p) for ind, p in enumerate(l)]
-            #         hist = []
-            #         for tmp in tmps:
-            #             hist.extend(tmp)
-            #         hist = tf.convert_to_tensor(hist)
-            #         tf.summary.histogram('optimizer/{}'.format(list_name), hist, step=self.num_updated_steps)
-            #     self.writer.flush()
+            for i in range(self.args.epoch):
+                for j in range(int(self.args.sample_n_step * self.args.num_agent/self.args.mini_batch_size)):
+                    learner_stats_ij = self.stats['worker_stats'][i][j]['learner_stats']
+                    mbvals.append([learner_stats_ij[val_name] for val_name in vals_name])
+                    mbwlists.append([np.array(learner_stats_ij[list_name]) for list_name in lists_name])
+            vals = np.mean(mbvals, axis=0)
+            lists = np.mean(mbwlists, axis=0)
+            with self.writer.as_default():
+                for val_name, val in zip(vals_name, vals):
+                    tf.summary.scalar('optimizer/{}'.format(val_name), val, step=self.num_updated_steps)
+                for list_name, l in zip(lists_name, lists):
+                    tmps = [[ind] * int(1000 * p) for ind, p in enumerate(l)]
+                    hist = []
+                    for tmp in tmps:
+                        hist.extend(tmp)
+                    hist = tf.convert_to_tensor(hist)
+                    tf.summary.histogram('optimizer/{}'.format(list_name), hist, step=self.num_updated_steps)
+                self.writer.flush()
 
         if self.num_updated_steps % self.args.eval_interval == 0:
             self.evaluator.set_weights(self.local_worker.get_weights())
-            # self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
+            self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
             self.evaluator.run_evaluation(self.num_updated_steps)
         self.num_sampled_steps += self.args.sample_n_step * self.args.num_agent
         self.num_updated_steps += 1

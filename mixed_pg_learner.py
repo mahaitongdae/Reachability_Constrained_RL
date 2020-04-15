@@ -76,9 +76,9 @@ class MixedPGLearner(object):
         self.batch_data = {}
         self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
         self.epinfos = {}
-        self.M = 1
-        self.num_rollout_list_for_policy_update = list(range(0, 31, 2)) if not self.args.model_based else [20]
-        self.num_rollout_list_for_q_estimation = list(range(0, 31, 2))[1:] if not self.args.model_based else [20]
+        self.M = self.args.M
+        self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
+        self.num_rollout_list_for_q_estimation = self.args.num_rollout_list_for_q_estimation
 
         self.model = EnvironmentModel()
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
@@ -86,7 +86,6 @@ class MixedPGLearner(object):
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
-        # self.w_timer = TimerStat()
         self.stats = {}
         self.reduced_num_minibatch = 4
         assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
@@ -312,6 +311,7 @@ class MixedPGLearner(object):
     def model_rollout_for_q_estimation(self, start_obses, start_actions):
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
         actions_tile = self.tf.tile(start_actions, [self.M, 1])
+        # data_targets_tile = self.tf.concat([data_targets for _ in range(self.M)], 0)
 
         processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
         processed_obses_tile_list = [processed_obses_tile]
@@ -339,8 +339,11 @@ class MixedPGLearner(object):
                 self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
+            # all_returns_except_rollout0 = (all_rewards_sums + all_gammas * all_Qs)[self.M*len(start_obses):]
+            # all_targets = self.tf.concat([data_targets_tile, all_returns_except_rollout0], 0)
+            all_targets = all_rewards_sums + all_gammas * all_Qs
 
-            final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout + 1, self.M, -1))
+            final = self.tf.reshape(all_targets, (max_num_rollout + 1, self.M, -1))
             all_model_returns = self.tf.reduce_mean(final, axis=1)
         selected_model_returns = []
         for num_rollout in self.num_rollout_list_for_q_estimation:
@@ -374,7 +377,7 @@ class MixedPGLearner(object):
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_for_rollout.compute_action(processed_obses_tile) if not \
-                    self.args.model_based else self.policy_with_value.compute_action(processed_obses_tile)
+                    self.args.deriv_interval_policy else self.policy_with_value.compute_action(processed_obses_tile)
                 processed_obses_tile_list.append(processed_obses_tile)
                 actions_tile_list.append(actions_tile)
                 gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0],)))
@@ -405,24 +408,25 @@ class MixedPGLearner(object):
         selected_model_returns_flatten = self.tf.concat(selected_model_returns, 0)
         minus_selected_reduced_model_returns_flatten = self.tf.concat(minus_selected_reduced_model_returns, 0)
         value_mean = self.tf.reduce_mean(all_model_returns[0])
-        return selected_model_returns_flatten, minus_selected_reduced_model_returns_flatten, \
-            value_mean, -self.tf.reduce_mean(selected_model_returns_flatten)
+        return selected_model_returns_flatten, minus_selected_reduced_model_returns_flatten, value_mean
 
     @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, data_target):
-        targets = [data_target] if not self.args.model_based else []
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
                 q_pred = self.policy_with_value.compute_Q(processed_mb_obs, mb_actions)[:, 0]
                 with tape.stop_recording():
-                    bias_list = [self.tf.reduce_mean(self.tf.square(q_pred - data_target))] if not \
-                        self.args.model_based else []
-                    if len(self.num_rollout_list_for_q_estimation) > 0:
-                        model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
-                        for i in range(len(self.num_rollout_list_for_q_estimation)):
-                            model_target_i = model_targets[i * self.args.mini_batch_size:
-                                                           (i + 1) * self.args.mini_batch_size]
+                    targets = []
+                    bias_list = []
+                    model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
+                    for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
+                        model_target_i = model_targets[i * self.args.mini_batch_size:
+                                                       (i + 1) * self.args.mini_batch_size]
+                        if num_rollout == 0:
+                            targets.append(data_target)
+                            bias_list.append(self.tf.reduce_mean(self.tf.square(q_pred - data_target)))
+                        else:
                             targets.append(model_target_i)
                             bias_list.append(self.tf.reduce_mean(self.tf.square(model_target_i - q_pred)
                                                                  + self.tf.square(model_target_i - data_target)))
@@ -440,23 +444,17 @@ class MixedPGLearner(object):
     @tf.function
     def policy_forward_and_backward(self, mb_obs):
         with self.tf.GradientTape(persistent=True) as tape:
-            model_returns, minus_reduced_model_returns, value_mean, minus_mean = self.model_rollout_for_policy_update(
-                mb_obs)
+            model_returns, minus_reduced_model_returns, value_mean = self.model_rollout_for_policy_update(mb_obs)
 
         with self.tf.name_scope('policy_jacobian') as scope:
-            # jaco = tape.jacobian(minus_reduced_model_returns,
-            #                      self.policy_with_value.policy.trainable_weights,
-            #                      # unconnected_gradients=self.tf.UnconnectedGradients.ZERO,
-            #                      experimental_use_pfor=True)
-            # # shape is len(self.policy_with_value.models[1].trainable_weights) * len(model_returns)
-            # # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
-            # #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
-            # #  ...]
-            # return model_returns, minus_reduced_model_returns, jaco, value_mean
-
-            final_policy_gradient = tape.gradient(minus_mean,
-                                                  self.policy_with_value.policy.trainable_weights)
-            return final_policy_gradient, value_mean
+            jaco = tape.jacobian(minus_reduced_model_returns,
+                                 self.policy_with_value.policy.trainable_weights,
+                                 experimental_use_pfor=True)
+            # shape is len(self.policy_with_value.models[1].trainable_weights) * len(model_returns)
+            # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
+            #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
+            #  ...]
+            return model_returns, minus_reduced_model_returns, jaco, value_mean
 
     def export_graph(self, writer):
         start_idx, end_idx = 0, self.args.mini_batch_size
@@ -464,18 +462,12 @@ class MixedPGLearner(object):
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         self.tf.summary.trace_on(graph=True, profiler=False)
-        if self.args.model_based:
-            self.model_based_q_forward_and_backward(mb_obs, mb_actions)
-        # else:
-        #     self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
+        self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
         with writer.as_default():
             self.tf.summary.trace_export(name="q_forward_and_backward", step=0)
 
         self.tf.summary.trace_on(graph=True, profiler=False)
-        if self.args.model_based:
-            self.model_based_policy_forward_and_backward(mb_obs)
-        # else:
-        #     self.policy_forward_and_backward(mb_obs)
+        self.policy_forward_and_backward(mb_obs)
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
@@ -484,89 +476,58 @@ class MixedPGLearner(object):
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
-        # judge_is_nan([mb_obs])
-        # judge_is_nan([processed_mb_obs])
-        # judge_is_nan([mb_advs])
-        # judge_is_nan([mb_tdlambda_returns])
-        # judge_is_nan([mb_actions])
-        # judge_is_nan([mb_neglogps])
-
-        # print(self.preprocessor.get_params())
 
         with self.q_gradient_timer:
-            if self.args.model_based:
-                # q_gradient, q_loss = self.model_based_q_forward_and_backward(mb_obs, mb_actions)
-                _, _, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions, mb_tdlambda_returns)
-
-            #     w_q_list = [1.]
-            # else:
-            #     model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions,
-            #                                                                               mb_tdlambda_returns)
+            model_targets, w_q_list, q_gradient, q_loss = self.q_forward_and_backward(mb_obs, mb_actions,
+                                                                                      mb_tdlambda_returns)
             q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
-            # self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-            if self.args.model_based:
-                # final_policy_gradient, value_mean = self.model_based_policy_forward_and_backward(mb_obs)
-                final_policy_gradient, value_mean = self.policy_forward_and_backward(mb_obs)
+            self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
+            model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
 
-            # else:
-            #     model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
+        policy_gradient_list = []
+        heuristic_bias_list = []
+        var_list = []
+        final_policy_gradient = []
 
-        # policy_gradient_list = []
-        # heuristic_bias_list = []
-        # var_list = []
-        # final_policy_gradient = []
-        # w_heur_bias_list = []
-        # w_var_list = []
-        # w_list = []
-        #
-        # for rollout_index in range(len(self.num_rollout_list_for_policy_update)):
-        #     jaco_for_this_rollout = list(map(lambda x: x[rollout_index * self.reduced_num_minibatch:
-        #                                                  (rollout_index + 1) * self.reduced_num_minibatch], jaco))
-        #
-        #     gradient_std = []
-        #     gradient_mean = []
-        #     var = 0.
-        #     for x in jaco_for_this_rollout:
-        #         gradient_std.append(self.tf.math.reduce_std(x, 0))
-        #         gradient_mean.append(self.tf.reduce_mean(x, 0))
-        #         var += self.tf.reduce_mean(self.tf.square(gradient_std[-1])).numpy()
-        #     heuristic_bias = self.tf.reduce_mean(
-        #         self.tf.square(model_returns[rollout_index * self.args.mini_batch_size:
-        #                                      (rollout_index + 1) * self.args.mini_batch_size]
-        #                        - mb_tdlambda_returns)).numpy()
-        #
-        #     # judge_is_nan(gradient_mean)
-        #
-        #     policy_gradient_list.append(gradient_mean)
-        #     heuristic_bias_list.append(heuristic_bias)
-        #     var_list.append(var)
-        #     # judge_is_nan(var_list)
-        #     # judge_is_nan(heuristic_bias_list)
-        #
-        # epsilon = 1e-8
-        # heuristic_bias_inverse_sum = self.tf.reduce_sum(
-        #     list(map(lambda x: 1. / (x + epsilon), heuristic_bias_list))).numpy()
-        # var_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1. / (x + epsilon), var_list))).numpy()
-        #
-        # w_heur_bias_list = list(
-        #     map(lambda x: (1. / (x + epsilon)) / heuristic_bias_inverse_sum, heuristic_bias_list))
-        # w_var_list = list(map(lambda x: (1. / (x + epsilon)) / var_inverse_sum, var_list))
-        #
-        # w_list = list(map(lambda x, y: (x + y) / 2., w_heur_bias_list, w_var_list))
-        #
-        # # judge_is_nan(w_list)
-        #
-        # for i in range(len(policy_gradient_list[0])):
-        #     tmp = 0
-        #     for j in range(len(policy_gradient_list)):
-        #         # judge_is_nan(policy_gradient_list[j])
-        #         tmp += w_list[j] * policy_gradient_list[j][i]
-        #     final_policy_gradient.append(tmp)
-        #
-        # judge_is_nan(q_gradient)
-        # judge_is_nan(final_policy_gradient)
+        for rollout_index in range(len(self.num_rollout_list_for_policy_update)):
+            jaco_for_this_rollout = list(map(lambda x: x[rollout_index * self.reduced_num_minibatch:
+                                                         (rollout_index + 1) * self.reduced_num_minibatch], jaco))
+
+            gradient_std = []
+            gradient_mean = []
+            var = 0.
+            for x in jaco_for_this_rollout:
+                gradient_std.append(self.tf.math.reduce_std(x, 0))
+                gradient_mean.append(self.tf.reduce_mean(x, 0))
+                var += self.tf.reduce_mean(self.tf.square(gradient_std[-1])).numpy()
+            heuristic_bias = self.tf.reduce_mean(
+                self.tf.square(model_returns[rollout_index * self.args.mini_batch_size:
+                                             (rollout_index + 1) * self.args.mini_batch_size]
+                               - mb_tdlambda_returns)).numpy()
+
+            policy_gradient_list.append(gradient_mean)
+            heuristic_bias_list.append(heuristic_bias)
+            var_list.append(var)
+
+        epsilon = 1e-8
+        heuristic_bias_inverse_sum = self.tf.reduce_sum(
+            list(map(lambda x: 1. / (x + epsilon), heuristic_bias_list))).numpy()
+        var_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1. / (x + epsilon), var_list))).numpy()
+
+        w_heur_bias_list = list(
+            map(lambda x: (1. / (x + epsilon)) / heuristic_bias_inverse_sum, heuristic_bias_list))
+        w_var_list = list(map(lambda x: (1. / (x + epsilon)) / var_inverse_sum, var_list))
+
+        w_list = list(map(lambda x, y: (x + y) / 2., w_heur_bias_list, w_var_list))
+
+        for i in range(len(policy_gradient_list[0])):
+            tmp = 0
+            for j in range(len(policy_gradient_list)):
+                # judge_is_nan(policy_gradient_list[j])
+                tmp += w_list[j] * policy_gradient_list[j][i]
+            final_policy_gradient.append(tmp)
 
         final_policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(final_policy_gradient,
                                                                                   self.args.gradient_clip_norm)
@@ -578,22 +539,16 @@ class MixedPGLearner(object):
             q_loss=q_loss.numpy(),
             value_mean=value_mean.numpy(),
             q_gradient_norm=q_gradient_norm.numpy(),
-            policy_gradient_norm=policy_gradient_norm.numpy()
-            # num_traj_rollout=self.M,
-            # num_rollout_list=self.num_rollout_list_for_policy_update,
-            # w_q_list=[],  # list(map(lambda x: x.numpy(), w_q_list)),
-            # var_list=var_list,
-            # heuristic_bias_list=heuristic_bias_list,
-            # w_var_list=w_var_list,
-            # w_heur_bias_list=w_heur_bias_list,
-            # w_list=w_list,
+            policy_gradient_norm=policy_gradient_norm.numpy(),
+            num_traj_rollout=self.M,
+            num_rollout_list=self.num_rollout_list_for_policy_update,
+            w_q_list=list(map(lambda x: x.numpy(), w_q_list)),
+            var_list=var_list,
+            heuristic_bias_list=heuristic_bias_list,
+            w_var_list=w_var_list,
+            w_heur_bias_list=w_heur_bias_list,
+            w_list=w_list
         ))
-
-        # self.policy_with_value.Q_optimizer.apply_gradients(zip(q_gradient,
-        #                                                        self.policy_with_value.Q.trainable_weights))
-        #
-        # self.policy_with_value.policy_optimizer.apply_gradients(zip(final_policy_gradient,
-        #                                                             self.policy_with_value.policy.trainable_weights))
 
         gradient_tensor = q_gradient + final_policy_gradient  # q_gradient + final_policy_gradient
         return list(map(lambda x: x.numpy(), gradient_tensor))

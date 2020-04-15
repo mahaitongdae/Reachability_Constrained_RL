@@ -3,12 +3,10 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,8 +48,8 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$USER_HOME$/Desktop/mixed_pg/mixed_pg_learner.py" />
-    <property name="two.files.diff.last.used.file" value="$USER_HOME$/Desktop/mixed_pg/mixed_pg_learner.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/path_tracking_env.py" />
+    <property name="two.files.diff.last.used.file" value="$PROJECT_DIR$/path_tracking_env.py" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -270,7 +268,14 @@
       <option name="project" value="LOCAL" />
       <updated>1586831037551</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="a worked version">
+      <created>1586861509712</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1586861509712</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -282,49 +287,50 @@
     <MESSAGE value="change env" />
     <MESSAGE value="something good happens!" />
     <MESSAGE value="a good version" />
-    <option name="LAST_COMMIT_MESSAGE" value="a good version" />
+    <MESSAGE value="a worked version" />
+    <option name="LAST_COMMIT_MESSAGE" value="a worked version" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586831037408">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1586861509618">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586831037408" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1586861509618" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="1533" height="440" key="DebuggerActiveHint/65.24.1535.876@65.24.1535.876" timestamp="1586682263280" />
-    <state x="242" y="96" width="1228" height="730" maximized="true" key="DiffContextDialog" timestamp="1586854800488">
+    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog" timestamp="1586952369946">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="242" y="96" width="1228" height="730" maximized="true" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1586854800488" />
+    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1586952369946" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="369" y="314" key="EnvironmentVariablesDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479705393" />
-    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586854543643">
+    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586952305417">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586854543643" />
-    <state width="1512" height="54" key="GridCell.Tab.0.bottom" timestamp="1586860618628">
+    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586952305417" />
+    <state width="1512" height="427" key="GridCell.Tab.0.bottom" timestamp="1586949630117">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="54" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586860618628" />
-    <state width="1512" height="54" key="GridCell.Tab.0.center" timestamp="1586860618628">
+    <state width="1512" height="427" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
+    <state width="1512" height="427" key="GridCell.Tab.0.center" timestamp="1586949630117">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="54" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586860618628" />
-    <state width="1512" height="54" key="GridCell.Tab.0.left" timestamp="1586860618627">
+    <state width="1512" height="427" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
+    <state width="1512" height="427" key="GridCell.Tab.0.left" timestamp="1586949630116">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="54" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586860618627" />
-    <state width="1512" height="54" key="GridCell.Tab.0.right" timestamp="1586860618628">
+    <state width="1512" height="427" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1586949630116" />
+    <state width="1512" height="427" key="GridCell.Tab.0.right" timestamp="1586949630117">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="54" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586860618628" />
+    <state width="1512" height="427" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1586949630117" />
     <state width="1512" height="289" key="GridCell.Tab.1.bottom" timestamp="1586841394033">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -384,12 +390,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>90</line>
+          <line>87</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>92</line>
+          <line>89</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -399,7 +405,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>47</line>
+          <line>46</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>

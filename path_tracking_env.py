@@ -54,7 +54,7 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
-        self.expected_vs = 30.
+        self.expected_vs = 20.
         self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
