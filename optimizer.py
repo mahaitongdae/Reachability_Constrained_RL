@@ -62,8 +62,7 @@ class AllReduceOptimizer(object):
         if self.num_updated_steps % self.args.log_interval == 0:
             mbvals = []
             mbwlists = []
-            vals_name = ['eplenmean', 'eprewmean', 'value_mean', 'q_loss', 'policy_gradient_norm',
-                         'q_gradient_norm', 'pg_time', 'q_timer']
+            vals_name = ['value_mean', 'q_loss', 'policy_gradient_norm', 'q_gradient_norm', 'pg_time', 'q_timer']
             lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list', 'w_q_list']
             logger.info('sampling time: {}, optimizing time: {}'.format(self.stats['sampling_time'],
                                                                         self.stats['optimizing_time']))

@@ -33,6 +33,7 @@ class OnPolicyWorker(object):
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.learner = learner_cls(policy_cls, self.args)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.learner.set_weights(self.get_weights())
         self.sample_n_step = self.args.sample_n_step
         self.obs = self.env.reset()
         self.done = False
@@ -69,6 +70,7 @@ class OnPolicyWorker(object):
 
     def apply_gradients(self, iteration, grads):
         self.policy_with_value.apply_gradients(iteration, grads)
+        self.learner.set_weights(self.get_weights())
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -102,7 +104,6 @@ class OnPolicyWorker(object):
         self.learner.get_batch_data(batch_data, epinfos)
 
     def compute_gradient_over_ith_minibatch(self, i):
-        self.learner.set_weights(self.get_weights())
         grad = self.learner.compute_gradient_over_ith_minibatch(i)
         learner_stats = self.learner.get_stats()
         self.stats.update(dict(learner_stats=learner_stats))

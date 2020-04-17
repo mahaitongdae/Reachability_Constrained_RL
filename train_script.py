@@ -29,9 +29,10 @@ def built_mixedpg_parser():
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--sample_n_step', type=int, default=64)
     parser.add_argument('--num_agent', type=int, default=256)
+    parser.add_argument('--sample_num_in_learner', type=int, default=50)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 10, 20, 30])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 10, 20, 30])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 10, 20])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 10, 20])
     parser.add_argument('--deriv_interval_policy', default=True)
 
     parser.add_argument("--mini_batch_size", type=int, default=256)

@@ -284,9 +284,6 @@ class EnvironmentModel(object):  # all tensors
 
 class PathTrackingEnv(gym.Env, ABC):
     def __init__(self, **kwargs):
-        # veh_state_old = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
-        # veh_full_state_old: v_ys, rs, v_xs, phis, ys, steers, a_xs, xs
-
         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
         # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
         self.vehicle_dynamics = VehicleDynamics()
@@ -309,7 +306,18 @@ class PathTrackingEnv(gym.Env, ABC):
         self.history_positions = deque(maxlen=100)
         plt.ion()
 
-    def reset(self):
+    def reset(self, **kwargs):
+        if 'init_obs' in kwargs.keys():
+            self.veh_state = kwargs.get('init_obs')
+            init_x = np.random.uniform(0, 600, (self.num_agent,)).astype(np.float32)
+            path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(init_x), \
+                               self.vehicle_dynamics.path.compute_path_phi(init_x)
+            self.veh_full_state = self.veh_state.copy()
+            self.veh_full_state[:, 4] = self.veh_state[:, 4] + path_phi
+            self.veh_full_state[:, 3] = self.veh_state[:, 3] + path_y
+            self.veh_full_state = np.concatenate([self.veh_full_state, init_x[:, np.newaxis]], 1)
+            return self.veh_state
+
         if self.done[0] == 1:
             self.history_positions.clear()
         self.simulation_time = 0
