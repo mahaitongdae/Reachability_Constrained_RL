@@ -44,7 +44,7 @@ def shift_and_rotate_coordination(orig_x, orig_y, orig_d, coordi_shift_x, coordi
 
 
 class VehicleDynamics(object):
-    def __init__(self, ):
+    def __init__(self, slope=0.):
         self.vehicle_params = OrderedDict(C_f=88000.,  # front wheel cornering stiffness [N/rad]
                                           C_r=94000.,  # rear wheel cornering stiffness [N/rad]
                                           a=1.14,  # distance from CG to front axle [m]
@@ -54,12 +54,13 @@ class VehicleDynamics(object):
                                           miu=1.0,  # tire-road friction coefficient
                                           g=9.81,  # acceleration of gravity [m/s^2]
                                           )
+        self.slope = slope
         self.expected_vs = 20.
         self.path = ReferencePath()
 
     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
         with tf.name_scope('f_xu') as scope:
-            # veh_state = obs: v_ys, rs, v_xs, delta_phis, delta_ys, steers, a_xs
+            # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
             # 1, 2, 0.2, 2.4, 1, 2, 0.4
 
             # 0.2 * torch.tensor([1, 5, 10, 12, 5, 10, 2]
@@ -114,8 +115,8 @@ class VehicleDynamics(object):
             # F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
             # F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
 
-            state_deriv = [a_x + v_y * r,
-                           (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r,
+            state_deriv = [a_x + v_y * r + g * tf.sin(delta_phi) * tf.sin(self.slope),
+                           (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r + g * tf.cos(delta_phi) * tf.sin(self.slope),
                            (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
                            v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
                            r,
@@ -261,9 +262,9 @@ class ReferencePath(object):
 
 
 class EnvironmentModel(object):  # all tensors
-    def __init__(self):
-        self.vehicle_dynamics = VehicleDynamics()
-        self.base_frequency = 40
+    def __init__(self, slope=0.):
+        self.vehicle_dynamics = VehicleDynamics(slope)
+        self.base_frequency = 10.
         self.obses = None
         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
         # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
@@ -278,6 +279,15 @@ class EnvironmentModel(object):  # all tensors
             rewards = self.vehicle_dynamics.compute_rewards(self.obses, actions)
             self.obses = self.vehicle_dynamics.prediction(self.obses, actions,
                                                           self.base_frequency, 1)
+            v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = self.obses[:, 0], self.obses[:, 1], self.obses[:, 2], \
+                                                                 self.obses[:, 3], self.obses[:, 4], self.obses[:, 5], \
+                                                                 self.obses[:, 6]
+            v_xs = tf.clip_by_value(v_xs, 1, 35)
+            steers = tf.clip_by_value(steers, -1.2 * np.pi / 9, 1.2 * np.pi / 9)
+            a_xs = tf.clip_by_value(a_xs, -3., 3.)
+            delta_phis = tf.where(delta_phis > np.pi, delta_phis - 2 * np.pi, delta_phis)
+            delta_phis = tf.where(delta_phis <= -np.pi, delta_phis + 2 * np.pi, delta_phis)
+            self.obses = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs], axis=1)
 
         return self.obses, rewards
 
@@ -295,7 +305,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.expected_vs = 20.
         self.done = np.zeros((self.num_agent,), dtype=np.int)
         self.base_frequency = 200
-        self.interval_times = 5
+        self.interval_times = 20
         self.observation_space = gym.spaces.Box(
             low=np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf]),
             high=np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),

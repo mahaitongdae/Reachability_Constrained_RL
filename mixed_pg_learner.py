@@ -81,7 +81,7 @@ class MixedPGLearner(object):
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
         self.num_rollout_list_for_q_estimation = self.args.num_rollout_list_for_q_estimation
 
-        self.model = EnvironmentModel()
+        self.model = EnvironmentModel(10*np.pi/180)
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
@@ -113,15 +113,16 @@ class MixedPGLearner(object):
 
     def get_batch_data(self, start_data, epinfos):
         self.all_data = self.post_processing2(start_data)
-        batch_obs, batch_actions = self.all_data['all_obs'][0], self.all_data['all_actions'][0]
+        batch_obs, batch_actions, batch_rewards = self.all_data['all_obs'][0], self.all_data['all_actions'][0],\
+                                                  self.all_data['all_rewards'][0]
         # batch_advs, batch_tdlambda_returns = self.compute_advantage2()
 
-        all_n_step_target, n_step_bias = self.compute_n_step_target_and_bias()
+        all_n_step_target = self.compute_n_step_target()
 
         self.batch_data.update(dict(batch_obs=batch_obs,
                                     batch_actions=batch_actions,
+                                    batch_rewards=batch_rewards,
                                     all_n_step_target=all_n_step_target,
-                                    n_step_bias=n_step_bias,
                                     ))
         self.shuffle()
 
@@ -173,7 +174,7 @@ class MixedPGLearner(object):
 
         return batch_data
 
-    def compute_n_step_target_and_bias(self):
+    def compute_n_step_target(self):
         # print(self.all_data['all_rewards'].shape)  # sample_num_in_learner * batch_size
         # print(self.all_data['all_obs'].shape)  # sample_num_in_learner * batch_size * dim_obs
         # print(self.all_data['all_actions'].shape)  # sample_num_in_learner * batch_size * dim_act
@@ -204,11 +205,9 @@ class MixedPGLearner(object):
             all_n_step_target[t] = all_n_step_target[t-1] - pow(self.args.gamma, t-1) * all_values[t-1] +\
                                    pow(self.args.gamma, t-1) * processed_all_rewards[t-1] + \
                                    pow(self.args.gamma, t) * last_values
-        n_step_bias = np.abs(all_n_step_target - all_n_step_target[-1])
         all_n_step_target = np.transpose(all_n_step_target)  # self.batch_size * self.sample_num_in_learner+1
-        n_step_bias = np.transpose(n_step_bias)  # self.batch_size * self.sample_num_in_learner+1
 
-        return all_n_step_target, n_step_bias
+        return all_n_step_target
 
     def shuffle(self):
         permutation = np.random.permutation(self.batch_size)
@@ -548,12 +547,12 @@ class MixedPGLearner(object):
     #     return model_targets, w_bias_list, q_gradient, q_loss, q_pred
 
     @tf.function
-    def q_forward_and_backward(self, mb_obs, mb_actions, mb_n_step_targets):
+    def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
                 q_pred = self.policy_with_value.compute_Q(processed_mb_obs, mb_actions)[:, 0]
-                q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_n_step_targets[:, -1]))
+                q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
 
         with self.tf.name_scope('q_gradient') as scope:
             q_gradient = tape.gradient(q_loss, self.policy_with_value.Q.trainable_weights)
@@ -562,10 +561,7 @@ class MixedPGLearner(object):
         for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
             model_target_i = model_targets[i * self.args.mini_batch_size:
                                            (i + 1) * self.args.mini_batch_size]
-            data_target_i = mb_n_step_targets[:, num_rollout]
-            if i == 0:
-                self.tf.print(self.tf.reduce_mean(self.tf.abs(model_target_i-data_target_i)))
-            model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i-data_target_i)))
+            model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i-mb_targets)))
         return model_targets, q_gradient, q_loss, model_bias_list
 
 
@@ -602,10 +598,10 @@ class MixedPGLearner(object):
     def export_graph(self, writer):
         start_idx, end_idx = 0, self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
-        mb_all_n_step_target = self.batch_data['all_n_step_target'][start_idx: end_idx]
+        mb_n_step_target = self.batch_data['all_n_step_target'][:, -1][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.q_forward_and_backward(mb_obs, mb_actions, mb_all_n_step_target)
+        self.q_forward_and_backward(mb_obs, mb_actions, mb_n_step_target)
         with writer.as_default():
             self.tf.summary.trace_export(name="q_forward_and_backward", step=0)
 
@@ -619,8 +615,6 @@ class MixedPGLearner(object):
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
-
-
 
         with self.q_gradient_timer:
             model_targets, w_q_list, q_gradient, q_loss, q_pred = self.q_forward_and_backward(mb_obs, mb_actions,
@@ -703,16 +697,12 @@ class MixedPGLearner(object):
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
-        mb_all_n_step_target = self.batch_data['all_n_step_target'][start_idx: end_idx]
-        mb_n_step_all_bias = self.batch_data['n_step_bias'][start_idx: end_idx]
-        data_bias_list = []
-        for num_rollout in self.num_rollout_list_for_q_estimation:
-            data_bias_list.append(np.mean(mb_n_step_all_bias[:, num_rollout]))
-        base = data_bias_list[-1]
-        data_bias_list = [b-base for b in data_bias_list]
+        mb_n_step_target = self.batch_data['all_n_step_target'][:, -1][start_idx: end_idx]
+        rewards_mean = np.abs(np.mean(self.batch_data['batch_rewards']))
+
         with self.q_gradient_timer:
             model_targets, q_gradient, q_loss, model_bias_list = self.q_forward_and_backward(mb_obs, mb_actions,
-                                                                                             mb_all_n_step_target)
+                                                                                             mb_n_step_target)
             q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
@@ -720,9 +710,10 @@ class MixedPGLearner(object):
             model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
 
         model_bias_list = [a.numpy() for a in model_bias_list]
-        print(model_bias_list)
+        bias_min = min(model_bias_list)
+        model_bias_list = [a-bias_min+rewards_mean for a in model_bias_list]
         policy_gradient_list = []
-        heuristic_bias_list = [a+b for a, b in zip(model_bias_list, data_bias_list)]
+        heuristic_bias_list = model_bias_list
         var_list = []
         final_policy_gradient = []
 
@@ -776,8 +767,6 @@ class MixedPGLearner(object):
             w_q_list=[],
             var_list=var_list,
             heuristic_bias_list=heuristic_bias_list,
-            model_bias_list=model_bias_list,
-            data_bias_list=data_bias_list,
             w_var_list=w_var_list,
             w_heur_bias_list=w_heur_bias_list,
             w_list=w_list
