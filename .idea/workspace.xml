@@ -3,7 +3,13 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_tracking_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/policy.py" beforeDir="false" afterPath="$PROJECT_DIR$/policy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,6 +62,27 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.train_script">
+    <configuration name="evaluator" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="mixed_pg" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/evaluator.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="path_tracking_env (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="mixed_pg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -90,27 +117,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/path_tracking_env.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="policy" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="mixed_pg" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/policy.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -165,17 +171,17 @@
     <list>
       <item itemvalue="Python.path_tracking_env (1)" />
       <item itemvalue="Python.path_tracking_env" />
-      <item itemvalue="Python.policy" />
       <item itemvalue="Python.test_for_debug" />
       <item itemvalue="Python.train_script" />
+      <item itemvalue="Python.evaluator" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.train_script" />
+        <item itemvalue="Python.evaluator" />
         <item itemvalue="Python.path_tracking_env" />
         <item itemvalue="Python.path_tracking_env (1)" />
         <item itemvalue="Python.test_for_debug" />
-        <item itemvalue="Python.policy" />
       </list>
     </recent_temporary>
   </component>
@@ -286,7 +292,14 @@
       <option name="project" value="LOCAL" />
       <updated>1586949354045</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="a worked version">
+      <created>1587265129647</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1587265129647</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -306,58 +319,58 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479707882" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1587120053977">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1587265129521">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1587120053977" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1587265129521" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="1533" height="440" key="DebuggerActiveHint/65.24.1535.876@65.24.1535.876" timestamp="1586682263280" />
-    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog" timestamp="1586952369946">
+    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog" timestamp="1587275055289">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1586952369946" />
+    <state x="260" y="189" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1587275055289" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="369" y="314" key="EnvironmentVariablesDialog/65.24.1535.876@65.24.1535.876" timestamp="1585479705393" />
-    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1586952305417">
+    <state x="620" y="205" key="FileChooserDialogImpl" timestamp="1587275054772">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1586952305417" />
-    <state width="1512" height="174" key="GridCell.Tab.0.bottom" timestamp="1587262622227">
+    <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1587275054772" />
+    <state width="1512" height="256" key="GridCell.Tab.0.bottom" timestamp="1587354901061">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="174" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1587262622227" />
-    <state width="1512" height="174" key="GridCell.Tab.0.center" timestamp="1587262622227">
+    <state width="1512" height="256" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1587354901061" />
+    <state width="1512" height="256" key="GridCell.Tab.0.center" timestamp="1587354901061">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="174" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1587262622227" />
-    <state width="1512" height="174" key="GridCell.Tab.0.left" timestamp="1587262622227">
+    <state width="1512" height="256" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1587354901061" />
+    <state width="1512" height="256" key="GridCell.Tab.0.left" timestamp="1587354901060">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="174" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1587262622227" />
-    <state width="1512" height="174" key="GridCell.Tab.0.right" timestamp="1587262622227">
+    <state width="1512" height="256" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1587354901060" />
+    <state width="1512" height="256" key="GridCell.Tab.0.right" timestamp="1587354901061">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="174" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1587262622227" />
-    <state width="1512" height="366" key="GridCell.Tab.1.bottom" timestamp="1587261058402">
+    <state width="1512" height="256" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1587354901061" />
+    <state width="1512" height="366" key="GridCell.Tab.1.bottom" timestamp="1587307090830">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="366" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1587261058402" />
-    <state width="1512" height="366" key="GridCell.Tab.1.center" timestamp="1587261058402">
+    <state width="1512" height="366" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1587307090830" />
+    <state width="1512" height="366" key="GridCell.Tab.1.center" timestamp="1587307090829">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="366" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1587261058402" />
-    <state width="1512" height="366" key="GridCell.Tab.1.left" timestamp="1587261058402">
+    <state width="1512" height="366" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1587307090829" />
+    <state width="1512" height="366" key="GridCell.Tab.1.left" timestamp="1587307090829">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="366" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1587261058402" />
-    <state width="1512" height="366" key="GridCell.Tab.1.right" timestamp="1587261058402">
+    <state width="1512" height="366" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1587307090829" />
+    <state width="1512" height="366" key="GridCell.Tab.1.right" timestamp="1587307090830">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="366" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1587261058402" />
+    <state width="1512" height="366" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1587307090830" />
     <state x="552" y="160" key="RollbackChangesDialog" timestamp="1586849033506">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -420,13 +433,28 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>725</line>
+          <line>723</line>
           <option name="timeStamp" value="22" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>769</line>
+          <line>767</line>
           <option name="timeStamp" value="23" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>559</line>
+          <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>564</line>
+          <option name="timeStamp" value="25" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>713</line>
+          <option name="timeStamp" value="26" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

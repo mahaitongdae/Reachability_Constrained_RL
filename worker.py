@@ -28,7 +28,7 @@ class OnPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_agent)
+        self.env = gym.make(env_id, num_agent=self.args.num_agent, num_future_data=self.args.num_future_data)
         self.env = Monitor(self.env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.learner = learner_cls(policy_cls, self.args)

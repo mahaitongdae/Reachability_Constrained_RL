@@ -7,6 +7,7 @@ import logging
 import os
 import datetime
 import json
+import math
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,13 @@ def built_mixedpg_parser():
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--sample_n_step', type=int, default=64)
     parser.add_argument('--num_agent', type=int, default=256)
+    parser.add_argument('--num_future_data', type=int, default=5)
+    parser.add_argument('--model_slope', type=float, default=10.*math.pi/180.)
     parser.add_argument('--sample_num_in_learner', type=int, default=50)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 10, 20])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 10, 20])
-    parser.add_argument('--deriv_interval_policy', default=True)
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(0, 20, 2)))
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(0, 20, 2)))
+    parser.add_argument('--deriv_interval_policy', default=False)
 
     parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
@@ -47,7 +50,7 @@ def built_mixedpg_parser():
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--eval_interval", type=int, default=5)
-    parser.add_argument("--save_interval", type=int, default=100)
+    parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
 
     parser.add_argument('--Q_num', type=int, default=1)
@@ -57,8 +60,10 @@ def built_mixedpg_parser():
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 2., 0.4])
-    parser.add_argument("--reward_preprocess_type", type=str, default=None)
+    num_future_data = parser.parse_args().num_future_data
+    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 2., 0.4] +
+                                                                 [1.]*num_future_data+[2.4]*num_future_data)
+    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
@@ -71,8 +76,6 @@ def built_mixedpg_parser():
 
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
-
-    parser.add_argument("--evaluate_epi_num", type=int, default=2)
     return parser.parse_args()
 
 

@@ -90,5 +90,8 @@ class AllReduceOptimizer(object):
             self.evaluator.set_weights(self.local_worker.get_weights())
             self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
             self.evaluator.run_evaluation(self.num_updated_steps)
+        if self.num_updated_steps % self.args.save_interval == 0:
+            self.local_worker.save_weights(self.model_dir, self.num_updated_steps)
+            self.local_worker.save_ppc_params(self.model_dir)
         self.num_sampled_steps += self.args.sample_n_step * self.args.num_agent
         self.num_updated_steps += 1

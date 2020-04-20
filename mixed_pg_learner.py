@@ -71,7 +71,7 @@ class MixedPGLearner(object):
         self.args = args
         self.sample_num_in_learner = self.args.sample_num_in_learner
         self.batch_size = self.args.num_agent * self.args.sample_n_step
-        self.env = gym.make(self.args.env_id, num_agent=self.batch_size)
+        self.env = gym.make(self.args.env_id, num_agent=self.batch_size, num_future_data=self.args.num_future_data)
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
@@ -81,7 +81,7 @@ class MixedPGLearner(object):
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
         self.num_rollout_list_for_q_estimation = self.args.num_rollout_list_for_q_estimation
 
-        self.model = EnvironmentModel(10*np.pi/180)
+        self.model = EnvironmentModel(num_future_data=self.args.num_future_data, slope=self.args.model_slope)
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
@@ -698,7 +698,7 @@ class MixedPGLearner(object):
         mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         mb_n_step_target = self.batch_data['all_n_step_target'][:, -1][start_idx: end_idx]
-        rewards_mean = np.abs(np.mean(self.batch_data['batch_rewards']))
+        rewards_mean = np.abs(np.mean(self.preprocessor.np_process_rewards(self.batch_data['batch_rewards'])))
 
         with self.q_gradient_timer:
             model_targets, q_gradient, q_loss, model_bias_list = self.q_forward_and_backward(mb_obs, mb_actions,

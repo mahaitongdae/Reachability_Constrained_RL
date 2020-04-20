@@ -42,7 +42,7 @@ class PolicyWithQs(object):
         model_pairs = [(model.name, model) for model in self.models]
         optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
         ckpt = self.tf.train.Checkpoint(**dict(model_pairs + optimizer_pairs))
-        ckpt.restore(load_dir + '/ckpt_ite' + str(iteration))
+        ckpt.restore(load_dir + '/ckpt_ite' + str(iteration) + '-1')
 
     def get_weights(self):
         return [model.get_weights() for model in self.models] + \

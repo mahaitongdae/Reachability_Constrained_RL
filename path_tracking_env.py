@@ -213,7 +213,7 @@ class VehicleDynamics(object):
             punish_steer_rate = -tf.square(steer_rates)
             punish_a_x_rate = -tf.square(a_x_rates)
 
-            rewards = 0.001 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + \
+            rewards = 0.1 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + \
                       0.05 * punish_steer + 0.0005 * punish_a_x + 0.05 * punish_steer_rate + 0.0005 * punish_a_x_rate
 
         return rewards
@@ -262,41 +262,63 @@ class ReferencePath(object):
 
 
 class EnvironmentModel(object):  # all tensors
-    def __init__(self, slope=0.):
+    def __init__(self, num_future_data=5, slope=0.):
         self.vehicle_dynamics = VehicleDynamics(slope)
         self.base_frequency = 10.
         self.obses = None
-        # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        self.veh_states = None
+        self.num_future_data = num_future_data
+        # veh_state: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs, future_delta_ys1,..., future_delta_ysn,
+        #      future_delta_phis1,..., future_delta_phisn
         # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
 
     def reset(self, obses):
         self.obses = obses
+        self.veh_states = self._get_state(self.obses)
+
+    def _get_obs(self, veh_states):
+        v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], \
+                                                             veh_states[:, 3], veh_states[:, 4], veh_states[:, 5], \
+                                                             veh_states[:, 6]
+        lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs] + \
+                         [delta_ys for _ in range(self.num_future_data)] + \
+                         [delta_phis for _ in range(self.num_future_data)]
+        return tf.stack(lists_to_stack, axis=1)
+
+    def _get_state(self, obses):
+        return obses[:, :7]
 
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
             steer_rate_norm, a_xs_rate_norm = actions[:, 0], actions[:, 1]
             actions = tf.stack([steer_rate_norm * np.pi / 9, a_xs_rate_norm * 2], axis=1)
-            rewards = self.vehicle_dynamics.compute_rewards(self.obses, actions)
-            self.obses = self.vehicle_dynamics.prediction(self.obses, actions,
-                                                          self.base_frequency, 1)
-            v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = self.obses[:, 0], self.obses[:, 1], self.obses[:, 2], \
-                                                                 self.obses[:, 3], self.obses[:, 4], self.obses[:, 5], \
-                                                                 self.obses[:, 6]
+            rewards = self.vehicle_dynamics.compute_rewards(self.veh_states, actions)
+            self.veh_states = self.vehicle_dynamics.prediction(self.veh_states, actions,
+                                                               self.base_frequency, 1)
+            v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = self.veh_states[:, 0], self.veh_states[:, 1], self.veh_states[:, 2], \
+                                                                 self.veh_states[:, 3], self.veh_states[:, 4], self.veh_states[:, 5], \
+                                                                 self.veh_states[:, 6]
             v_xs = tf.clip_by_value(v_xs, 1, 35)
             steers = tf.clip_by_value(steers, -1.2 * np.pi / 9, 1.2 * np.pi / 9)
             a_xs = tf.clip_by_value(a_xs, -3., 3.)
             delta_phis = tf.where(delta_phis > np.pi, delta_phis - 2 * np.pi, delta_phis)
             delta_phis = tf.where(delta_phis <= -np.pi, delta_phis + 2 * np.pi, delta_phis)
-            self.obses = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs], axis=1)
+            self.veh_states = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs], axis=1)
+            self.obses = self._get_obs(self.veh_states)
 
         return self.obses, rewards
 
 
 class PathTrackingEnv(gym.Env, ABC):
-    def __init__(self, **kwargs):
+    def __init__(self, num_future_data=5, **kwargs):
         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
+        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs, future_delta_ys1,..., future_delta_ysn,
+        #         #      future_delta_phis1,..., future_delta_phisn
         # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
         self.vehicle_dynamics = VehicleDynamics()
+        self.num_future_data = num_future_data
+        self.obs = None
         self.veh_state = None
         self.veh_full_state = None
         self.simulation_time = 0
@@ -307,18 +329,45 @@ class PathTrackingEnv(gym.Env, ABC):
         self.base_frequency = 200
         self.interval_times = 20
         self.observation_space = gym.spaces.Box(
-            low=np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf]),
-            high=np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]),
+            low=np.array([-np.inf] * (7 + 2 * self.num_future_data)),
+            high=np.array([np.inf] * (7 + 2 * self.num_future_data)),
             dtype=np.float64)
         self.action_space = gym.spaces.Box(low=np.array([-np.pi / 9, -2]),
                                            high=np.array([np.pi / 9, 2]),
                                            dtype=np.float64)
+
         self.history_positions = deque(maxlen=100)
         plt.ion()
 
+    def _get_obs(self, veh_state, veh_full_state):
+        future_delta_ys_list = []
+        future_delta_phi_list = []
+        v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \
+                                                             veh_state[:, 3], veh_state[:, 4], veh_state[:, 5], \
+                                                             veh_state[:, 6]
+
+        v_xs, v_ys, rs, ys, phis, steers, a_xs, xs = veh_full_state[:, 0], veh_full_state[:, 1], veh_full_state[:, 2], \
+                                                     veh_full_state[:, 3], veh_full_state[:, 4], veh_full_state[:, 5], \
+                                                     veh_full_state[:, 6], veh_full_state[:, 7]
+
+        x_ = xs.copy()
+        for _ in range(self.num_future_data):
+            x_ += v_xs * 1./self.base_frequency * self.interval_times
+            future_delta_ys_list.append(self.vehicle_dynamics.path.compute_delta_y(x_, ys))
+            future_delta_phi_list.append(self.vehicle_dynamics.path.compute_delta_phi(x_, phis))
+
+        lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs] + \
+                         future_delta_ys_list + \
+                         future_delta_phi_list
+        return np.stack(lists_to_stack, axis=1)
+
+    def _get_state(self, obses):
+        return obses[:, :7]
+
     def reset(self, **kwargs):
         if 'init_obs' in kwargs.keys():
-            self.veh_state = kwargs.get('init_obs')
+            init_obs = kwargs.get('init_obs')
+            self.veh_state = self._get_state(init_obs)
             init_x = np.random.uniform(0, 600, (self.num_agent,)).astype(np.float32)
             path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(init_x), \
                                self.vehicle_dynamics.path.compute_path_phi(init_x)
@@ -326,7 +375,8 @@ class PathTrackingEnv(gym.Env, ABC):
             self.veh_full_state[:, 4] = self.veh_state[:, 4] + path_phi
             self.veh_full_state[:, 3] = self.veh_state[:, 3] + path_y
             self.veh_full_state = np.concatenate([self.veh_full_state, init_x[:, np.newaxis]], 1)
-            return self.veh_state
+            self.obs = self._get_obs(self.veh_state, self.veh_full_state)
+            return self.obs
 
         if self.done[0] == 1:
             self.history_positions.clear()
@@ -357,9 +407,10 @@ class PathTrackingEnv(gym.Env, ABC):
                            self.vehicle_dynamics.path.compute_path_phi(self.veh_full_state[:, -1])
         self.veh_state[:, 4] = self.veh_full_state[:, 4] - path_phi
         self.veh_state[:, 3] = self.veh_full_state[:, 3] - path_y
+        self.obs = self._get_obs(self.veh_state, self.veh_full_state)
 
         self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 3]))
-        return self.veh_state
+        return self.obs
 
     def step(self, action):  # think of action is in range [-1, 1]
         steer_rate_norm, a_x_rate_norm = action[:, 0], action[:, 1]
@@ -375,8 +426,9 @@ class PathTrackingEnv(gym.Env, ABC):
                                              base_freq=self.base_frequency, simu_times=self.interval_times)
         self.history_positions.append((self.veh_full_state[0, -1], self.veh_full_state[0, 3]))
         self.done = self.judge_done(self.veh_state)
+        self.obs = self._get_obs(self.veh_state, self.veh_full_state)
         info = {}
-        return self.veh_state, reward, self.done, info
+        return self.obs, reward, self.done, info
 
     def judge_done(self, veh_state):
         v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \
@@ -396,6 +448,11 @@ class PathTrackingEnv(gym.Env, ABC):
                                              self.veh_full_state[0, 4], self.veh_full_state[0, 5], \
                                              self.veh_full_state[0, 6], self.veh_full_state[0, 7]
         path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(x), self.vehicle_dynamics.path.compute_path_phi(x)
+
+        # future_ys, future_phis = self.obs[0, 7:12], self.obs[:, 12:]
+        # xs = np.array([x + i*v_x/self.base_frequency*self.interval_times for i in range(1, self.num_future_data+1)])
+        #
+        # plt.plot(xs, -future_ys+y, 'r')
 
         plt.title("Demo")
         range_x, range_y = 100, 100
