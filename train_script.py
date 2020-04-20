@@ -31,7 +31,7 @@ def built_mixedpg_parser():
     parser.add_argument('--sample_n_step', type=int, default=64)
     parser.add_argument('--num_agent', type=int, default=256)
     parser.add_argument('--num_future_data', type=int, default=5)
-    parser.add_argument('--model_slope', type=float, default=10.*math.pi/180.)
+    parser.add_argument('--model_slope', type=float, default=0.)
     parser.add_argument('--sample_num_in_learner', type=int, default=50)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(0, 20, 2)))
@@ -61,7 +61,7 @@ def built_mixedpg_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 2., 0.4] +
+    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4] +
                                                                  [1.]*num_future_data+[2.4]*num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
