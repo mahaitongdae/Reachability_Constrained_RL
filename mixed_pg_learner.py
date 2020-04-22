@@ -81,7 +81,7 @@ class MixedPGLearner(object):
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
         self.num_rollout_list_for_q_estimation = self.args.num_rollout_list_for_q_estimation
 
-        self.model = EnvironmentModel(num_future_data=self.args.num_future_data, slope=self.args.model_slope)
+        self.model = EnvironmentModel(num_future_data=self.args.num_future_data)
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma, num_agent=self.args.num_agent)
@@ -548,22 +548,34 @@ class MixedPGLearner(object):
 
     @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
-        processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
-        with self.tf.GradientTape() as tape:
-            with self.tf.name_scope('q_loss') as scope:
-                q_pred = self.policy_with_value.compute_Q(processed_mb_obs, mb_actions)[:, 0]
-                q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
+        if self.args.model_based:
+            processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
+            model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
+            with self.tf.GradientTape() as tape:
+                with self.tf.name_scope('q_loss') as scope:
+                    q_pred = self.policy_with_value.compute_Q(processed_mb_obs, mb_actions)[:, 0]
+                    q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - model_targets))
+            with self.tf.name_scope('q_gradient') as scope:
+                q_gradient = tape.gradient(q_loss, self.policy_with_value.Q.trainable_weights)
 
-        with self.tf.name_scope('q_gradient') as scope:
-            q_gradient = tape.gradient(q_loss, self.policy_with_value.Q.trainable_weights)
-        model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
-        model_bias_list = []
-        for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
-            model_target_i = model_targets[i * self.args.mini_batch_size:
-                                           (i + 1) * self.args.mini_batch_size]
-            model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i-mb_targets)))
-        return model_targets, q_gradient, q_loss, model_bias_list
+            return model_targets, q_gradient, q_loss, [1.]
 
+        else:
+            processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
+            with self.tf.GradientTape() as tape:
+                with self.tf.name_scope('q_loss') as scope:
+                    q_pred = self.policy_with_value.compute_Q(processed_mb_obs, mb_actions)[:, 0]
+                    q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
+
+            with self.tf.name_scope('q_gradient') as scope:
+                q_gradient = tape.gradient(q_loss, self.policy_with_value.Q.trainable_weights)
+            model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
+            model_bias_list = []
+            for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
+                model_target_i = model_targets[i * self.args.mini_batch_size:
+                                               (i + 1) * self.args.mini_batch_size]
+                model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i-mb_targets)))
+            return model_targets, q_gradient, q_loss, model_bias_list
 
     @tf.function
     def policy_forward_and_backward(self, mb_obs):
@@ -741,8 +753,8 @@ class MixedPGLearner(object):
             map(lambda x: (1. / (x + epsilon)) / heuristic_bias_inverse_sum, heuristic_bias_list))
         w_var_list = list(map(lambda x: (1. / (x + epsilon)) / var_inverse_sum, var_list))
 
-        # w_list = list(map(lambda x, y: (x + y) / 2., w_heur_bias_list, w_var_list))
-        w_list = w_heur_bias_list
+        w_list = list(map(lambda x, y: 0.8*x + 0.2*y, w_heur_bias_list, w_var_list))
+        # w_list = w_heur_bias_list
 
         for i in range(len(policy_gradient_list[0])):
             tmp = 0
@@ -764,7 +776,6 @@ class MixedPGLearner(object):
             policy_gradient_norm=policy_gradient_norm.numpy(),
             num_traj_rollout=self.M,
             num_rollout_list=self.num_rollout_list_for_policy_update,
-            w_q_list=[],
             var_list=var_list,
             heuristic_bias_list=heuristic_bias_list,
             w_var_list=w_var_list,

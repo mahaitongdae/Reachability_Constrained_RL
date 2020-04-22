@@ -30,19 +30,19 @@ def built_mixedpg_parser():
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--sample_n_step', type=int, default=64)
     parser.add_argument('--num_agent', type=int, default=256)
-    parser.add_argument('--num_future_data', type=int, default=5)
-    parser.add_argument('--model_slope', type=float, default=0.)
-    parser.add_argument('--sample_num_in_learner', type=int, default=50)
+    parser.add_argument('--num_future_data', type=int, default=10)
+    parser.add_argument('--sample_num_in_learner', type=int, default=20)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(0, 20, 2)))
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(0, 20, 2)))
+    parser.add_argument('--model_based', default=False)
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(20)))
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(20)))
     parser.add_argument('--deriv_interval_policy', default=False)
 
     parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
-                        default=[0.0003, int(parser.parse_args().max_updated_steps / 2), 0.0003])
+                        default=[3e-4, 20000, 3e-6])
     parser.add_argument("--value_lr_schedule", type=list,
-                        default=[0.0008, int(parser.parse_args().max_updated_steps/2), 0.0008])
+                        default=[8e-4, 20000, 8e-6])
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
 
@@ -62,7 +62,7 @@ def built_mixedpg_parser():
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4] +
-                                                                 [1.]*num_future_data+[2.4]*num_future_data)
+                                                                 [1.]*num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -76,6 +76,14 @@ def built_mixedpg_parser():
 
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
+    parser.add_argument("--model_load_dir", type=str, default=None)
+    parser.add_argument("--model_load_ite", type=int, default=None)
+    parser.add_argument("--ppc_load_dir", type=str, default=None)
+
+    # parser.add_argument("--model_load_dir", type=str, default='./results/mixed_pg/experiment-2020-04-22-13-30-57/models')
+    # parser.add_argument("--model_load_ite", type=int, default=160)
+    # parser.add_argument("--ppc_load_dir", type=str, default='./results/mixed_pg/experiment-2020-04-22-13-30-57/models')
+
     return parser.parse_args()
 
 
@@ -90,6 +98,13 @@ def main():
                       buffer_cls=None,
                       optimizer_cls=AllReduceOptimizer,
                       args=args)
+    if args.model_load_dir is not None:
+        logger.info('loading model')
+        trainer.load_weights(args.model_load_dir, args.model_load_ite)
+    if args.ppc_load_dir is not None:
+        logger.info('loading ppc parameter')
+        trainer.load_ppc_params(args.ppc_load_dir)
+
     trainer.train()
 
 

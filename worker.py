@@ -61,6 +61,7 @@ class OnPolicyWorker(object):
 
     def load_weights(self, load_dir, iteration):
         self.policy_with_value.load_weights(load_dir, iteration)
+        self.learner.set_weights(self.get_weights())
 
     def get_weights(self):
         return self.policy_with_value.get_weights()

@@ -44,17 +44,28 @@ def shift_and_rotate_coordination(orig_x, orig_y, orig_d, coordi_shift_x, coordi
 
 
 class VehicleDynamics(object):
-    def __init__(self, slope=0.):
-        self.vehicle_params = OrderedDict(C_f=88000.,  # front wheel cornering stiffness [N/rad]
-                                          C_r=94000.,  # rear wheel cornering stiffness [N/rad]
-                                          a=1.14,  # distance from CG to front axle [m]
-                                          b=1.40,  # distance from CG to rear axle [m]
-                                          mass=1500.,  # mass [kg]
-                                          I_z=2420.,  # Polar moment of inertia at CG [kg*m^2]
-                                          miu=1.0,  # tire-road friction coefficient
-                                          g=9.81,  # acceleration of gravity [m/s^2]
-                                          )
-        self.slope = slope
+    def __init__(self, if_model=False):
+        if if_model:
+            self.vehicle_params = OrderedDict(C_f=100000.,  # front wheel cornering stiffness [N/rad]
+                                              C_r=100000.,  # rear wheel cornering stiffness [N/rad]
+                                              a=1.5,  # distance from CG to front axle [m]
+                                              b=1.5,  # distance from CG to rear axle [m]
+                                              mass=3000.,  # mass [kg]
+                                              I_z=4000.,  # Polar moment of inertia at CG [kg*m^2]
+                                              miu=0.8,  # tire-road friction coefficient
+                                              g=9.81,  # acceleration of gravity [m/s^2]
+                                              )
+        else:
+            self.vehicle_params = OrderedDict(C_f=88000.,  # front wheel cornering stiffness [N/rad]
+                                              C_r=94000.,  # rear wheel cornering stiffness [N/rad]
+                                              a=1.14,  # distance from CG to front axle [m]
+                                              b=1.40,  # distance from CG to rear axle [m]
+                                              mass=1500.,  # mass [kg]
+                                              I_z=2420.,  # Polar moment of inertia at CG [kg*m^2]
+                                              miu=1.0,  # tire-road friction coefficient
+                                              g=9.81,  # acceleration of gravity [m/s^2]
+                                              )
+        self.if_model = if_model
         self.expected_vs = 20.
         self.path = ReferencePath()
 
@@ -113,13 +124,21 @@ class VehicleDynamics(object):
             #
             # F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
             # F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
+            if self.if_model:
+                state_deriv = [a_x + 1.5,
+                               (F_yf + F_yr) / mass,
+                               (a * F_yf - b * F_yr) / I_z,
+                               v_x * tf.sin(delta_phi),
+                               r+1,
+                               ]
+            else:
+                state_deriv = [a_x + v_y * r,
+                               (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r,
+                               (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
+                               v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
+                               r,
+                               ]
 
-            state_deriv = [a_x + v_y * r + g * tf.sin(delta_phi) * tf.sin(self.slope),
-                           (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r + g * tf.cos(delta_phi) * tf.sin(self.slope),
-                           (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
-                           v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
-                           r,
-                           ]
             state_deriv_stack = tf.stack(state_deriv, axis=1)
         return state_deriv_stack
 
@@ -248,8 +267,8 @@ class ReferencePath(object):
 
 
 class EnvironmentModel(object):  # all tensors
-    def __init__(self, num_future_data=5, slope=0.):
-        self.vehicle_dynamics = VehicleDynamics(slope)
+    def __init__(self, num_future_data=5):
+        self.vehicle_dynamics = VehicleDynamics(if_model=True)
         self.base_frequency = 10.
         self.obses = None
         self.veh_states = None
@@ -267,8 +286,8 @@ class EnvironmentModel(object):  # all tensors
         v_xs, v_ys, rs, delta_ys, delta_phis = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], \
                                                              veh_states[:, 3], veh_states[:, 4]
         lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis] + \
-                         [delta_ys for _ in range(self.num_future_data)] + \
-                         [delta_phis for _ in range(self.num_future_data)]
+                         [delta_ys for _ in range(self.num_future_data)]  # + \
+                         # [delta_phis for _ in range(self.num_future_data)]
         return tf.stack(lists_to_stack, axis=1)
 
     def _get_state(self, obses):
@@ -316,8 +335,8 @@ class PathTrackingEnv(gym.Env, ABC):
         self.base_frequency = 200
         self.interval_times = 20
         self.observation_space = gym.spaces.Box(
-            low=np.array([-np.inf] * (5 + 2 * self.num_future_data)),
-            high=np.array([np.inf] * (5 + 2 * self.num_future_data)),
+            low=np.array([-np.inf] * (5 + self.num_future_data)),
+            high=np.array([np.inf] * (5 + self.num_future_data)),
             dtype=np.float32)
         self.action_space = gym.spaces.Box(low=np.array([-1.2*np.pi / 9, -3]),
                                            high=np.array([1.2*np.pi / 9, 3]),
@@ -328,7 +347,7 @@ class PathTrackingEnv(gym.Env, ABC):
 
     def _get_obs(self, veh_state, veh_full_state):
         future_delta_ys_list = []
-        future_delta_phi_list = []
+        # future_delta_phi_list = []
         v_xs, v_ys, rs, delta_ys, delta_phis = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \
                                                              veh_state[:, 3], veh_state[:, 4]
 
@@ -336,13 +355,13 @@ class PathTrackingEnv(gym.Env, ABC):
                                                      veh_full_state[:, 3], veh_full_state[:, 4], veh_full_state[:, 5]
         x_ = xs.copy()
         for _ in range(self.num_future_data):
-            x_ += v_xs * 1./self.base_frequency * self.interval_times
+            x_ += v_xs * 1./self.base_frequency * self.interval_times*2
             future_delta_ys_list.append(self.vehicle_dynamics.path.compute_delta_y(x_, ys))
-            future_delta_phi_list.append(self.vehicle_dynamics.path.compute_delta_phi(x_, phis))
+            # future_delta_phi_list.append(self.vehicle_dynamics.path.compute_delta_phi(x_, phis))
 
         lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis] + \
-                         future_delta_ys_list + \
-                         future_delta_phi_list
+                         future_delta_ys_list  # + \
+                         # future_delta_phi_list
         return np.stack(lists_to_stack, axis=1)
 
     def _get_state(self, obses):
@@ -428,10 +447,10 @@ class PathTrackingEnv(gym.Env, ABC):
                                              self.veh_full_state[0, 4], self.veh_full_state[0, 5]
         path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(x), self.vehicle_dynamics.path.compute_path_phi(x)
 
-        # future_ys, future_phis = self.obs[0, 7:12], self.obs[:, 12:]
-        # xs = np.array([x + i*v_x/self.base_frequency*self.interval_times for i in range(1, self.num_future_data+1)])
-        #
-        # plt.plot(xs, -future_ys+y, 'r')
+        future_ys = self.obs[0, 5:]
+        xs = np.array([x + i*v_x/self.base_frequency*self.interval_times*2 for i in range(1, self.num_future_data+1)])
+
+        plt.plot(xs, -future_ys+y, 'r*')
 
         plt.title("Demo")
         range_x, range_y = 100, 100
@@ -471,7 +490,6 @@ class PathTrackingEnv(gym.Env, ABC):
         plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 4,
                  'v_x: {:.2f}m/s (expected: {:.2f}m/s), v_y: {:.2f}m/s'.format(v_x, self.expected_vs, v_y))
         plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 5, 'yaw_rate: {:.2f}rad/s'.format(r))
-
 
         if self.action is not None:
             steer, a_x = self.action[0, 0], self.action[0, 1]

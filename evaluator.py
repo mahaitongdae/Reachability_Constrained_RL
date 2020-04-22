@@ -45,11 +45,13 @@ class Evaluator(object):
         # obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs, future_delta_ys1,..., future_delta_ysn,
         #      future_delta_phis1,..., future_delta_phisn
 
+        delta_v_list = []
         delta_ys_list = []
         delta_phis_list = []
         rewards_list = []
         obs = self.env.reset()
         for _ in range(forward_steps):
+            delta_v_list.append(obs[:, 0]-20)
             delta_ys_list.append(obs[:, 3])
             delta_phis_list.append(obs[:, 4])
             processed_obs = self.preprocessor.tf_process_obses(obs)
@@ -61,11 +63,12 @@ class Evaluator(object):
                 self.env.reset()
             rewards_list.append(reward)
         self.env.close()
+        delta_v_metric = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
         delta_y_metric = np.sqrt(np.mean(np.square(np.array(delta_ys_list))))
         delta_phis_metric = np.sqrt(np.mean(np.square(np.array(delta_phis_list))))
         rewards_mean = np.mean(np.array(rewards_list))
 
-        return delta_y_metric, delta_phis_metric, rewards_mean
+        return delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean
 
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
@@ -75,13 +78,18 @@ class Evaluator(object):
 
     def run_evaluation(self, iteration):
         self.iteration = iteration
-        delta_y_metric, delta_phis_metric, rewards_mean = self.metrics(100, render=True, reset=False)
-        logger.info('delta_y_metric is {}, delta_phis_metric is {}, rewards_mean is {}'.format(delta_y_metric,
-                                                                                               delta_phis_metric,
-                                                                                               rewards_mean))
+        delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean = self.metrics(100, render=True, reset=False)
+        logger.info('delta_y_metric is {}, delta_phis_metric is {}, delta_v_metric is {}(exp_v=20), rewards_mean is {}'.format(
+            delta_y_metric,
+            delta_phis_metric,
+            delta_v_metric,
+            rewards_mean))
         with self.writer.as_default():
             self.tf.summary.scalar("evaluation/delta_y_metric", delta_y_metric, step=self.iteration)
             self.tf.summary.scalar("evaluation/delta_phis_metric", delta_phis_metric, step=self.iteration)
+            self.tf.summary.scalar("evaluation/delta_v_metric", delta_v_metric, step=self.iteration)
+            self.tf.summary.scalar("evaluation/rewards_mean", rewards_mean, step=self.iteration)
+
             self.writer.flush()
 
 
@@ -96,5 +104,6 @@ def test_trained_model(model_dir, ppc_params_dir, iteration):
 
 
 if __name__ == '__main__':
-    model_dir = './results/mixed_pg/experiment-2020-04-20-09-18-30/models'
-    print(test_trained_model(model_dir, model_dir, 0))
+    model_dir = './results/mixed_pg/experiment-2020-04-22-14-01-37/models'
+    # model_dir = './results/mixed_pg/experiment-2020-04-22-15-02-12/models'
+    print(test_trained_model(model_dir, model_dir, 20))
