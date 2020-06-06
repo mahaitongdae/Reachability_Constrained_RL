@@ -63,7 +63,7 @@ class AllReduceOptimizer(object):
             mbvals = []
             mbwlists = []
             vals_name = ['value_mean', 'q_loss', 'policy_gradient_norm', 'q_gradient_norm', 'pg_time', 'q_timer']
-            lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list']
+            lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list_new', 'w_list']
             logger.info('sampling time: {}, optimizing time: {}'.format(self.stats['sampling_time'],
                                                                         self.stats['optimizing_time']))
             logger.info(pprint.pformat(self.stats['worker_stats'][0][0]['learner_stats']))

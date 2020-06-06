@@ -89,6 +89,7 @@ class MixedPGLearner(object):
         self.q_gradient_timer = TimerStat()
         self.stats = {}
         self.reduced_num_minibatch = 4
+        self.w_list_old = 1/len(self.num_rollout_list_for_policy_update)*np.ones(len(self.num_rollout_list_for_policy_update))
         assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
 
     def get_stats(self):
@@ -753,7 +754,11 @@ class MixedPGLearner(object):
             map(lambda x: (1. / (x + epsilon)) / heuristic_bias_inverse_sum, heuristic_bias_list))
         w_var_list = list(map(lambda x: (1. / (x + epsilon)) / var_inverse_sum, var_list))
 
-        w_list = list(map(lambda x, y: 0.8*x + 0.2*y, w_heur_bias_list, w_var_list))
+        w_list_new = list(map(lambda x, y: 0.5*x + 0.5*y, w_heur_bias_list, w_var_list))
+
+        w_list = list(self.w_list_old + 0.01 * (np.array(w_list_new)-self.w_list_old))
+        self.w_list_old = np.array(w_list)
+
         # w_list = w_heur_bias_list
 
         for i in range(len(policy_gradient_list[0])):
@@ -780,6 +785,7 @@ class MixedPGLearner(object):
             heuristic_bias_list=heuristic_bias_list,
             w_var_list=w_var_list,
             w_heur_bias_list=w_heur_bias_list,
+            w_list_new=w_list_new,
             w_list=w_list
         ))
 

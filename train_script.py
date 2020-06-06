@@ -33,10 +33,10 @@ def built_mixedpg_parser():
     parser.add_argument('--num_future_data', type=int, default=10)
     parser.add_argument('--sample_num_in_learner', type=int, default=20)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--model_based', default=False)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(20)))
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(20)))
-    parser.add_argument('--deriv_interval_policy', default=False)
+    parser.add_argument('--model_based', default=True)
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[20])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[20])
+    parser.add_argument('--deriv_interval_policy', default=True)
 
     parser.add_argument("--mini_batch_size", type=int, default=256)
     parser.add_argument("--policy_lr_schedule", type=list,
