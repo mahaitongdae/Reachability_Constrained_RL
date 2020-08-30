@@ -1,7 +1,18 @@
-import gym
-import numpy as np
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/8/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: evaluator.py
+# =====================================
+
 import logging
 import os
+
+import gym
+import numpy as np
+
 from preprocessor import Preprocessor
 
 logger = logging.getLogger(__name__)
@@ -17,7 +28,7 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_agent, num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id, num_agent=1, num_future_data=self.args.num_future_data)
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
         self.log_dir = self.args.log_dir
@@ -26,7 +37,7 @@ class Evaluator(object):
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
+                                         gamma=self.args.gamma, num_agent=1)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
@@ -41,34 +52,53 @@ class Evaluator(object):
         self.load_weights(model_load_dir, iteration)
         self.load_ppc_params(ppc_params_load_dir)
 
-    def metrics(self, forward_steps, render=True, reset=False):
-        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs, future_delta_ys1,..., future_delta_ysn,
-        #      future_delta_phis1,..., future_delta_phisn
-
-        delta_v_list = []
-        delta_ys_list = []
-        delta_phis_list = []
-        rewards_list = []
+    def run_an_episode(self):
+        obs_list = []
+        action_list = []
+        reward_list = []
+        done = 0
         obs = self.env.reset()
-        for _ in range(forward_steps):
-            delta_v_list.append(obs[:, 0]-20)
-            delta_ys_list.append(obs[:, 3])
-            delta_phis_list.append(obs[:, 4])
+        while not done:
             processed_obs = self.preprocessor.tf_process_obses(obs)
             action, neglogp = self.policy_with_value.compute_action(processed_obs)
+            obs_list.append(obs[0])
+            action_list.append(action[0])
             obs, reward, done, info = self.env.step(action.numpy())
-            if render:
-                self.env.render()
-            if reset:
-                self.env.reset()
-            rewards_list.append(reward)
-        self.env.close()
-        delta_v_metric = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
-        delta_y_metric = np.sqrt(np.mean(np.square(np.array(delta_ys_list))))
-        delta_phis_metric = np.sqrt(np.mean(np.square(np.array(delta_phis_list))))
-        rewards_mean = np.mean(np.array(rewards_list))
+            reward_list.append(reward[0])
+        episode_return = sum(reward_list)
+        episode_len = len(reward_list)
 
-        return delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean
+        return dict(obs_list=np.array(obs_list),
+                    action_list=np.array(action_list),
+                    reward_list=np.array(reward_list),
+                    episode_return=episode_return,
+                    episode_len=episode_len)
+
+    def run_n_episodes(self, n):
+        metrics_list = []
+        for _ in range(n):
+            episode_info = self.run_an_episode()
+            metrics_list.append(self.metrics_for_an_episode(episode_info))
+        out = {}
+        for key in metrics_list[0].keys():
+            value_list = list(map(lambda x: x[key], metrics_list))
+            out.update({key: sum(value_list)/len(value_list)})
+        return out
+
+
+    def metrics_for_an_episode(self, episode_info):
+        key_list = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse']
+        episode_return = episode_info['episode_return']
+        episode_len = episode_info['episode_len']
+        delta_v_list = list(map(lambda x: x[0]-20, episode_info['obs_list']))
+        delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
+        delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
+
+        delta_y_mse = np.sqrt(np.mean(np.square(np.array(delta_y_list))))
+        delta_phi_mse = np.sqrt(np.mean(np.square(np.array(delta_phi_list))))
+        delta_v_mse = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
+        value_list = [episode_return, episode_len, delta_y_mse, delta_phi_mse, delta_v_mse]
+        return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
@@ -78,18 +108,11 @@ class Evaluator(object):
 
     def run_evaluation(self, iteration):
         self.iteration = iteration
-        delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean = self.metrics(100, render=True, reset=False)
-        logger.info('delta_y_metric is {}, delta_phis_metric is {}, delta_v_metric is {}(exp_v=20), rewards_mean is {}'.format(
-            delta_y_metric,
-            delta_phis_metric,
-            delta_v_metric,
-            rewards_mean))
+        metrics = self.run_n_episodes(self.args.num_eval_episode)
+        logger.info(metrics)
         with self.writer.as_default():
-            self.tf.summary.scalar("evaluation/delta_y_metric", delta_y_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/delta_phis_metric", delta_phis_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/delta_v_metric", delta_v_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/rewards_mean", rewards_mean, step=self.iteration)
-
+            for key, value in metrics.items():
+                self.tf.summary.scalar("evaluation/{}".format(key), value, step=self.iteration)
             self.writer.flush()
 
 

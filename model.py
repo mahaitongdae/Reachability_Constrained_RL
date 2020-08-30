@@ -1,7 +1,16 @@
-from tensorflow.keras.layers import Dense
-from tensorflow.keras import Model, Sequential
-from tensorflow import Variable
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/8/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: model.py
+# =====================================
+
 import tensorflow as tf
+from tensorflow import Variable
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.layers import Dense
 
 
 class MLPNet(Model):

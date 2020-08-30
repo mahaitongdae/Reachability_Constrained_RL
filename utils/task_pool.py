@@ -1,5 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: task_pool.py
+# =====================================
+
 import logging
-import os
+
 import ray
 
 logger = logging.getLogger(__name__)
