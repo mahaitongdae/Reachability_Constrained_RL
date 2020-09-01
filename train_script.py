@@ -99,7 +99,7 @@ def built_MPG_parser(version):
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
-    parser.add_argument('--max_updated_steps', type=int, default=1000000)
+    parser.add_argument('--max_updated_steps', type=int, default=300000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=3)
     parser.add_argument('--num_buffers', type=int, default=2)
@@ -124,8 +124,6 @@ def built_MPG_parser(version):
     # parser.add_argument("--ppc_load_dir", type=str, default='./results/mixed_pg/experiment-2020-04-22-13-30-57/models')
 
     return parser.parse_args()
-
-
 
 
 def built_parser(alg_name):
