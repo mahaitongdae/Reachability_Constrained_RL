@@ -15,10 +15,11 @@ import os
 
 import ray
 
-from buffer import ReplayBuffer, PrioritizedReplayBuffer
+from buffer import PrioritizedReplayBuffer, ReplayBuffer
 from learners.mpg_learner import MPGLearner
 from optimizer import OffPolicyAsyncOptimizer
 from policy import PolicyWithQs
+from tester import Tester
 from trainer import Trainer
 
 logger = logging.getLogger(__name__)
@@ -38,10 +39,29 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer)])
 def built_MPG_parser(version):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--mode', type=str, default='training') # training testing
+    mode = parser.parse_args().mode
+
+    if mode == 'testing':
+        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        params = json.loads(open(test_dir + '/config.json').read())
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
+        params.update(dict(test_dir=test_dir,
+                           test_iter_list=[0],
+                           test_log_dir=test_log_dir,
+                           num_eval_episode=5,
+                           eval_log_interval=1,
+                           fixed_steps=70))
+        for key, val in params.items():
+            parser.add_argument("-" + key, default=val)
+        return parser.parse_args()
+
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--buffer_type', type=str, default='normal')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--off_policy', default=True, action='store_true')
 
     # env
     parser.add_argument("--env_id", default='PathTracking-v0')
@@ -72,14 +92,18 @@ def built_MPG_parser(version):
     parser.add_argument('--replay_batch_size', type=int, default=128)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
-    parser.add_argument("--buffer_log_interval", type=int, default=100)
+    parser.add_argument("--buffer_log_interval", type=int, default=40000)
 
-    # evaluator
+    # tester and evaluator
     parser.add_argument("--num_eval_episode", type=int, default=5)
+    parser.add_argument("--eval_log_interval", type=int, default=1)
+    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--eval_render", type=bool, default=True)
 
     # policy and model
-    parser.add_argument("--policy_lr_schedule", type=list,default=[3e-4, 20000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list,default=[8e-4, 20000, 8e-6])
+    parser.add_argument("--policy_only", default=False, action='store_true')
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 20000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-4, 20000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -87,6 +111,7 @@ def built_MPG_parser(version):
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=False, action='store_true')
     parser.add_argument("--target", default=False, action='store_true')
+    parser.add_argument("--policy_out_activation", type=str, default='tanh')
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
@@ -98,16 +123,16 @@ def built_MPG_parser(version):
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
-    parser.add_argument('--max_sampled_steps', type=int, default=1000000)
+    parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=300000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=3)
     parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
-    parser.add_argument('--grads_queue_size', type=int, default=5)
-    parser.add_argument("--eval_interval", type=int, default=1000)
-    parser.add_argument("--save_interval", type=int, default=1000)
-    parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument("--eval_interval", type=int, default=1500)
+    parser.add_argument("--save_interval", type=int, default=2000)
+    parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -118,10 +143,6 @@ def built_MPG_parser(version):
     parser.add_argument("--model_load_dir", type=str, default=None)
     parser.add_argument("--model_load_ite", type=int, default=None)
     parser.add_argument("--ppc_load_dir", type=str, default=None)
-
-    # parser.add_argument("--model_load_dir", type=str, default='./results/mixed_pg/experiment-2020-04-22-13-30-57/models')
-    # parser.add_argument("--model_load_ite", type=int, default=160)
-    # parser.add_argument("--ppc_load_dir", type=str, default='./results/mixed_pg/experiment-2020-04-22-13-30-57/models')
 
     return parser.parse_args()
 
@@ -143,23 +164,31 @@ def built_parser(alg_name):
 def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
-    ray.init(redis_max_memory=1024*1024*1024, object_store_memory=1024*1024*1024)
-    os.makedirs(args.result_dir)
-    with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
-        json.dump(vars(args), f, ensure_ascii=False, indent=4)
-    trainer = Trainer(policy_cls=PolicyWithQs,
-                      learner_cls=NAME2LEARNERCLS[args.alg_name],
-                      buffer_cls=NAME2BUFFERCLS[args.buffer_type],
-                      optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
-                      args=args)
-    if args.model_load_dir is not None:
-        logger.info('loading model')
-        trainer.load_weights(args.model_load_dir, args.model_load_ite)
-    if args.ppc_load_dir is not None:
-        logger.info('loading ppc parameter')
-        trainer.load_ppc_params(args.ppc_load_dir)
+    if args.mode == 'training':
+        ray.init(redis_max_memory=1024*1024*1024, object_store_memory=1024*1024*1024)
+        os.makedirs(args.result_dir)
+        with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
+            json.dump(vars(args), f, ensure_ascii=False, indent=4)
+        trainer = Trainer(policy_cls=PolicyWithQs,
+                          learner_cls=NAME2LEARNERCLS[args.alg_name],
+                          buffer_cls=NAME2BUFFERCLS[args.buffer_type],
+                          optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
+                          args=args)
+        if args.model_load_dir is not None:
+            logger.info('loading model')
+            trainer.load_weights(args.model_load_dir, args.model_load_ite)
+        if args.ppc_load_dir is not None:
+            logger.info('loading ppc parameter')
+            trainer.load_ppc_params(args.ppc_load_dir)
+        trainer.train()
 
-    trainer.train()
+    elif args.mode == 'testing':
+        os.makedirs(args.test_log_dir)
+        with open(args.test_log_dir + '/test_config.json', 'w', encoding='utf-8') as f:
+            json.dump(vars(args), f, ensure_ascii=False, indent=4)
+        tester = Tester(policy_cls=PolicyWithQs,
+                        args=args)
+        tester.test()
 
 
 if __name__ == '__main__':

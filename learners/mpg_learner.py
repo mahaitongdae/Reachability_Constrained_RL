@@ -8,69 +8,16 @@
 # =====================================
 
 import logging
-import time
 
 import gym
 import numpy as np
 from gym.envs.user_defined.path_tracking_env import EnvironmentModel
 
 from preprocessor import Preprocessor
+from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-
-# logger.setLevel(logging.INFO)
-
-# def judge_is_nan(list_of_np_or_tensor):
-#     for m in list_of_np_or_tensor:
-#         if hasattr(m, 'numpy'):
-#             if np.any(np.isnan(m.numpy())):
-#                 print(list_of_np_or_tensor)
-#                 raise ValueError
-#         else:
-#             if np.any(np.isnan(m)):
-#                 print(list_of_np_or_tensor)
-#                 raise ValueError
-#
-#
-# def judge_less_than(list_of_np_or_tensor, thres=0.001):
-#     for m in list_of_np_or_tensor:
-#         if hasattr(m, 'numpy'):
-#             assert not np.all(m.numpy() < thres)
-#         else:
-#             assert not np.all(m < thres)
-
-
-class TimerStat:
-    def __init__(self, window_size=10):
-        self._window_size = window_size
-        self._samples = []
-        self._units_processed = []
-        self._start_time = None
-        self._total_time = 0.0
-        self.count = 0
-
-    def __enter__(self):
-        assert self._start_time is None, "concurrent updates not supported"
-        self._start_time = time.time()
-
-    def __exit__(self, type, value, tb):
-        assert self._start_time is not None
-        time_delta = time.time() - self._start_time
-        self.push(time_delta)
-        self._start_time = None
-
-    def push(self, time_delta):
-        self._samples.append(time_delta)
-        if len(self._samples) > self._window_size:
-            self._samples.pop(0)
-        self.count += 1
-        self._total_time += time_delta
-
-    @property
-    def mean(self):
-        return np.mean(self._samples)
 
 
 class MPGLearner(object):
@@ -108,7 +55,7 @@ class MPGLearner(object):
     def get_info_for_buffer(self):
         return self.info_for_buffer
 
-    def get_batch_data(self, batch_data, rb_index, indexes):
+    def get_batch_data(self, batch_data, rb, indexes):
         self.batch_data = {'batch_obs': batch_data[0].astype(np.float32),
                            'batch_actions': batch_data[1].astype(np.float32),
                            'batch_rewards': batch_data[2].astype(np.float32),
@@ -128,7 +75,7 @@ class MPGLearner(object):
         self.batch_data.update(dict(batch_targets=target,
                                     ))
         self.info_for_buffer.update(dict(td_error=td_error,
-                                         rb_index=rb_index,
+                                         rb=rb,
                                          indexes=indexes))
 
         # print(self.batch_data['batch_obs'].shape)  # batch_size * obs_dim
@@ -365,7 +312,8 @@ class MPGLearner(object):
             bias_list = [np.power(2-lam, max_index-i) for i in self.num_rollout_list_for_policy_update]
         return bias_list
 
-    def compute_gradient(self, iteration):  # compute gradient
+    def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
+        self.get_batch_data(batch_data, rb, indexes)
         mb_obs = self.batch_data['batch_obs']
         mb_actions = self.batch_data['batch_actions']
         mb_targets = self.batch_data['batch_targets']

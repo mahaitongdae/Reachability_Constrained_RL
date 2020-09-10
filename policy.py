@@ -25,8 +25,10 @@ class PolicyWithQs(object):
         self.act_dist_cls = GuassianDistribution
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
         n_hiddens, n_units = self.args.num_hidden_layers, self.args.num_hidden_units
-        self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy', output_activation='tanh')
-        self.policy_target = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy_target', output_activation='tanh')
+        self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy',
+                             output_activation=self.args.policy_out_activation)
+        self.policy_target = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy_target',
+                                    output_activation=self.args.policy_out_activation)
         policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
 
@@ -42,19 +44,24 @@ class PolicyWithQs(object):
         self.Q2_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
             *self.args.value_lr_schedule), name='Q2_adam_opt')
 
-        if self.args.double_Q:
-            assert self.args.target
-            self.target_models = (self.Q1_target, self.Q2_target, self.policy_target,)
-            self.models = (self.Q1, self.Q2, self.policy,)
-            self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.policy_optimizer,)
-        elif self.args.target:
-            self.target_models = (self.Q1_target, self.policy_target,)
-            self.models = (self.Q1, self.policy,)
-            self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
+        if self.args.policy_only:
+            self.target_models = ()
+            self.models = (self.policy,)
+            self.optimizers = (self.policy_optimizer,)
         else:
-            self.target_models = []
-            self.models = (self.Q1, self.policy,)
-            self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
+            if self.args.double_Q:
+                assert self.args.target
+                self.target_models = (self.Q1_target, self.Q2_target, self.policy_target,)
+                self.models = (self.Q1, self.Q2, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.policy_optimizer,)
+            elif self.args.target:
+                self.target_models = (self.Q1_target, self.policy_target,)
+                self.models = (self.Q1, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
+            else:
+                self.target_models = ()
+                self.models = (self.Q1, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
 
     def save_weights(self, save_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
@@ -87,26 +94,30 @@ class PolicyWithQs(object):
                 self.target_models[i-len(self.models)].set_weights(weight)
 
     def apply_gradients(self, iteration, grads):
-        if self.args.double_Q:
-            q_weights_len = len(self.Q1.trainable_weights)
-            q1_grad, q2_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:2*q_weights_len], \
-                                            grads[2*q_weights_len:]
-            self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
-            self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
-            if iteration % self.args.delay_update == 0:
-                self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-                self.update_policy_target()
-                self.update_Q1_target()
-                self.update_Q2_target()
+        if self.args.policy_only:
+            policy_grad = grads
+            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
         else:
-            q_weights_len = len(self.Q1.trainable_weights)
-            q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:]
-            self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
-            if iteration % self.args.delay_update == 0:
-                self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-                if self.args.target:
+            if self.args.double_Q:
+                q_weights_len = len(self.Q1.trainable_weights)
+                q1_grad, q2_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:2*q_weights_len], \
+                                                grads[2*q_weights_len:]
+                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+                self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
+                if iteration % self.args.delay_update == 0:
+                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
                     self.update_policy_target()
                     self.update_Q1_target()
+                    self.update_Q2_target()
+            else:
+                q_weights_len = len(self.Q1.trainable_weights)
+                q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:]
+                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+                if iteration % self.args.delay_update == 0:
+                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+                    if self.args.target:
+                        self.update_policy_target()
+                        self.update_Q1_target()
 
     def update_Q1_target(self):
         tau = self.args.tau
@@ -156,6 +167,14 @@ class PolicyWithQs(object):
 
     def compute_neglogp(self, obs, act):
         logits = self.policy(obs)
+        act_dist = self.act_dist_cls(logits)
+        return act_dist.neglogp(act)
+
+    def compute_target_logits(self, obs):
+        return self.policy_target(obs)
+
+    def compute_target_neglogp(self, obs, act):
+        logits = self.policy_target(obs)
         act_dist = self.act_dist_cls(logits)
         return act_dist.neglogp(act)
 

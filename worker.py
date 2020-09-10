@@ -10,8 +10,10 @@
 import logging
 
 import gym
+import numpy as np
 
 from preprocessor import Preprocessor
+from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +48,9 @@ class OffPolicyWorker(object):
     def get_stats(self):
         self.stats.update(dict(worker_id=self.worker_id,
                                num_sample=self.num_sample,
-                               ppc_params=self.get_ppc_params()))
+                               # ppc_params=self.get_ppc_params()
+                               )
+                          )
         return self.stats
 
     def save_weights(self, save_dir, iteration):
@@ -81,7 +85,17 @@ class OffPolicyWorker(object):
         batch_data = []
         for _ in range(int(self.batch_size/self.num_agent)):
             processed_obs = self.preprocessor.process_obs(self.obs)
+            judge_is_nan([processed_obs])
             action, neglogp = self.policy_with_value.compute_action(processed_obs)
+            try:
+                judge_is_nan([action])
+            except ValueError:
+                print('processed_obs', processed_obs)
+                print('preprocessor_params', self.preprocessor.get_params())
+                print('policy_weights', self.policy_with_value.policy.trainable_weights)
+                action, neglogp = self.policy_with_value.compute_action(processed_obs)
+                judge_is_nan([action])
+                raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):
