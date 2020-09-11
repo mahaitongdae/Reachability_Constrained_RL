@@ -381,8 +381,10 @@ class EnvironmentModel(object):  # all tensors
         self.vehicle_dynamics = VehicleDynamics(if_model=True)
         self.base_frequency = 10.
         self.obses = None
+        self.actions = None
         self.veh_states = None
         self.num_future_data = num_future_data
+        self.history_positions = deque(maxlen=100)
         # veh_state: v_xs, v_ys, rs, delta_ys, delta_phis, xs
         # obs: v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
         #      future_delta_phis1,..., future_delta_phisn
@@ -390,6 +392,8 @@ class EnvironmentModel(object):  # all tensors
 
     def reset(self, obses):
         self.obses = obses
+        self.actions = None
+        self.history_positions.clear()
         self.veh_states = self._get_state(self.obses)
 
     def _get_obs(self, veh_states):
@@ -412,6 +416,7 @@ class EnvironmentModel(object):  # all tensors
             # actions = np.stack([steer_norm * 1.2 * np.pi / 9, (a_xs_norm + 1.) / 2. * (3. + max_decels) - max_decels], 1)
 
             actions = tf.stack([steer_norm * 1.2 * np.pi / 9, a_xs_norm * 3.], 1)
+            self.actions = actions
             rewards = self.vehicle_dynamics.compute_rewards(self.veh_states, actions)
             self.veh_states, _ = self.vehicle_dynamics.prediction(self.veh_states, actions,
                                                                   self.base_frequency)
@@ -423,8 +428,65 @@ class EnvironmentModel(object):  # all tensors
 
             self.veh_states = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, xs], axis=1)
             self.obses = self._get_obs(self.veh_states)
+            self.history_positions.append((self.veh_states[0, -1], self.veh_states[0, 3]))
 
         return self.obses, rewards
+
+    def render(self, mode='human'):
+        plt.cla()
+        veh_states = self.veh_states.numpy()
+        v_x, v_y, r, delta_y, delta_phi, x = veh_states[0, 0], veh_states[0, 1], veh_states[0, 2], \
+                                             veh_states[0, 3], veh_states[0, 4], veh_states[0, 5]
+
+        plt.title("Demo_model")
+        range_x, range_y = 100, 100
+        ax = plt.axes(xlim=(x - range_x / 2, x + range_x / 2),
+                      ylim=(-50, 50))
+        ax.add_patch(plt.Rectangle((x - range_x / 2, -50),
+                                   100, 100, edgecolor='black',
+                                   facecolor='none'))
+        plt.axis('equal')
+        plt.axis('off')
+        path_xs = np.linspace(x - range_x / 2, x + range_x / 2, 1000)
+        path_ys = np.zeros_like(path_xs)
+        plt.plot(path_xs, path_ys)
+
+        history_positions = list(self.history_positions)
+        history_xs = np.array(list(map(lambda x: x[0].numpy(), history_positions)))
+        history_ys = np.array(list(map(lambda x: x[1].numpy(), history_positions)))
+        plt.plot(history_xs, history_ys, 'g')
+
+        def draw_rotate_rec(x, y, a, l, w, color='black'):
+            RU_x, RU_y, _ = rotate_coordination(l / 2, w / 2, 0, -a)
+            RD_x, RD_y, _ = rotate_coordination(l / 2, -w / 2, 0, -a)
+            LU_x, LU_y, _ = rotate_coordination(-l / 2, w / 2, 0, -a)
+            LD_x, LD_y, _ = rotate_coordination(-l / 2, -w / 2, 0, -a)
+            plt.plot([RU_x + x, RD_x + x], [RU_y + y, RD_y + y], color=color)
+            plt.plot([RU_x + x, LU_x + x], [RU_y + y, LU_y + y], color=color)
+            plt.plot([LD_x + x, RD_x + x], [LD_y + y, RD_y + y], color=color)
+            plt.plot([LD_x + x, LU_x + x], [LD_y + y, LU_y + y], color=color)
+
+        draw_rotate_rec(x, delta_y, delta_phi, 4.8, 2.2)
+        text_x, text_y_start = x - 20 - range_x / 2 - 20, 30
+        ge = iter(range(0, 1000, 4))
+        plt.text(text_x, text_y_start - next(ge), 'x: {:.2f}'.format(x))
+        plt.text(text_x, text_y_start - next(ge), 'y: {:.2f}'.format(delta_y))
+        plt.text(text_x, text_y_start - next(ge), r'phi: {:.2f}rad (${:.2f}\degree$)'.format(delta_phi, delta_phi * 180 / np.pi))
+
+        plt.text(text_x, text_y_start - next(ge), 'v_x: {:.2f}m/s'.format(v_x))
+        plt.text(text_x, text_y_start - next(ge), 'exp_v: {:.2f}m/s)'.format(self.vehicle_dynamics.expected_vs))
+        plt.text(text_x, text_y_start - next(ge), 'v_y: {:.2f}m/s'.format(v_y))
+        plt.text(text_x, text_y_start - next(ge), 'yaw_rate: {:.2f}rad/s'.format(r))
+
+        if self.actions is not None:
+            actions = self.actions.numpy()
+            steer, a_x = actions[0, 0], actions[0, 1]
+            plt.text(text_x, text_y_start - next(ge), r'steer: {:.2f}rad'.format(steer))
+            plt.text(text_x, text_y_start - next(ge), r'a_x: {:.2f}m/s^2'.format(a_x))
+        plt.axis([x - range_x / 2, x + range_x / 2, -range_y / 2, range_y / 2])
+
+        plt.pause(0.001)
+        plt.show()
 
 
 class PathTrackingEnv(gym.Env, ABC):
@@ -572,7 +634,13 @@ class PathTrackingEnv(gym.Env, ABC):
 
         plt.title("Demo")
         range_x, range_y = 100, 100
+        ax = plt.axes(xlim=(x - range_x / 2, x + range_x / 2),
+                      ylim=(-50, 50))
+        ax.add_patch(plt.Rectangle((x - range_x / 2, -50),
+                                   100, 100, edgecolor='black',
+                                   facecolor='none'))
         plt.axis('equal')
+        plt.axis('off')
         path_xs = np.linspace(x - range_x / 2, x + range_x / 2, 1000)
         path_ys = self.vehicle_dynamics.path.compute_path_y(path_xs)
         plt.plot(path_xs, path_ys)
@@ -593,26 +661,27 @@ class PathTrackingEnv(gym.Env, ABC):
             plt.plot([LD_x + x, LU_x + x], [LD_y + y, LU_y + y], color=color)
 
         draw_rotate_rec(x, y, phi, 4.8, 2.2)
-        plt.text(x - range_x / 2 - 20, range_y / 2 - 3, 'time: {:.2f}s'.format(self.simulation_time))
-        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 2,
-                 'x: {:.2f}, y: {:.2f}, path_y: {:.2f}, delta_y: {:.2f}m'.format(x, y, path_y, delta_y))
-        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 3,
-                 r'phi: {:.2f}rad (${:.2f}\degree$), path_phi: {:.2f}rad (${:.2f}\degree$), delta_phi: {:.2f}rad (${:.2f}\degree$)'.format(
-                     phi,
-                     phi * 180 / np.pi,
-                     path_phi,
-                     path_phi * 180 / np.pi,
-                     delta_phi, delta_phi * 180 / np.pi,
-                 ))
+        text_x, text_y_start = x - 20 - range_x / 2 - 20, 30
+        ge = iter(range(0, 1000, 4))
+        plt.text(text_x, text_y_start - next(ge), 'time: {:.2f}s'.format(self.simulation_time))
+        plt.text(text_x, text_y_start - next(ge), 'x: {:.2f}'.format(x))
+        plt.text(text_x, text_y_start - next(ge), 'y: {:.2f}'.format(y))
+        plt.text(text_x, text_y_start - next(ge), 'path_y: {:.2f}'.format(path_y))
+        plt.text(text_x, text_y_start - next(ge), 'delta_y: {:.2f}m'.format(delta_y))
 
-        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 4,
-                 'v_x: {:.2f}m/s (expected: {:.2f}m/s), v_y: {:.2f}m/s'.format(v_x, self.expected_vs, v_y))
-        plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 5, 'yaw_rate: {:.2f}rad/s'.format(r))
+        plt.text(text_x, text_y_start - next(ge), r'phi: {:.2f}rad (${:.2f}\degree$)'.format(phi, phi * 180 / np.pi,))
+        plt.text(text_x, text_y_start - next(ge), r'path_phi: {:.2f}rad (${:.2f}\degree$)'.format(path_phi, path_phi * 180 / np.pi))
+        plt.text(text_x, text_y_start - next(ge), r'delta_phi: {:.2f}rad (${:.2f}\degree$)'.format(delta_phi, delta_phi * 180 / np.pi))
+
+        plt.text(text_x, text_y_start - next(ge), 'v_x: {:.2f}m/s'.format(v_x))
+        plt.text(text_x, text_y_start - next(ge), 'exp_v: {:.2f}m/s'.format(self.expected_vs))
+        plt.text(text_x, text_y_start - next(ge), 'v_y: {:.2f}m/s'.format(v_y))
+        plt.text(text_x, text_y_start - next(ge), 'yaw_rate: {:.2f}rad/s'.format(r))
 
         if self.action is not None:
             steer, a_x = self.action[0, 0], self.action[0, 1]
-            plt.text(x - range_x / 2 - 20, range_y / 2 - 3 * 6,
-                     r'steer: {:.2f}rad (${:.2f}\degree$), a_x: {:.2f}m/s^2'.format(steer, steer * 180 / np.pi, a_x))
+            plt.text(text_x, text_y_start - next(ge), r'steer: {:.2f}rad (${:.2f}\degree$)'.format(steer, steer * 180 / np.pi))
+            plt.text(text_x, text_y_start - next(ge), r'a_x: {:.2f}m/s^2'.format(a_x))
 
         plt.axis([x - range_x / 2, x + range_x / 2, -range_y / 2, range_y / 2])
 
@@ -632,12 +701,25 @@ def test_path_tracking_env():
     env = PathTrackingEnv(num_agent=1)
     obs = env.reset()
     print(obs)
-    action = np.array([[0, 1]], np.float32)
+    action = np.array([[1, 1]], np.float32)
     for _ in range(1000):
         obs, reward, done, info = env.step(action)
         env.render()
         # env.reset()
 
 
+def test_environment():
+    env = PathTrackingEnv(num_agent=1)
+    model = EnvironmentModel()
+    obs = env.reset()
+    print(obs)
+    model.reset(obs)
+    # model.render()
+    actions = np.array([[0, -1]], np.float32)
+    for _ in range(1000):
+        model.rollout_out(actions)
+        model.render()
+
+
 if __name__ == '__main__':
-    test_path_tracking_env()
+    test_environment()

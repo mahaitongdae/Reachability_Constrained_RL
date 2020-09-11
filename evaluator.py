@@ -148,7 +148,7 @@ class Evaluator(object):
                     self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
                 self.writer.flush()
         if self.eval_times % self.args.eval_log_interval == 0:
-            logger.info('Evaluator_info: {}, {}'.format(self.get_stats(),n_info_dict))
+            logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), metrics))
         self.eval_times += 1
 
 

@@ -87,11 +87,11 @@ class UpdateThread(threading.Thread):
             with self.writer.as_default():
                 for key, val in learner_stats.items():
                     if not isinstance(val, list):
-                        tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
+                        tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val, step=self.iteration)
                     else:
                         assert isinstance(val, list)
                         for i, v in enumerate(val):
-                            tf.summary.scalar('optimizer/{}/{}'.format(key, i), v, step=self.iteration)
+                            tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
                 for key, val in self.optimizer_stats.items():
                     tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                 self.writer.flush()
