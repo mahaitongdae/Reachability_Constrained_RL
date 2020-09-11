@@ -61,25 +61,25 @@ def built_MPG_parser(version):
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--buffer_type', type=str, default='normal')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
-    parser.add_argument('--off_policy', default=True, action='store_true')
+    parser.add_argument('--off_policy', type=str, default=True)
 
     # env
     parser.add_argument("--env_id", default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=10)
+    parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
     parser.add_argument("--alg_name", default='MPG')
     parser.add_argument("--learner_version", default=version)
     parser.add_argument('--sample_num_in_learner', type=int, default=20)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--model_based', default=False)
+    parser.add_argument('--model_based', default=False, action='store_true')
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[i for i in range(0,20,2)])
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[i for i in range(0,20,2)])
-    parser.add_argument('--deriv_interval_policy', default=False)
+    parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     if version == 'MPG-v2':
         parser.add_argument("--eta", type=float, default=0.2)
-    parser.add_argument("--gamma", type=float, default=0.98)
+    parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
 
     # worker
@@ -102,8 +102,8 @@ def built_MPG_parser(version):
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 20000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-4, 20000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-4, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -124,7 +124,7 @@ def built_MPG_parser(version):
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=300000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=3)
     parser.add_argument('--num_buffers', type=int, default=2)
