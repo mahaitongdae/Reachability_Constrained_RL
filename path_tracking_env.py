@@ -410,11 +410,6 @@ class EnvironmentModel(object):  # all tensors
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
             steer_norm, a_xs_norm = actions[:, 0], actions[:, 1]
-
-            # v_xs = self.obses[:, 0]
-            # max_decels = np.min(np.stack([v_xs / 3, 3 * np.ones_like(v_xs)], 1), 1)
-            # actions = np.stack([steer_norm * 1.2 * np.pi / 9, (a_xs_norm + 1.) / 2. * (3. + max_decels) - max_decels], 1)
-
             actions = tf.stack([steer_norm * 1.2 * np.pi / 9, a_xs_norm * 3.], 1)
             self.actions = actions
             rewards = self.vehicle_dynamics.compute_rewards(self.veh_states, actions)

@@ -147,7 +147,6 @@ class VehicleDynamics(object):
 
     def f_xu(self, states, actions, tau):  # states and actions are tensors, [[], [], ...]
         v_x, v_y, r, y, phi, x = states[:, 0], states[:, 1], states[:, 2], states[:, 3], states[:, 4], states[:, 5]
-        phi = phi * np.pi / 180.
         steer, a_x = actions[:, 0], actions[:, 1]
         C_f = self.vehicle_params['C_f']
         C_r = self.vehicle_params['C_r']
@@ -220,6 +219,9 @@ class ModelPredictiveControl:
         veh_states, _ = self.vehicle_dynamics.prediction(obses[:, :6], actions, self.base_frequency)
         v_xs, v_ys, rs, delta_ys, delta_phis, xs = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], \
                                                    veh_states[:, 3], veh_states[:, 4], veh_states[:, 5]
+        v_xs = np.clip(v_xs, 1, 35)
+        delta_phis = np.where(delta_phis > np.pi, delta_phis - 2 * np.pi, delta_phis)
+        delta_phis = np.where(delta_phis <= -np.pi, delta_phis + 2 * np.pi, delta_phis)
         lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis, xs] + \
                          [delta_ys for _ in range(self.num_future_data)]
         return np.stack(lists_to_stack, axis=1)
