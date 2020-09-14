@@ -162,9 +162,9 @@ def test_trained_model(model_dir, ppc_params_dir, iteration):
     return evaluator.metrics(1000, render=False, reset=False)
 
 def test_evaluator():
-    from train_script import built_offpolicy_mb_parser
+    from train_script import built_SAC_parser
     from policy import PolicyWithQs
-    args = built_offpolicy_mb_parser()
+    args = built_SAC_parser()
     evaluator = Evaluator(PolicyWithQs, args.env_id, args)
     evaluator.run_evaluation(3)
 

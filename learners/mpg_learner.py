@@ -31,6 +31,9 @@ class MPGLearner(object):
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
+        self.counter = 0
+        self.num_batch_reuse = self.args.num_batch_reuse
+        self.counter += 1
         self.policy_for_rollout = policy_cls(obs_space, act_space, self.args)
         self.M = self.args.M
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
@@ -39,7 +42,7 @@ class MPGLearner(object):
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.batch_size)
+                                         gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
         self.target_timer = TimerStat()
@@ -62,7 +65,7 @@ class MPGLearner(object):
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32),
                            }
-        maybe_target, td_error = self.compute_clipped_double_q_target()
+        maybe_target = self.compute_clipped_double_q_target()
 
         with self.target_timer:
             if self.args.learner_version == 'MPG-v1':
@@ -72,14 +75,11 @@ class MPGLearner(object):
             else:
                 raise ValueError
 
-        self.batch_data.update(dict(batch_targets=target,
-                                    ))
-        self.info_for_buffer.update(dict(td_error=td_error,
-                                         rb=rb,
-                                         indexes=indexes))
-
-        # print(self.batch_data['batch_obs'].shape)  # batch_size * obs_dim
-        # print(self.batch_data['batch_actions'].shape)  # batch_size * act_dim
+        self.batch_data.update(dict(batch_targets=target,))
+        if self.args.buffer_type != 'normal':
+            self.info_for_buffer.update(dict(td_error=self.compute_td_error(),
+                                             rb=rb,
+                                             indexes=indexes))
 
     def sample(self, start_obs, start_action):
         batch_data = []
@@ -109,8 +109,18 @@ class MPGLearner(object):
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
         clipped_double_q_target = processed_rewards + self.args.gamma * np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)
+        return clipped_double_q_target
+
+    def compute_td_error(self):
+        processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
+        processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
+        processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+
+        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()[:, 0]
+        target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
         td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
-        return clipped_double_q_target, td_error
+        return td_error
 
     def compute_n_step_target(self):
         rollouts = self.sample(self.batch_data['batch_obs'], self.batch_data['batch_actions'])
@@ -183,15 +193,12 @@ class MPGLearner(object):
         return self.tf.stop_gradient(selected_model_returns_flatten)
 
     def model_rollout_for_policy_update(self, start_obses):
-        processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
-        start_actions, _ = self.policy_with_value.compute_action(processed_start_obses)
-        # judge_is_nan(start_actions)
-
         max_num_rollout = max(self.num_rollout_list_for_policy_update)
 
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
         processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-        actions_tile = self.tf.tile(start_actions, [self.M, 1])
+        actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
+
         processed_obses_tile_list = [processed_obses_tile]
         actions_tile_list = [actions_tile]
         rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
@@ -313,7 +320,11 @@ class MPGLearner(object):
         return bias_list
 
     def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
-        self.get_batch_data(batch_data, rb, indexes)
+        if self.counter % self.num_batch_reuse == 0:
+            self.get_batch_data(batch_data, rb, indexes)
+        self.counter += 1
+        if self.args.buffer_type != 'normal':
+            self.info_for_buffer.update(dict(td_error=self.compute_td_error()))
         mb_obs = self.batch_data['batch_obs']
         mb_actions = self.batch_data['batch_actions']
         mb_targets = self.batch_data['batch_targets']

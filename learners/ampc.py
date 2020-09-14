@@ -40,7 +40,7 @@ class AMPCLearner(object):
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.batch_size)
+                                         gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
@@ -74,6 +74,7 @@ class AMPCLearner(object):
         self.preprocessor.set_params(params)
 
     def model_rollout_for_policy_update(self, start_obses):
+        start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses

@@ -66,16 +66,22 @@ class Preprocessor(object):
 
         self.gamma = gamma
         self.epsilon = epsilon
-        num_agent = kwargs['num_agent']
-        self.ret = np.zeros(num_agent)
-
+        self.num_agent = None
+        if 'num_agent' in kwargs.keys():
+            self.ret = np.zeros(kwargs['num_agent'])
+            self.num_agent = kwargs['num_agent']
+        else:
+            self.ret = 0
 
     def process_rew(self, rew, done):
         if self.rew_ptype == 'normalize':
             self.ret = self.ret * self.gamma + rew
             self.ret_rms.update(np.array([self.ret]))
             rew = np.clip(rew / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-            self.ret = np.where(done == 1, np.zeros(self.ret), self.ret)
+            if self.num_agent is not None:
+                self.ret = np.where(done == 1, np.zeros(self.ret), self.ret)
+            else:
+                self.ret = 0 if done else self.ret
 
             return rew
         elif self.rew_ptype == 'scale':

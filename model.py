@@ -28,6 +28,30 @@ class MLPNet(Model):
         x = self.outputs(x)
         return x
 
+
+class AlphaModel(Model):
+    def __init__(self, **kwargs):
+        super(AlphaModel, self).__init__(name=kwargs['name'])
+        self.log_alpha = tf.Variable(0., dtype=tf.float32)
+
+
+def test_alpha():
+    import numpy as np
+    alpha_model = AlphaModel(name='alpha')
+    print(alpha_model.trainable_weights)
+    print(alpha_model.get_weights())
+    print(alpha_model.alpha)
+    b = alpha_model.alpha
+    alpha_model.set_weights(np.array([3]))
+    print(b)
+
+
+    with tf.GradientTape() as tape:
+        b = 3.*alpha_model.alpha
+    print(tape.gradient(b, alpha_model.trainable_weights[0]))
+
+
+
 def test_attrib():
     import numpy as np
 
@@ -56,6 +80,7 @@ def test_clone():
     s = tf.keras.models.clone_model(p)
     print(s)
 
+
 def test_out():
     import numpy as np
     Qs = tuple(MLPNet(8, 2, 128, 1, name='Q' + str(i)) for i in range(2))
@@ -69,6 +94,7 @@ def test_memory():
     Q = MLPNet(8, 2, 128, 1)
     time.sleep(111111)
 
+
 def test_memory2():
     import time
     model = tf.keras.Sequential([tf.keras.layers.Dense(10, input_shape=(30,), activation='relu'),
@@ -78,6 +104,5 @@ def test_memory2():
     time.sleep(10000)
 
 
-
 if __name__ == '__main__':
-    test_memory2()
+    test_alpha()

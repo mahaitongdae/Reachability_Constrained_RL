@@ -11,18 +11,19 @@ import numpy as np
 from gym import spaces
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 
-from model import MLPNet
+from model import MLPNet, AlphaModel
 
 
 class PolicyWithQs(object):
     import tensorflow as tf
+    import tensorflow_probability as tfp
+    tfd = tfp.distributions
 
     def __init__(self, obs_space, act_space, args):
         self.args = args
         assert isinstance(obs_space, spaces.Box)
         assert isinstance(act_space, spaces.Box)
         obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
-        self.act_dist_cls = GuassianDistribution
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
         n_hiddens, n_units = self.args.num_hidden_layers, self.args.num_hidden_units
         self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy',
@@ -63,6 +64,13 @@ class PolicyWithQs(object):
                 self.models = (self.Q1, self.policy,)
                 self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
 
+        if self.args.alpha == 'auto':
+            self.alpha_model = AlphaModel(name='alpha')
+            self.alpha_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
+                                         *self.args.alpha_lr_schedule), name='alpha_adam_opt')
+            self.models += (self.alpha_model,)
+            self.optimizers += (self.alpha_optimizer,)
+
     def save_weights(self, save_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
         target_model_pairs = [(target_model.name, target_model) for target_model in self.target_models]
@@ -100,8 +108,9 @@ class PolicyWithQs(object):
         else:
             if self.args.double_Q:
                 q_weights_len = len(self.Q1.trainable_weights)
+                policy_weights_len = len(self.policy.trainable_weights)
                 q1_grad, q2_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:2*q_weights_len], \
-                                                grads[2*q_weights_len:]
+                                                grads[2*q_weights_len:2*q_weights_len+policy_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
                 if iteration % self.args.delay_update == 0:
@@ -109,12 +118,19 @@ class PolicyWithQs(object):
                     self.update_policy_target()
                     self.update_Q1_target()
                     self.update_Q2_target()
+                    if self.args.alpha == 'auto':
+                        alpha_grad = grads[-1:]
+                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
             else:
                 q_weights_len = len(self.Q1.trainable_weights)
-                q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:]
+                policy_weights_len = len(self.policy.trainable_weights)
+                q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:q_weights_len+policy_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 if iteration % self.args.delay_update == 0:
                     self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+                    if self.args.alpha == 'auto':
+                        alpha_grad = grads[-1:]
+                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
                     if self.args.target:
                         self.update_policy_target()
                         self.update_Q1_target()
@@ -149,34 +165,23 @@ class PolicyWithQs(object):
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
-            act_dist = self.act_dist_cls(logits)
-            action = act_dist.mode() if self.args.deterministic_policy else act_dist.sample()
-            neglogp = act_dist.neglogp(action)
-            return action, neglogp
+            return self._logits2action(logits)
 
     def compute_target_action(self, obs):
         with self.tf.name_scope('compute_target_action') as scope:
             logits = self.policy_target(obs)
-            act_dist = self.act_dist_cls(logits)
-            action = act_dist.mode() if self.args.deterministic_policy else act_dist.sample()
-            neglogp = act_dist.neglogp(action)
-            return action, neglogp
+            return self._logits2action(logits)
 
-    def compute_logits(self, obs):
-        return self.policy(obs)
-
-    def compute_neglogp(self, obs, act):
-        logits = self.policy(obs)
-        act_dist = self.act_dist_cls(logits)
-        return act_dist.neglogp(act)
-
-    def compute_target_logits(self, obs):
-        return self.policy_target(obs)
-
-    def compute_target_neglogp(self, obs, act):
-        logits = self.policy_target(obs)
-        act_dist = self.act_dist_cls(logits)
-        return act_dist.neglogp(act)
+    def _logits2action(self, logits):
+        mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+        act_dist = self.tfd.Normal(mean, self.tf.exp(log_std))
+        action = act_dist.mean() if self.args.deterministic_policy else act_dist.sample()
+        logp = 0.
+        if not self.args.deterministic_policy:
+            logps = act_dist.log_prob(action)
+            action = self.tf.tanh(action)
+            logp = self.tf.reduce_sum(logps - self.tf.math.log(1 - self.tf.square(action)) + 1e-6, axis=-1)
+        return action, logp
 
     def compute_Q1(self, obs, act):
         with self.tf.name_scope('compute_Q1') as scope:
@@ -198,74 +203,9 @@ class PolicyWithQs(object):
             Q_inputs = self.tf.concat([obs, act], axis=-1)
             return self.Q2_target(Q_inputs)
 
-
-class GuassianDistribution(object):
-    import tensorflow as tf
-
-    def __init__(self, logits):
-        self.mean, self.logstd = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        self.std = self.tf.exp(self.logstd)
-
-    def mode(self):
-        return self.mean
-
-    def sample(self):
-        return self.mean + self.std * self.tf.random.normal(self.tf.shape(self.mean))
-
-    def neglogp(self, sample):
-        return 0.5 * self.tf.reduce_sum(self.tf.square((sample - self.mean) / self.std), axis=-1) \
-               + 0.5 * self.tf.math.log(2.0 * np.pi) * self.tf.cast(self.tf.shape(sample)[-1], self.tf.float32) \
-               + self.tf.reduce_sum(self.logstd, axis=-1)
-
-    def entropy(self):
-        return self.tf.reduce_sum(self.logstd + 0.5 * self.tf.math.log(2.0 * np.pi * np.e), axis=-1)
-
-    def kl_divergence(self, other_gauss):  # KL(this_dist, other_dist)
-        assert isinstance(other_gauss, GuassianDistribution)
-        return self.tf.reduce_sum(other_gauss.logstd - self.logstd + (
-                self.tf.square(self.std) + self.tf.square(self.mean - other_gauss.mean)) / (
-                                          2.0 * self.tf.square(other_gauss.std)) - 0.5, axis=-1)
-
-
-class DiscreteDistribution(object):
-    import tensorflow as tf
-
-    def __init__(self, logits):
-        self.logits = logits
-
-    def mode(self):
-        return self.tf.argmax(self.logits, axis=-1)
-
     @property
-    def mean(self):
-        return self.tf.nn.softmax(self.logits)
-
-    def neglogp(self, x):
-        x = self.tf.one_hot(x, self.logits.get_shape().as_list()[-1])
-        return self.tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(
-            logits=self.logits,
-            labels=x)
-
-    def kl(self, other):
-        a0 = self.logits - self.tf.reduce_max(self.logits, axis=-1, keepdims=True)
-        a1 = other.logits - self.tf.reduce_max(other.logits, axis=-1, keepdims=True)
-        ea0 = self.tf.exp(a0)
-        ea1 = self.tf.exp(a1)
-        z0 = self.tf.reduce_sum(ea0, axis=-1, keepdims=True)
-        z1 = self.tf.reduce_sum(ea1, axis=-1, keepdims=True)
-        p0 = ea0 / z0
-        return self.tf.reduce_sum(p0 * (a0 - self.tf.math.log(z0) - a1 + self.tf.math.log(z1)), axis=-1)
-
-    def entropy(self):
-        a0 = self.logits - self.tf.reduce_max(self.logits, axis=-1, keepdims=True)
-        ea0 = self.tf.exp(a0)
-        z0 = self.tf.reduce_sum(ea0, axis=-1, keepdims=True)
-        p0 = ea0 / z0
-        return self.tf.reduce_sum(p0 * (self.tf.math.log(z0) - a0), axis=-1)
-
-    def sample(self):
-        u = self.tf.random.uniform(self.tf.shape(self.logits), dtype=self.logits.dtype)
-        return self.tf.argmax(self.logits - self.tf.math.log(-self.tf.math.log(u)), axis=-1)
+    def log_alpha(self):
+        return self.alpha_model.log_alpha
 
 
 def test_policy():
