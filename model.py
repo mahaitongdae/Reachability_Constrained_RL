@@ -45,11 +45,9 @@ def test_alpha():
     alpha_model.set_weights(np.array([3]))
     print(b)
 
-
     with tf.GradientTape() as tape:
         b = 3.*alpha_model.alpha
     print(tape.gradient(b, alpha_model.trainable_weights[0]))
-
 
 
 def test_attrib():

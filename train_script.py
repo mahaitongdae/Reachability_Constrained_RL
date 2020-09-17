@@ -84,6 +84,7 @@ def built_AMPC_parser():
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument("--gamma", type=float, default=1.)
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--alpha", default=None)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -93,21 +94,24 @@ def built_AMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument("--num_eval_episode", type=int, default=2)
+    parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=True, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
@@ -124,14 +128,14 @@ def built_AMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=100000)
+    parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=2000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -183,15 +187,16 @@ def built_MPG_parser(version):
     parser.add_argument("--learner_version", default=version)
     parser.add_argument('--sample_num_in_learner', type=int, default=20)
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--model_based', default=False, action='store_true')
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 5, 10, 15, 20])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 5, 10, 15, 20] if version == 'MPG-v1' else [])
     parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     if version == 'MPG-v2':
         parser.add_argument("--eta", type=float, default=0.2)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=3)
-    parser.add_argument("--num_batch_reuse", type=int, default=1)
+    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--num_batch_reuse", type=int, default=10)
+    parser.add_argument("--w_moving_rate", type=float, default=0.01 if version == 'MPG-v1' else 1.)
+    parser.add_argument("--alpha", default=None)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -201,7 +206,7 @@ def built_MPG_parser(version):
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
@@ -209,13 +214,16 @@ def built_MPG_parser(version):
     # tester and evaluator
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -232,18 +240,18 @@ def built_MPG_parser(version):
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.1)
+    parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=100000)
+    parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=3)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=4)
+    parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=3000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -307,21 +315,24 @@ def built_NADP_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument("--num_eval_episode", type=int, default=2)
+    parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -330,6 +341,7 @@ def built_NADP_parser():
     parser.add_argument("--double_Q", default=False, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
     parser.add_argument("--policy_out_activation", type=str, default='tanh')
+    parser.add_argument("--alpha", default=None)
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
@@ -338,18 +350,18 @@ def built_NADP_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.1)
+    parser.add_argument("--reward_scale_factor", type=float, default=1)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=100000)
+    parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=3)
+    parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=3000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -402,6 +414,7 @@ def built_NDPG_parser():
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
     parser.add_argument("--num_batch_reuse", type=int, default=10)
+    parser.add_argument("--alpha", default=None)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -411,21 +424,24 @@ def built_NDPG_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument("--num_eval_episode", type=int, default=2)
+    parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -442,18 +458,18 @@ def built_NDPG_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.1)
+    parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=100000)
+    parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=5)
+    parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=3000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -503,7 +519,7 @@ def built_TD3_parser():
     # learner
     parser.add_argument("--alg_name", default='TD3')
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=3)
+    parser.add_argument("--gradient_clip_norm", type=float, default=10)
     parser.add_argument("--policy_smoothing_sigma", type=float, default=0.2)
     parser.add_argument("--policy_smoothing_clip", type=float, default=0.5)
     parser.add_argument("--num_batch_reuse", type=int, default=1)
@@ -516,7 +532,7 @@ def built_TD3_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
@@ -524,8 +540,11 @@ def built_TD3_parser():
     # tester and evaluator
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
@@ -539,6 +558,7 @@ def built_TD3_parser():
     parser.add_argument("--double_Q", default=True, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
     parser.add_argument("--policy_out_activation", type=str, default='tanh')
+    parser.add_argument("--alpha", default=None)
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
@@ -547,18 +567,18 @@ def built_TD3_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
+    parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=3)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=4)
+    parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=3000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -623,7 +643,7 @@ def built_SAC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
@@ -631,8 +651,11 @@ def built_SAC_parser():
     # tester and evaluator
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
+    parser.add_argument("--fixed_steps", type=int, default=200)
     parser.add_argument("--eval_render", type=bool, default=True)
+    num_eval_episode = parser.parse_args().num_eval_episode
+    parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
+
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
@@ -656,18 +679,18 @@ def built_SAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
+    parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=3)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=4)
+    parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=3000)
-    parser.add_argument("--save_interval", type=int, default=3000)
+    parser.add_argument("--eval_interval", type=int, default=4000)
+    parser.add_argument("--save_interval", type=int, default=4000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
@@ -731,4 +754,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('SAC')
+    main('TD3')

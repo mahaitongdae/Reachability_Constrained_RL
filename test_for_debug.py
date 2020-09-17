@@ -164,6 +164,11 @@ def test_gym():
     a = 1
 
 
+def test_ray_init():
+    ray.init()
+    ray.init()
+
+
 if __name__ == '__main__':
-    test_gym()
+    test_ray_init()
 

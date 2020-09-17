@@ -1,10 +1,13 @@
 from abc import ABC
+from collections import deque
+
 import gym
-from collections import OrderedDict
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from collections import deque
+import tensorflow_probability as tfp
+
+tfd = tfp.distributions
 
 
 def shift_coordination(orig_x, orig_y, coordi_shift_x, coordi_shift_y):
@@ -87,17 +90,28 @@ class VehicleDynamics(object):
         miu_r = tf.sqrt(tf.square(miu * F_zr) - tf.square(F_xr)) / F_zr
         alpha_f = tf.atan((v_y + a * r) / v_x) - steer
         alpha_r = tf.atan((v_y - b * r) / v_x)
-
-        next_state = [v_x + tau * (a_x + v_y * r),
-                      (mass * v_y * v_x + tau * (
+        if self.if_model:
+            next_state = [v_x + tau * (a_x + v_y * r),
+                          (mass * v_y * v_x + tau * (
                                   a * C_f - b * C_r) * r - tau * C_f * steer * v_x - tau * mass * tf.square(
-                          v_x) * r) / (mass * v_x - tau * (C_f + C_r)),
-                      (-I_z * r * v_x - tau * (a * C_f - b * C_r) * v_y + tau * a * C_f * steer * v_x) / (
+                              v_x) * r) / (mass * v_x - tau * (C_f + C_r)),
+                          (-I_z * r * v_x - tau * (a * C_f - b * C_r) * v_y + tau * a * C_f * steer * v_x) / (
                                   tau * (tf.square(a) * C_f + tf.square(b) * C_r) - I_z * v_x),
-                      delta_y + tau * (v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi)),
-                      delta_phi + tau * r,
-                      x + tau * (v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)),
-                      ]
+                          delta_y + tau * (v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi)) + tfd.Normal(tf.ones_like(v_x), 0.01).sample(),
+                          delta_phi + tau * r,
+                          x + tau * (v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)),
+                          ]
+        else:
+            next_state = [v_x + tau * (a_x + v_y * r),
+                          (mass * v_y * v_x + tau * (
+                                      a * C_f - b * C_r) * r - tau * C_f * steer * v_x - tau * mass * tf.square(
+                              v_x) * r) / (mass * v_x - tau * (C_f + C_r)),
+                          (-I_z * r * v_x - tau * (a * C_f - b * C_r) * v_y + tau * a * C_f * steer * v_x) / (
+                                      tau * (tf.square(a) * C_f + tf.square(b) * C_r) - I_z * v_x),
+                          delta_y + tau * (v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi)),
+                          delta_phi + tau * r,
+                          x + tau * (v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)),
+                          ]
 
         alpha_f_bounds, alpha_r_bounds = 3 * miu_f * F_zf / C_f, 3 * miu_r * F_zr / C_r
         r_bounds = miu_r * g / tf.abs(v_x)
@@ -161,7 +175,7 @@ class VehicleDynamics(object):
             punish_a_x = -tf.square(a_xs)
 
             rewards = 0.01 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + \
-                      0.05 * punish_steer + 0.0005 * punish_a_x
+                      5 * punish_steer + 0.05 * punish_a_x
 
         return rewards
 
@@ -696,7 +710,7 @@ def test_path_tracking_env():
     env = PathTrackingEnv(num_agent=1)
     obs = env.reset()
     print(obs)
-    action = np.array([[1, 1]], np.float32)
+    action = np.array([[-1, 0]], np.float32)
     for _ in range(1000):
         obs, reward, done, info = env.step(action)
         env.render()
@@ -710,7 +724,7 @@ def test_environment():
     print(obs)
     model.reset(obs)
     # model.render()
-    actions = np.array([[0, -1]], np.float32)
+    actions = np.array([[0, 0]], np.float32)
     for _ in range(1000):
         model.rollout_out(actions)
         model.render()
