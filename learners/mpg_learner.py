@@ -48,9 +48,7 @@ class MPGLearner(object):
         self.target_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
-        self.reduced_num_minibatch = 4
         self.w_list_old = 1/len(self.num_rollout_list_for_policy_update)*np.ones(len(self.num_rollout_list_for_policy_update))
-        assert self.batch_size % self.reduced_num_minibatch == 0
 
     def get_stats(self):
         return self.stats
@@ -232,10 +230,7 @@ class MPGLearner(object):
             #        [[timen+traj0], [timen+traj1], ..., [timen+trajn]],
             #        ]
             all_model_returns = self.tf.reduce_mean(final, axis=1)
-        interval = int(self.batch_size / self.reduced_num_minibatch)
-        all_reduced_model_returns = self.tf.stack(
-            [self.tf.reduce_mean(all_model_returns[:, i * interval:(i + 1) * interval], axis=-1) for i in
-             range(self.reduced_num_minibatch)], axis=1)
+        all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=1)
 
         selected_model_returns, minus_selected_reduced_model_returns = [], []
         for num_rollout in self.num_rollout_list_for_policy_update:
@@ -243,9 +238,9 @@ class MPGLearner(object):
             minus_selected_reduced_model_returns.append(-all_reduced_model_returns[num_rollout])
 
         selected_model_returns_flatten = self.tf.concat(selected_model_returns, 0)
-        minus_selected_reduced_model_returns_flatten = self.tf.concat(minus_selected_reduced_model_returns, 0)
+        minus_selected_reduced_model_returns = self.tf.stack(minus_selected_reduced_model_returns, 0)
         value_mean = self.tf.reduce_mean(all_model_returns[0])
-        return selected_model_returns_flatten, minus_selected_reduced_model_returns_flatten, value_mean
+        return selected_model_returns_flatten, minus_selected_reduced_model_returns, value_mean
 
     @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
@@ -348,7 +343,6 @@ class MPGLearner(object):
             jaco, value_mean = self.policy_forward_and_backward(mb_obs)
 
         bias_list = []
-        var_list = []
         if self.args.learner_version == 'MPG-v1':
             model_bias_list = [a.numpy() for a in model_bias_list]
             bias_min = min(model_bias_list)
@@ -360,35 +354,21 @@ class MPGLearner(object):
         final_policy_gradient = []
 
         for rollout_index in range(len(self.num_rollout_list_for_policy_update)):
-            jaco_for_this_rollout = list(map(lambda x: x[rollout_index * self.reduced_num_minibatch:
-                                                         (rollout_index + 1) * self.reduced_num_minibatch], jaco))
-
-            gradient_std = []
-            gradient_mean = []
-            var = 0.
-            for x in jaco_for_this_rollout:
-                gradient_std.append(self.tf.math.reduce_std(x, 0))
-                gradient_mean.append(self.tf.reduce_mean(x, 0))
-                var += self.tf.reduce_mean(self.tf.square(gradient_std[-1])).numpy()
-
-            policy_gradient_list.append(gradient_mean)
-            var_list.append(var)
+            pg_for_this_rollout = list(map(lambda x: x[rollout_index], jaco))
+            policy_gradient_list.append(pg_for_this_rollout)
 
         epsilon = 1e-8
         bias_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1. / (x + epsilon), bias_list))).numpy()
-        var_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1. / (x + epsilon), var_list))).numpy()
 
         w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / bias_inverse_sum, bias_list))
-        w_var_list = list(map(lambda x: (1. / (x + epsilon)) / var_inverse_sum, var_list))
 
-        w_list_new = list(map(lambda x, y: 0.5*x + 0.5*y, w_bias_list, w_var_list))
+        w_list_new = w_bias_list
         w_list = list(self.w_list_old + self.args.w_moving_rate * (np.array(w_list_new)-self.w_list_old))
         self.w_list_old = np.array(w_list)
 
         for i in range(len(policy_gradient_list[0])):
             tmp = 0
             for j in range(len(policy_gradient_list)):
-                # judge_is_nan(policy_gradient_list[j])
                 tmp += w_list[j] * policy_gradient_list[j][i]
             final_policy_gradient.append(tmp)
 
@@ -403,9 +383,7 @@ class MPGLearner(object):
             value_mean=value_mean.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
             num_rollout_list=self.num_rollout_list_for_policy_update,
-            var_list=var_list,
             bias_list=bias_list,
-            w_var_list=w_var_list,
             w_bias_list=w_bias_list,
             w_list_new=w_list_new,
             w_list=w_list
