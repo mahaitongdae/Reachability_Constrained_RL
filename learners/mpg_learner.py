@@ -8,6 +8,7 @@
 # =====================================
 
 import logging
+import sys
 
 import gym
 import numpy as np
@@ -293,7 +294,7 @@ class MPGLearner(object):
             # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
             #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
             #  ...]
-            return model_returns, minus_reduced_model_returns, jaco, value_mean
+            return jaco, value_mean
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -344,7 +345,7 @@ class MPGLearner(object):
 
         with self.policy_gradient_timer:
             self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-            model_returns, minus_reduced_model_returns, jaco, value_mean = self.policy_forward_and_backward(mb_obs)
+            jaco, value_mean = self.policy_forward_and_backward(mb_obs)
 
         bias_list = []
         var_list = []

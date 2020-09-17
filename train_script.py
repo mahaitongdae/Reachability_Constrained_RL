@@ -83,7 +83,7 @@ def built_AMPC_parser():
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument("--gamma", type=float, default=1.)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--alpha", default=None)
 
     # worker
@@ -124,7 +124,7 @@ def built_AMPC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -193,7 +193,7 @@ def built_MPG_parser(version):
     if version == 'MPG-v2':
         parser.add_argument("--eta", type=float, default=0.2)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10)
     parser.add_argument("--w_moving_rate", type=float, default=0.01 if version == 'MPG-v1' else 1.)
     parser.add_argument("--alpha", default=None)
@@ -240,7 +240,7 @@ def built_MPG_parser(version):
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -304,7 +304,7 @@ def built_NADP_parser():
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[25])
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=1)
 
     # worker
@@ -350,7 +350,7 @@ def built_NADP_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -412,7 +412,7 @@ def built_NDPG_parser():
     parser.add_argument("--alg_name", default='NDPG')
     parser.add_argument('--sample_num_in_learner', type=int, default=20)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10)
     parser.add_argument("--alpha", default=None)
 
@@ -458,7 +458,7 @@ def built_NDPG_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -519,7 +519,7 @@ def built_TD3_parser():
     # learner
     parser.add_argument("--alg_name", default='TD3')
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--policy_smoothing_sigma", type=float, default=0.2)
     parser.add_argument("--policy_smoothing_clip", type=float, default=0.5)
     parser.add_argument("--num_batch_reuse", type=int, default=1)
@@ -567,7 +567,7 @@ def built_TD3_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -628,7 +628,7 @@ def built_SAC_parser():
     # learner
     parser.add_argument("--alg_name", default='SAC')
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
+    parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--alpha", default='auto')
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
@@ -679,7 +679,7 @@ def built_SAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -754,4 +754,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('TD3')
+    main('MPG-v1')
