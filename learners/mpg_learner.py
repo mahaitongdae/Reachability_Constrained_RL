@@ -48,7 +48,9 @@ class MPGLearner(object):
         self.target_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
-        self.w_list_old = 1/len(self.num_rollout_list_for_policy_update)*np.ones(len(self.num_rollout_list_for_policy_update))
+        self.w_list_old = np.array([0.]+[1./(len(self.num_rollout_list_for_policy_update)-1)
+                                    for _ in range(len(self.num_rollout_list_for_policy_update)-1)], dtype=np.float32)\
+
 
     def get_stats(self):
         return self.stats
@@ -306,6 +308,7 @@ class MPGLearner(object):
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
     def rule_based_bias(self, ite, total_ite, eta):
+        ite = np.clip(ite, 0, total_ite)
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
@@ -346,9 +349,9 @@ class MPGLearner(object):
         if self.args.learner_version == 'MPG-v1':
             model_bias_list = [a.numpy() for a in model_bias_list]
             bias_min = min(model_bias_list)
-            bias_list = [a-bias_min+rewards_mean for a in model_bias_list]
+            bias_list = [a-bias_min+rewards_mean/10. for a in model_bias_list]
         elif self.args.learner_version == 'MPG-v2':
-            bias_list = self.rule_based_bias(iteration, self.args.max_updated_steps, self.args.eta)
+            bias_list = self.rule_based_bias(iteration, self.args.rule_based_bias_total_ite, self.args.eta)
 
         policy_gradient_list = []
         final_policy_gradient = []
@@ -405,5 +408,28 @@ class MPGLearner(object):
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
 
+def test_rule_based_weights():
+    import matplotlib.pyplot as plt
+    num_rollout_list_for_policy_update = [0, 12, 25]
+    def rule_based_bias(ite, total_ite, eta):
+        start = 1 - eta
+        slope = 2 * eta / total_ite
+        lam = start + slope * ite
+        print(lam)
+        assert 0 < lam < 2
+        if lam < 1:
+            bias_list = [np.power(lam, i) for i in num_rollout_list_for_policy_update]
+        else:
+            max_index = max(num_rollout_list_for_policy_update)
+            bias_list = [np.power(2-lam, max_index-i) for i in num_rollout_list_for_policy_update]
+        bias_inverse_sum = sum(list(map(lambda x: 1. / (x + 1e-8), bias_list)))
+        w_bias_list = list(map(lambda x: (1. / (x + 1e-8)) / bias_inverse_sum, bias_list))
+        return bias_list, w_bias_list
+
+    bias_list, w_bias_list = rule_based_bias(0, 10000, 0.2)
+    plt.plot(w_bias_list)
+    plt.show()
+
+
 if __name__ == '__main__':
-    pass
+    test_rule_based_weights()
