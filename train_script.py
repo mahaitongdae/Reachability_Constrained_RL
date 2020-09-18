@@ -192,7 +192,7 @@ def built_MPG_parser(version):
     parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     if version == 'MPG-v2':
         parser.add_argument("--eta", type=float, default=0.2)
-        parser.add_argument("--rule_based_bias_total_ite", type=int, default=10000)
+        parser.add_argument("--rule_based_bias_total_ite", type=int, default=100000)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
@@ -247,9 +247,9 @@ def built_MPG_parser(version):
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=200000)
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=4)
-    parser.add_argument('--num_buffers', type=int, default=1)
+    parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=15)
+    parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument("--eval_interval", type=int, default=4000)
@@ -756,4 +756,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('AMPC')
+    main('MPG-v1')
