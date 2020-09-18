@@ -185,7 +185,7 @@ def built_MPG_parser(version):
     # learner
     parser.add_argument("--alg_name", default='MPG')
     parser.add_argument("--learner_version", default=version)
-    parser.add_argument('--sample_num_in_learner', type=int, default=20)
+    parser.add_argument('--sample_num_in_learner', type=int, default=25)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 25])
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 25] if version == 'MPG-v1' else [])
@@ -194,10 +194,10 @@ def built_MPG_parser(version):
         parser.add_argument("--eta", type=float, default=0.2)
         parser.add_argument("--rule_based_bias_total_ite", type=int, default=10000)
 
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10)
-    parser.add_argument("--w_moving_rate", type=float, default=0.001 if version == 'MPG-v1' else 1.)
+    parser.add_argument("--w_moving_rate", type=float, default=0.005 if version == 'MPG-v1' else 1.)
     parser.add_argument("--alpha", default=None)
 
     # worker
@@ -305,7 +305,7 @@ def built_NADP_parser():
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[25])
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=1)
 
@@ -412,8 +412,8 @@ def built_NDPG_parser():
 
     # learner
     parser.add_argument("--alg_name", default='NDPG')
-    parser.add_argument('--sample_num_in_learner', type=int, default=20)
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument('--sample_num_in_learner', type=int, default=25)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10)
     parser.add_argument("--alpha", default=None)
@@ -520,7 +520,7 @@ def built_TD3_parser():
 
     # learner
     parser.add_argument("--alg_name", default='TD3')
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--policy_smoothing_sigma", type=float, default=0.2)
     parser.add_argument("--policy_smoothing_clip", type=float, default=0.5)
@@ -629,7 +629,7 @@ def built_SAC_parser():
 
     # learner
     parser.add_argument("--alg_name", default='SAC')
-    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--alpha", default='auto')
     alpha = parser.parse_args().alpha
@@ -756,4 +756,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v1')
+    main('AMPC')
