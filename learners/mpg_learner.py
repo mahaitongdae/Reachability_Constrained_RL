@@ -410,12 +410,12 @@ class MPGLearner(object):
 
 def test_rule_based_weights():
     import matplotlib.pyplot as plt
-    num_rollout_list_for_policy_update = [0, 12, 25]
+    num_rollout_list_for_policy_update = [0, 25]
+
     def rule_based_bias(ite, total_ite, eta):
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
-        print(lam)
         assert 0 < lam < 2
         if lam < 1:
             bias_list = [np.power(lam, i) for i in num_rollout_list_for_policy_update]
@@ -426,8 +426,19 @@ def test_rule_based_weights():
         w_bias_list = list(map(lambda x: (1. / (x + 1e-8)) / bias_inverse_sum, bias_list))
         return bias_list, w_bias_list
 
-    bias_list, w_bias_list = rule_based_bias(0, 10000, 0.2)
-    plt.plot(w_bias_list)
+    ite = list(range(10000))
+    first_elem_bias1 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.1)[0][0], ite))
+    first_elem_weights1 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.1)[1][0], ite))
+    print(first_elem_weights1[0])
+    first_elem_bias2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[0][0], ite))
+    first_elem_weights2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[1][0], ite))
+    first_elem_bias3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[0][0], ite))
+    first_elem_weights3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[1][0], ite))
+
+    plt.plot(first_elem_weights1, 'r')
+    plt.plot(first_elem_weights2, 'g')
+    plt.plot(first_elem_weights3, 'b')
+
     plt.show()
 
 

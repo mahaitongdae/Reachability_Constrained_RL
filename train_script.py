@@ -228,7 +228,7 @@ def built_MPG_parser(version):
     parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--delay_update', type=int, default=1)
+    parser.add_argument('--delay_update', type=int, default=5)
     parser.add_argument('--tau', type=float, default=0.001)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=True if version == 'MPG-v2' else False, action='store_true')
@@ -756,4 +756,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v1')
+    main('MPG-v2')
