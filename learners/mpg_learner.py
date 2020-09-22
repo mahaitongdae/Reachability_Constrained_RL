@@ -311,7 +311,6 @@ class MPGLearner(object):
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
     def rule_based_bias(self, ite, total_ite, eta):
-        ite = np.clip(ite, 0, total_ite)
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
@@ -415,7 +414,7 @@ class MPGLearner(object):
 def test_rule_based_weights():
     import matplotlib.pyplot as plt
     import tensorflow as tf
-    num_rollout_list_for_policy_update = [i for i in range(0,20,4)]
+    num_rollout_list_for_policy_update = [i for i in range(0,20,2)]
 
     def rule_based_bias(ite, total_ite, eta):
         start = 1 - eta
@@ -434,7 +433,7 @@ def test_rule_based_weights():
         return bias_list, w_sm
 
     # plot i-th elem of all iters
-    ite = list(range(40000))
+    ite = list(range(30000))
     i = 0
     elem_i_weights1 = list(map(lambda x_: rule_based_bias(x_, 20000, 0.1)[1][i], ite))
     # elem_i_weights2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[1][i], ite))
