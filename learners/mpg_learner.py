@@ -315,7 +315,7 @@ class MPGLearner(object):
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
-        assert 0 < lam < 2
+        lam = np.clip(lam, 0, 1.5)
         if lam < 1:
             bias_list = [np.power(lam, i) for i in self.num_rollout_list_for_policy_update]
         else:
@@ -364,9 +364,10 @@ class MPGLearner(object):
             policy_gradient_list.append(pg_for_this_rollout)
 
         epsilon = 1e-8
-        bias_inverse_sum = self.tf.reduce_sum(list(map(lambda x: 1. / (x + epsilon), bias_list))).numpy()
-
-        w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / bias_inverse_sum, bias_list))
+        bias_inverse = list(map(lambda x: 1. / (x + epsilon), bias_list))
+        # bias_inverse_sum = self.tf.reduce_sum(bias_inverse).numpy()
+        # w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / bias_inverse_sum, bias_list))
+        w_bias_list = list(self.tf.nn.softmax(bias_inverse).numpy())
 
         w_list_new = w_bias_list
         w_list = list(self.w_list_old + self.args.w_moving_rate * (np.array(w_list_new)-self.w_list_old))
@@ -413,34 +414,49 @@ class MPGLearner(object):
 
 def test_rule_based_weights():
     import matplotlib.pyplot as plt
-    num_rollout_list_for_policy_update = [0, 25]
+    import tensorflow as tf
+    num_rollout_list_for_policy_update = [i for i in range(0,20,4)]
 
     def rule_based_bias(ite, total_ite, eta):
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
-        assert 0 < lam < 2
+        lam = np.clip(lam, 0, 1.5)
         if lam < 1:
             bias_list = [np.power(lam, i) for i in num_rollout_list_for_policy_update]
         else:
             max_index = max(num_rollout_list_for_policy_update)
             bias_list = [np.power(2-lam, max_index-i) for i in num_rollout_list_for_policy_update]
-        bias_inverse_sum = sum(list(map(lambda x: 1. / (x + 1e-8), bias_list)))
+        bias_inverse = list(map(lambda x: 1. / (x + 1e-8), bias_list))
+        bias_inverse_sum = sum(bias_inverse)
         w_bias_list = list(map(lambda x: (1. / (x + 1e-8)) / bias_inverse_sum, bias_list))
-        return bias_list, w_bias_list
+        w_sm = tf.nn.softmax(bias_inverse).numpy()
+        return bias_list, w_sm
 
-    ite = list(range(10000))
-    first_elem_bias1 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.1)[0][0], ite))
-    first_elem_weights1 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.1)[1][0], ite))
-    print(first_elem_weights1[0])
-    first_elem_bias2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[0][0], ite))
-    first_elem_weights2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[1][0], ite))
-    first_elem_bias3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[0][0], ite))
-    first_elem_weights3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[1][0], ite))
+    # plot i-th elem of all iters
+    ite = list(range(40000))
+    i = 0
+    elem_i_weights1 = list(map(lambda x_: rule_based_bias(x_, 20000, 0.1)[1][i], ite))
+    # elem_i_weights2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[1][i], ite))
+    # elem_i_weights3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[1][i], ite))
 
-    plt.plot(first_elem_weights1, 'r')
-    plt.plot(first_elem_weights2, 'g')
-    plt.plot(first_elem_weights3, 'b')
+    plt.figure('first elem of all iters')
+    plt.plot(elem_i_weights1, 'r')
+    # plt.plot(elem_i_weights2, 'g')
+    # plt.plot(elem_i_weights3, 'b')
+    #
+    # plot all elems in some iter
+    ite = 30000
+    _, w_bias_list1 = rule_based_bias(ite, 20000, 0.1)
+    # _, w_bias_list2 = rule_based_bias(ite, 20000, 0.2)
+    # _, w_bias_list3 = rule_based_bias(ite, 20000, 0.3)
+
+    plt.figure('all elems in some iter')
+    plt.plot(w_bias_list1, 'r')
+    # plt.plot(w_bias_list2, 'g')
+    # plt.plot(w_bias_list3, 'b')
+
+    # plt.plot(np.tanh([x for x in range(10)]))
 
     plt.show()
 
