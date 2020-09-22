@@ -220,12 +220,15 @@ class MPGLearner(object):
                 gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0],)))
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
-            all_Qs = self.policy_with_value.compute_Q1(
+            all_Q1s = self.policy_with_value.compute_Q1(
                 self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+            all_Q2s = self.policy_with_value.compute_Q2(
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+            all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
 
-            final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout + 1, self.M, -1))
+            final = self.tf.reshape(all_rewards_sums + all_gammas * all_min_Qs, (max_num_rollout + 1, self.M, -1))
             # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
             #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
             #        ...

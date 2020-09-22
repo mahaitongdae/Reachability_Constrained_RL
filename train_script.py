@@ -61,6 +61,7 @@ def built_AMPC_parser():
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
+                           num_eval_agent=5,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -110,8 +111,8 @@ def built_AMPC_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=True, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
@@ -128,7 +129,7 @@ def built_AMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=200000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
@@ -165,6 +166,7 @@ def built_MPG_parser(version):
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
+                           num_eval_agent=5,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -192,7 +194,7 @@ def built_MPG_parser(version):
     parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     if version == 'MPG-v2':
         parser.add_argument("--eta", type=float, default=0.2)
-        parser.add_argument("--rule_based_bias_total_ite", type=int, default=100000)
+        parser.add_argument("--rule_based_bias_total_ite", type=int, default=30000)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
@@ -224,8 +226,8 @@ def built_MPG_parser(version):
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=5)
@@ -283,6 +285,7 @@ def built_NADP_parser():
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
+                           num_eval_agent=5,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -333,8 +336,8 @@ def built_NADP_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -356,7 +359,7 @@ def built_NADP_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=200000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
@@ -393,6 +396,7 @@ def built_NDPG_parser():
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
+                           num_eval_agent=5,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -442,8 +446,8 @@ def built_NDPG_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -464,7 +468,7 @@ def built_NDPG_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=200000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
@@ -501,6 +505,7 @@ def built_TD3_parser():
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
+                           num_eval_agent=5,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -550,8 +555,8 @@ def built_TD3_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=2)
@@ -573,7 +578,7 @@ def built_TD3_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=200000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)
@@ -598,20 +603,21 @@ def built_TD3_parser():
 def built_SAC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--mode', type=str, default='testing') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/SAC/experiment-2020-09-03-17-04-11'
+        test_dir = './results/SAC/experiment-2020-09-22-14-46-31'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[0],
+                           test_iter_list=[100000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=5,
+                           num_eval_episode=50,
+                           num_eval_agent=50,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=200))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -661,9 +667,9 @@ def built_SAC_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 200000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
-    parser.add_argument("--alpha_lr_schedule", type=list, default=[8e-5, 200000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--alpha_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -685,7 +691,7 @@ def built_SAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=200000)
+    parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=4)
     parser.add_argument('--num_buffers', type=int, default=1)

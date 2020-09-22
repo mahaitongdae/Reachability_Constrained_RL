@@ -73,7 +73,7 @@ class Evaluator(object):
         if steps is not None:
             for _ in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
-                action, logp = self.policy_with_value.compute_action(processed_obs)
+                action = self.policy_with_value.compute_mode(processed_obs)
                 obs_list.append(obs[0])
                 action_list.append(action[0])
                 obs, reward, done, info = self.env.step(action.numpy())
@@ -83,7 +83,7 @@ class Evaluator(object):
         else:
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
-                action, neglogp = self.policy_with_value.compute_action(processed_obs)
+                action = self.policy_with_value.compute_mode(processed_obs)
                 obs_list.append(obs[0])
                 action_list.append(action[0])
                 obs, reward, done, info = self.env.step(action.numpy())
@@ -126,7 +126,7 @@ class Evaluator(object):
         if self.args.eval_render: self.env.render()
         for _ in range(self.args.fixed_steps):
             processed_obses = self.preprocessor.tf_process_obses(obses)
-            actions, logps = self.policy_with_value.compute_action(processed_obses)
+            actions = self.policy_with_value.compute_mode(processed_obses)
             obses_list.append(obses)
             actions_list.append(actions)
             obses, rewards, dones, infos = self.env.step(actions.numpy())
@@ -153,19 +153,27 @@ class Evaluator(object):
 
 
     def metrics_for_an_episode(self, episode_info):  # user defined, transform episode info dict to metric dict
-        key_list = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse', 'stationary_rew_mean']
+        key_list = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
+                    'stationary_rew_mean', 'steer_mse', 'acc_mse']
         episode_return = episode_info['episode_return']
         episode_len = episode_info['episode_len']
         delta_v_list = list(map(lambda x: x[0]-20, episode_info['obs_list']))
         delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
         delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
+        steer_list = list(map(lambda x: x[0]*1.2 * np.pi / 9, episode_info['action_list']))
+        acc_list = list(map(lambda x: x[1]*3., episode_info['action_list']))
+
         rew_list = episode_info['reward_list']
         stationary_rew_mean = sum(rew_list[20:])/len(rew_list[20:])
 
         delta_y_mse = np.sqrt(np.mean(np.square(np.array(delta_y_list))))
         delta_phi_mse = np.sqrt(np.mean(np.square(np.array(delta_phi_list))))
         delta_v_mse = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
-        value_list = [episode_return, episode_len, delta_y_mse, delta_phi_mse, delta_v_mse, stationary_rew_mean]
+        steer_mse = np.sqrt(np.mean(np.square(np.array(steer_list))))
+        acc_mse = np.sqrt(np.mean(np.square(np.array(acc_list))))
+
+        value_list = [episode_return, episode_len, delta_y_mse, delta_phi_mse, delta_v_mse,
+                      stationary_rew_mean, steer_mse, acc_mse]
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):

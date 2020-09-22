@@ -30,8 +30,6 @@ class TD3Learner(object):
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
-
-        self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma)
@@ -127,7 +125,7 @@ class TD3Learner(object):
             actions, _ = self.policy_with_value.compute_action(processed_obses)
             all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)[:, 0]
             all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)[:, 0]
-            all_Qs_min = self.tf.minimum(all_Qs1, all_Qs2)
+            all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             policy_loss = -self.tf.reduce_mean(all_Qs_min)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = -policy_loss

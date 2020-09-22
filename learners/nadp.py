@@ -190,11 +190,7 @@ class NADPLearner(object):
 
         with self.tf.name_scope('policy_jacobian') as scope:
             policy_gradient = tape.gradient(policy_loss,
-                                        self.policy_with_value.policy.trainable_weights)
-            # shape is len(self.policy_with_value.models[1].trainable_weights) * len(model_returns)
-            # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
-            #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
-            #  ...]
+                                            self.policy_with_value.policy.trainable_weights)
             return policy_loss, policy_gradient, value_mean
 
     def export_graph(self, writer):

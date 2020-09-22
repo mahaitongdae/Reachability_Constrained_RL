@@ -30,8 +30,6 @@ class SACLearner(object):
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
-
-        self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma)
@@ -71,15 +69,15 @@ class SACLearner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
-        target_act_tp1, target_logp_tp1 = self.policy_with_value.compute_target_action(processed_obs_tp1)
+        act_tp1, logp_tp1 = self.policy_with_value.compute_action(processed_obs_tp1)
 
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
-        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, act_tp1).numpy()[:, 0]
+        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()[:, 0]
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
         clipped_double_q_target = processed_rewards + self.args.gamma * \
-                                  (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*target_logp_tp1.numpy())
+                                  (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
         return clipped_double_q_target
 
     def compute_td_error(self):
@@ -126,7 +124,7 @@ class SACLearner(object):
             actions, logps = self.policy_with_value.compute_action(processed_obses)
             all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)[:, 0]
             all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)[:, 0]
-            all_Qs_min = self.tf.minimum(all_Qs1, all_Qs2)
+            all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
 
@@ -143,7 +141,7 @@ class SACLearner(object):
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             actions, logps = self.policy_with_value.compute_action(processed_obses)
             log_alpha = self.policy_with_value.log_alpha
-            alpha_loss = self.tf.reduce_mean(-log_alpha * (logps + self.args.target_entropy))
+            alpha_loss = self.tf.reduce_mean(-log_alpha * self.tf.stop_gradient(logps + self.args.target_entropy))
 
         with self.tf.name_scope('alpha_gradient') as scope:
             alpha_gradient = tape.gradient(alpha_loss, self.policy_with_value.alpha_model.trainable_weights)

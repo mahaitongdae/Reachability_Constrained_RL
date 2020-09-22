@@ -162,6 +162,11 @@ class PolicyWithQs(object):
             for source, target in zip(source_params, target_params)
         ])
 
+    def compute_mode(self, obs):
+        logits = self.policy(obs)
+        mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+        return mean
+
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
@@ -174,14 +179,18 @@ class PolicyWithQs(object):
 
     def _logits2action(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        act_dist = self.tfd.Normal(mean, self.tf.exp(log_std))
-        action = act_dist.mean() if self.args.deterministic_policy else act_dist.sample()
-        logp = 0.
-        if not self.args.deterministic_policy:
-            logps = act_dist.log_prob(action)
-            action = self.tf.tanh(action)
-            logp = self.tf.reduce_sum(logps - self.tf.math.log(1 - self.tf.square(action)) + 1e-6, axis=-1)
-        return action, logp
+        if self.args.deterministic_policy:
+            return mean, 0.
+        else:
+            base_dist = self.tfd.Normal(mean, self.tf.exp(log_std))
+            act_dist = (
+                self.tfp.distributions.TransformedDistribution(
+                    distribution=base_dist,
+                    bijector=self.tfp.bijectors.Tanh()))
+            actions = act_dist.sample()
+            log_pis = act_dist.log_prob(actions)
+            logps = self.tf.reduce_sum(log_pis, axis=-1)
+            return actions, logps
 
     def compute_Q1(self, obs, act):
         with self.tf.name_scope('compute_Q1') as scope:
