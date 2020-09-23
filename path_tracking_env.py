@@ -95,9 +95,9 @@ class VehicleDynamics(object):
                           (mass * v_y * v_x + tau * (
                                   a * C_f - b * C_r) * r - tau * C_f * steer * v_x - tau * mass * tf.square(
                               v_x) * r) / (mass * v_x - tau * (C_f + C_r)),
-                          (-I_z * r * v_x - tau * (a * C_f - b * C_r) * v_y + tau * a * C_f * steer * v_x) / (
+                          (-I_z * r * v_x - tau * (a * C_f - b * C_r) * v_y) / (
                                   tau * (tf.square(a) * C_f + tf.square(b) * C_r) - I_z * v_x),
-                          delta_y + tau * (v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi)) + tfd.Normal(0.5*tf.ones_like(v_x), 0.01).sample(),
+                          delta_y + tau * (v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi)),# + tfd.Normal(0.5*tf.ones_like(v_x), 0.01).sample(),
                           delta_phi + tau * r,
                           x + tau * (v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)),
                           ]
@@ -724,7 +724,7 @@ def test_environment():
     print(obs)
     model.reset(obs)
     # model.render()
-    actions = np.array([[0, 0]], np.float32)
+    actions = np.array([[-1, 0]], np.float32)
     for _ in range(1000):
         model.rollout_out(actions)
         model.render()
