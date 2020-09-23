@@ -223,7 +223,6 @@ def built_MPG_parser(version):
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
 
-
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
@@ -249,9 +248,9 @@ def built_MPG_parser(version):
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=12)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--num_learners', type=int, default=4)
+    parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument("--eval_interval", type=int, default=4000)
@@ -260,7 +259,7 @@ def built_MPG_parser(version):
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/MPG-v1/experiment-{time}'.format(time=time_now)
+    results_dir = './results/{}/experiment-{time}'.format(version, time=time_now)
     parser.add_argument("--result_dir", type=str, default=results_dir)
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
@@ -762,4 +761,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v2')
+    main('MPG-v1')

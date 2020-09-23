@@ -348,7 +348,7 @@ class MPGLearner(object):
         if self.args.learner_version == 'MPG-v1':
             model_bias_list = [a.numpy() for a in model_bias_list]
             bias_min = min(model_bias_list)
-            bias_list = [a-bias_min+rewards_mean/10. for a in model_bias_list]
+            bias_list = [a-bias_min+rewards_mean for a in model_bias_list]
         elif self.args.learner_version == 'MPG-v2':
             bias_list = self.rule_based_bias(iteration, self.args.rule_based_bias_total_ite, self.args.eta)
 
@@ -361,9 +361,11 @@ class MPGLearner(object):
 
         epsilon = 1e-8
         bias_inverse = list(map(lambda x: 1. / (x + epsilon), bias_list))
-        # bias_inverse_sum = self.tf.reduce_sum(bias_inverse).numpy()
-        # w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / bias_inverse_sum, bias_list))
-        w_bias_list = list(self.tf.nn.softmax(bias_inverse).numpy())
+        bias_inverse_sum = self.tf.reduce_sum(bias_inverse).numpy()
+        if self.args.learner_version == 'MPG-v1':
+            w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / bias_inverse_sum, bias_list))
+        else:
+            w_bias_list = list(self.tf.nn.softmax(bias_inverse).numpy())
 
         w_list_new = w_bias_list
         w_list = list(self.w_list_old + self.args.w_moving_rate * (np.array(w_list_new)-self.w_list_old))
