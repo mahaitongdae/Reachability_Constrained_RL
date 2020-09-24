@@ -106,10 +106,10 @@ class NDPGLearner(object):
                }
         processed_all_obs_tp1 = self.preprocessor.tf_process_obses(tmp['all_obs_tp1']).numpy()
         processed_all_rewards = self.preprocessor.tf_process_rewards(tmp['all_rewards']).numpy()
-        act_tp1, _ = self.policy_with_value.compute_action(
+        act_tp1, _ = self.policy_with_value.compute_target_action(
             processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
         all_values_tp1 = \
-            self.policy_with_value.compute_Q1(
+            self.policy_with_value.compute_Q1_target(
                 processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
                 act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
 

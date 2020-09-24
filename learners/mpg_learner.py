@@ -8,7 +8,6 @@
 # =====================================
 
 import logging
-import sys
 
 import gym
 import numpy as np
@@ -48,9 +47,8 @@ class MPGLearner(object):
         self.target_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
-        self.w_list_old = np.array([0.]+[1./(len(self.num_rollout_list_for_policy_update)-1)
-                                    for _ in range(len(self.num_rollout_list_for_policy_update)-1)], dtype=np.float32)\
-
+        self.ws_old = self.tf.convert_to_tensor([0.]+[1./(len(self.num_rollout_list_for_policy_update)-1)
+                                for _ in range(len(self.num_rollout_list_for_policy_update)-1)], dtype=self.tf.float32)
 
     def get_stats(self):
         return self.stats
@@ -65,13 +63,11 @@ class MPGLearner(object):
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32),
                            }
-        maybe_target = self.compute_clipped_double_q_target()
-
         with self.target_timer:
-            if self.args.learner_version == 'MPG-v1':
+            if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
                 target = self.compute_n_step_target()
             elif self.args.learner_version == 'MPG-v2':
-                target = maybe_target
+                target = self.compute_clipped_double_q_target()
             else:
                 raise ValueError
 
@@ -126,10 +122,10 @@ class MPGLearner(object):
                }
         processed_all_obs_tp1 = self.preprocessor.tf_process_obses(tmp['all_obs_tp1']).numpy()
         processed_all_rewards = self.preprocessor.tf_process_rewards(tmp['all_rewards']).numpy()
-        act_tp1, _ = self.policy_with_value.compute_action(
+        act_tp1, _ = self.policy_with_value.compute_target_action(
             processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
         all_values_tp1 = \
-            self.policy_with_value.compute_Q1(
+            self.policy_with_value.compute_Q1_target(
                 processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
                 act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
 
@@ -148,7 +144,7 @@ class MPGLearner(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
-    def model_rollout_for_q_estimation(self, start_obses, start_actions):
+    def model_rollout_for_q_estimation(self, start_obses, start_actions):  # only use to calculate heuristic bias
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
         actions_tile = self.tf.tile(start_actions, [self.M, 1])
 
@@ -217,15 +213,19 @@ class MPGLearner(object):
                 gammas_list.append(self.tf.pow(self.args.gamma, ri + 1) * self.tf.ones((obses_tile.shape[0],)))
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
-            all_Q1s = self.policy_with_value.compute_Q1(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
-            all_Q2s = self.policy_with_value.compute_Q2(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
-            all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
-
-            final = self.tf.reshape(all_rewards_sums + all_gammas * all_min_Qs, (max_num_rollout + 1, self.M, -1))
+            if self.args.learner_version == 'MPG-v2':
+                all_Q1s = self.policy_with_value.compute_Q1(
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                all_Q2s = self.policy_with_value.compute_Q2(
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
+                final = self.tf.reshape(all_rewards_sums + all_gammas * all_min_Qs, (max_num_rollout + 1, self.M, -1))
+            else:
+                all_Qs = self.policy_with_value.compute_Q1(
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout + 1, self.M, -1))
             # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
             #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
             #        ...
@@ -249,24 +249,27 @@ class MPGLearner(object):
 
     @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
+        processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
+        model_bias_list = []
         if self.args.learner_version == 'MPG-v1':
-            processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
-            with self.tf.GradientTape() as tape:
-                with self.tf.name_scope('q_loss') as scope:
-                    q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
-                    q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
-
-            with self.tf.name_scope('q_gradient') as scope:
-                q_gradient = tape.gradient(q_loss, self.policy_with_value.Q1.trainable_weights)
             model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
-            model_bias_list = []
             for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
                 model_target_i = model_targets[i * self.batch_size:
                                                (i + 1) * self.batch_size]
                 model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i - mb_targets)))
-            return q_loss, q_gradient, model_bias_list
+
+        if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+            with self.tf.GradientTape() as tape:
+                with self.tf.name_scope('q_loss') as scope:
+                    q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                    q_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred1 - mb_targets))
+
+            with self.tf.name_scope('q_gradient') as scope:
+                q_gradient1 = tape.gradient(q_loss1, self.policy_with_value.Q1.trainable_weights)
+
+            return q_loss1, q_gradient1, self.tf.convert_to_tensor(model_bias_list)
+
         else:
-            processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
             with self.tf.GradientTape(persistent=True) as tape:
                 with self.tf.name_scope('q_loss') as scope:
                     q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
@@ -279,22 +282,22 @@ class MPGLearner(object):
                 q_gradient1 = tape.gradient(q_loss1, self.policy_with_value.Q1.trainable_weights)
                 q_gradient2 = tape.gradient(q_loss2, self.policy_with_value.Q2.trainable_weights)
 
-            return q_loss1, q_loss2, q_gradient1, q_gradient2
+            return q_loss1, q_loss2, q_gradient1, q_gradient2, self.tf.convert_to_tensor(model_bias_list)
 
     @tf.function
-    def policy_forward_and_backward(self, mb_obs):
-        with self.tf.GradientTape(persistent=True) as tape:
+    def policy_forward_and_backward(self, mb_obs, ite, rewards_mean, model_bias_tensor):
+        with self.tf.GradientTape() as tape:
             model_returns_var, minus_reduced_model_returns, value_mean = self.model_rollout_for_policy_update(mb_obs)
-
-        with self.tf.name_scope('policy_jacobian') as scope:
-            jaco = tape.jacobian(minus_reduced_model_returns,
-                                 self.policy_with_value.policy.trainable_weights,
-                                 experimental_use_pfor=True)
-            # shape is len(self.policy_with_value.models[1].trainable_weights) * len(model_returns)
-            # [[dy1/dx1, dy2/dx1,...(rolloutnum1)|dy1/dx1, dy2/dx1,...(rolloutnum2)| ...],
-            #  [dy1/dx2, dy2/dx2, ...(rolloutnum1)|dy1/dx2, dy2/dx2,...(rolloutnum2)| ...],
-            #  ...]
-            return jaco, model_returns_var, value_mean
+            if self.args.learner_version == 'MPG-v2' or self.args.learner_version == 'MPG-v3':
+                ws = self.rule_based_weights(ite, self.args.rule_based_bias_total_ite, self.args.eta)
+                ws_new = ws_bias = ws_var = self.tf.convert_to_tensor([])
+            else:
+                ws, ws_new, ws_bias, ws_var = self.heuristic_weights(rewards_mean, model_bias_tensor, model_returns_var)
+            total_loss = self.tf.reduce_sum(self.tf.stop_gradient(ws)*minus_reduced_model_returns)
+        with self.tf.name_scope('policy_gradient') as scope:
+            policy_gradient = tape.gradient(total_loss,
+                                            self.policy_with_value.policy.trainable_weights)
+            return policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -306,21 +309,48 @@ class MPGLearner(object):
             self.tf.summary.trace_export(name="q_forward_and_backward", step=0)
 
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.policy_forward_and_backward(mb_obs)
+        self.policy_forward_and_backward(mb_obs,
+                                         self.tf.constant(0, dtype=self.tf.int32),
+                                         self.tf.constant(0., dtype=self.tf.float32),
+                                         self.tf.ones(len(self.num_rollout_list_for_policy_update)))
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
-    def rule_based_bias(self, ite, total_ite, eta):
-        start = 1 - eta
-        slope = 2 * eta / total_ite
+    def rule_based_weights(self, ite, total_ite, eta):
+        start = self.tf.convert_to_tensor(1. - eta, dtype=self.tf.float32)
+        slope = self.tf.convert_to_tensor(2. * eta / total_ite, dtype=self.tf.float32)
         lam = start + slope * ite
-        lam = np.clip(lam, 0, 1.5)
-        if lam < 1:
-            bias_list = [np.power(lam, i) for i in self.num_rollout_list_for_policy_update]
+        lam = self.tf.clip_by_value(lam, 0, 1.5)
+        if lam < 1.:
+            biases = self.tf.convert_to_tensor([self.tf.pow(lam, i) for i in self.num_rollout_list_for_policy_update],
+                                               dtype=self.tf.float32)
         else:
             max_index = max(self.num_rollout_list_for_policy_update)
-            bias_list = [np.power(2-lam, max_index-i) for i in self.num_rollout_list_for_policy_update]
-        return bias_list
+            biases = self.tf.convert_to_tensor([self.tf.pow(2-lam, max_index-i) for i in self.num_rollout_list_for_policy_update],
+                                               dtype=self.tf.float32)
+        epsilon = 1e-8
+        bias_inverses = 1. / (biases + epsilon)
+        ws = self.tf.nn.softmax(bias_inverses)
+        return ws
+
+    def heuristic_weights(self, rewards_mean, model_bias_tensor, model_returns_var):
+        epsilon = 1e-8
+        # deal with bias
+        bias_min = self.tf.reduce_min(model_bias_tensor)
+        biases = model_bias_tensor - bias_min + rewards_mean
+        bias_inverse = 1. / (biases + epsilon)
+        ws_bias = (1. / (biases + epsilon)) / self.tf.reduce_sum(bias_inverse)
+
+        # deal with variance
+        var = model_returns_var
+        var_inverse = 1. / (var + epsilon)
+        ws_var = (1. / (var + epsilon)) / self.tf.reduce_sum(var_inverse)
+
+        # deal with w
+        ws_new = 0.5 * ws_bias + 0.5 * ws_var
+        ws = self.ws_old + self.args.w_moving_rate * (ws_new - self.ws_old)
+        self.ws_old = ws
+        return ws, ws_new, ws_bias, ws_var
 
     def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
         if self.counter % self.num_batch_reuse == 0:
@@ -334,62 +364,24 @@ class MPGLearner(object):
         rewards_mean = np.abs(np.mean(self.preprocessor.np_process_rewards(self.batch_data['batch_rewards'])))
 
         with self.q_gradient_timer:
-            if self.args.learner_version == 'MPG-v1':
-                q_loss, q_gradient, model_bias_list = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets)
-                q_gradient, q_gradient_norm = self.tf.clip_by_global_norm(q_gradient, self.args.gradient_clip_norm)
+            if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+                q_loss1, q_gradient1, model_bias_tensor = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets)
+                q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             else:
-                assert self.args.learner_version == 'MPG-v2'
-                q_loss1, q_loss2, q_gradient1, q_gradient2 = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets)
+                q_loss1, q_loss2, q_gradient1, q_gradient2, model_bias_tensor = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets)
                 q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
                 q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
             self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-            jaco, model_returns_var, value_mean = self.policy_forward_and_backward(mb_obs)
+            policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var = \
+                self.policy_forward_and_backward(mb_obs,
+                                                 self.tf.convert_to_tensor(iteration, dtype=self.tf.float32),
+                                                 self.tf.convert_to_tensor(rewards_mean, dtype=self.tf.float32),
+                                                 model_bias_tensor)
 
-        # deal with pgs
-        policy_gradient_list = []
-        final_policy_gradient = []
-
-        for rollout_index in range(len(self.num_rollout_list_for_policy_update)):
-            pg_for_this_rollout = list(map(lambda x: x[rollout_index], jaco))
-            policy_gradient_list.append(pg_for_this_rollout)
-
-        epsilon = 1e-8
-        # deal with bias
-        bias_list = []
-        if self.args.learner_version == 'MPG-v1':
-            model_bias_list = [a.numpy() for a in model_bias_list]
-            bias_min = min(model_bias_list)
-            bias_list = [a-bias_min+rewards_mean for a in model_bias_list]
-        elif self.args.learner_version == 'MPG-v2':
-            bias_list = self.rule_based_bias(iteration, self.args.rule_based_bias_total_ite, self.args.eta)
-
-        bias_inverse = list(map(lambda x: 1. / (x + epsilon), bias_list))
-        if self.args.learner_version == 'MPG-v1':
-            w_bias_list = list(map(lambda x: (1. / (x + epsilon)) / sum(bias_inverse), bias_list))
-        else:
-            w_bias_list = list(self.tf.nn.softmax(bias_inverse).numpy())
-
-        # deal with variance
-        var_list = list(model_returns_var.numpy())
-        var_inverse = list(map(lambda x: 1. / (x + epsilon), var_list))
-        w_var_list = list(map(lambda x: (1. / (x + epsilon)) / sum(var_inverse), var_list))
-
-        # deal with w
-        w_list_new = [0.5*w_bias+0.5*w_var for (w_bias, w_var) in zip(w_bias_list, w_var_list)]
-        w_list = list(self.w_list_old + self.args.w_moving_rate * (np.array(w_list_new)-self.w_list_old))
-        self.w_list_old = np.array(w_list)
-
-        # compute weighted pg
-        for i in range(len(policy_gradient_list[0])):
-            tmp = 0
-            for j in range(len(policy_gradient_list)):
-                tmp += w_list[j] * policy_gradient_list[j][i]
-            final_policy_gradient.append(tmp)
-
-        final_policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(final_policy_gradient,
-                                                                                  self.args.gradient_clip_norm)
+        policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
+                                                                            self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,
@@ -397,29 +389,23 @@ class MPGLearner(object):
             pg_time=self.policy_gradient_timer.mean,
             target_time=self.target_timer.mean,
             value_mean=value_mean.numpy(),
+            policy_total_loss=total_loss.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
+            q_loss1=q_loss1.numpy(),
+            q_gradient_norm1=q_gradient_norm1.numpy(),
             num_rollout_list=self.num_rollout_list_for_policy_update,
-            bias_list=bias_list,
-            var_list=var_list,
-            w_bias_list=w_bias_list,
-            w_var_list=w_var_list,
-            w_list_new=w_list_new,
-            w_list=w_list
+            w_bias_list=list(ws_bias.numpy()),
+            w_var_list=list(ws_var.numpy()),
+            w_list_new=list(ws_new.numpy()),
+            w_list=list(ws.numpy())
         ))
-        if self.args.learner_version == 'MPG-v1':
-            self.stats.update(dict(q_loss=q_loss.numpy(),
-                                   q_gradient_norm=q_gradient_norm.numpy(),
-                                   ))
-
-            gradient_tensor = q_gradient + final_policy_gradient
+        if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+            gradient_tensor = q_gradient1 + policy_gradient
         else:
-            assert self.args.learner_version == 'MPG-v2'
-            self.stats.update(dict(q_loss1=q_loss1.numpy(),
-                                   q_gradient_norm1=q_gradient_norm1.numpy(),
-                                   q_loss2=q_loss2.numpy(),
-                                   q_gradient_norm2=q_gradient_norm2.numpy(),
-                                   ))
-            gradient_tensor = q_gradient1 + q_gradient2 + final_policy_gradient
+            self.stats.update(dict(q_loss2=q_loss2.numpy(),
+                                   q_gradient_norm2=q_gradient_norm2.numpy(),))
+            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient
+
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
 

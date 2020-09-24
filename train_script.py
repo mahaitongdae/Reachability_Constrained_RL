@@ -108,7 +108,6 @@ def built_AMPC_parser():
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
 
-
     # policy and model
     parser.add_argument("--policy_only", default=True, action='store_true')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
@@ -152,6 +151,10 @@ def built_AMPC_parser():
     return parser.parse_args()
 
 def built_MPG_parser(version):
+    #          Target                Weighting method
+    # MPG-v1   n-step                Heuristic
+    # MPG-v2   clipped double-Q      Rule-based
+    # MPG-v3   n-step                Rule-based
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
@@ -189,16 +192,16 @@ def built_MPG_parser(version):
     parser.add_argument("--learner_version", default=version)
     parser.add_argument('--sample_num_in_learner', type=int, default=25)
     parser.add_argument('--M', type=int, default=1)
+    parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(0,20,2)))
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(0,20,2)) if version == 'MPG-v1' else [])
-    parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
-    if version == 'MPG-v2':
+    if version == 'MPG-v2' or version == 'MPG-v3':
         parser.add_argument("--eta", type=float, default=0.1)
         parser.add_argument("--rule_based_bias_total_ite", type=int, default=20000)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
-    parser.add_argument("--num_batch_reuse", type=int, default=10 if version == 'MPG-v1' else 1)
+    parser.add_argument("--num_batch_reuse", type=int, default=10 if version == 'MPG-v1' or version == 'MPG-v3' else 1)
     parser.add_argument("--w_moving_rate", type=float, default=0.005 if version == 'MPG-v1' else 1.)
     parser.add_argument("--alpha", default=None)
 
@@ -232,7 +235,7 @@ def built_MPG_parser(version):
     parser.add_argument('--delay_update', type=int, default=2)
     parser.add_argument('--tau', type=float, default=0.001)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
-    parser.add_argument("--double_Q", default=True if version == 'MPG-v2' else False, action='store_true')
+    parser.add_argument("--double_Q", default=True if version == 'MPG-v2' else False)
     parser.add_argument("--target", default=True, action='store_true')
     parser.add_argument("--policy_out_activation", type=str, default='tanh')
 
@@ -249,7 +252,7 @@ def built_MPG_parser(version):
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=4)
+    parser.add_argument('--num_learners', type=int, default=2)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
@@ -276,17 +279,17 @@ def built_NADP_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/NADP/experiment-2020-09-03-17-04-11'
+        test_dir = './results/NADP/experiment-2020-09-23-20-52-24'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[0],
+                           test_iter_list=[32000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            num_eval_agent=5,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=200))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -331,7 +334,6 @@ def built_NADP_parser():
     parser.add_argument("--eval_render", type=bool, default=True)
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
-
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
@@ -441,7 +443,6 @@ def built_NDPG_parser():
     parser.add_argument("--eval_render", type=bool, default=True)
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
-
 
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
@@ -723,6 +724,8 @@ def built_parser(alg_name):
         return built_MPG_parser('MPG-v1')
     elif alg_name == 'MPG-v2':
         return built_MPG_parser('MPG-v2')
+    elif alg_name == 'MPG-v3':
+        return built_MPG_parser('MPG-v3')
     elif alg_name == 'NDPG':
         return built_NDPG_parser()
     elif alg_name == 'NADP':
@@ -761,4 +764,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v1')
+    main('MPG-v3')
