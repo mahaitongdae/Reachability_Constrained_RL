@@ -1,18 +1,18 @@
-import argparse
-import json
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/8/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: main.py
+# =====================================
+
 import time
 
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import tensorflow as tf
 from scipy.optimize import minimize
 
-from path_tracking_env import PathTrackingEnv
-from policy import PolicyWithQs
-from preprocessor import Preprocessor
 from mpc.mpc_ipopt import LoadPolicy, plot_mpc_rl
 
 

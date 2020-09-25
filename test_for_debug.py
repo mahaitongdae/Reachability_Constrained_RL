@@ -1,9 +1,17 @@
-import ray
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/8/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: test_for_debug.py
+# =====================================
+
 import numpy as np
-from utils.memory import ray_get_and_free
-from utils.task_pool import TaskPool
+import ray
 import tensorflow as tf
 
+from utils.task_pool import TaskPool
 
 
 class Sample_numpy(object):
@@ -16,7 +24,6 @@ class Sample_numpy(object):
 #
 #
 def test_remote():
-    import sys
     ray.init(redis_max_memory=100 * 1024 * 1024, object_store_memory=100 * 1024 * 1024)
     sps = [ray.remote(Sample_numpy).remote() for _ in range(1)]
     sample_tasks = TaskPool()
@@ -112,7 +119,6 @@ def test_jacobian2():
 
 def test_logger():
     import logging
-    import os
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.error('Watch out!')
