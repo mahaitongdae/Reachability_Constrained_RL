@@ -603,7 +603,7 @@ def built_TD3_parser():
 def built_SAC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='testing') # training testing
+    parser.add_argument('--mode', type=str, default='training') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':

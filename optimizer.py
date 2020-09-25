@@ -129,6 +129,7 @@ class OffPolicyAsyncOptimizer(object):
         self.num_sampled_steps = 0
         self.num_updated_steps = 0
         self.num_samples_dropped = 0
+        self.num_grads_dropped = 0
         self.optimizer_steps = 0
         self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
                                                 "learning_timer"]}
@@ -170,6 +171,7 @@ class OffPolicyAsyncOptimizer(object):
                                num_updated_steps=self.num_updated_steps,
                                optimizer_steps=self.optimizer_steps,
                                num_samples_dropped=self.num_samples_dropped,
+                               num_grads_dropped=self.num_grads_dropped,
                                learner_queue_size=self.learner_queue.qsize(),
                                sampling_time=self.timers['sampling_timer'].mean,
                                replay_time=self.timers["replay_timer"].mean,
@@ -252,6 +254,8 @@ class OffPolicyAsyncOptimizer(object):
                 learner.set_weights.remote(weights)
                 self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
                                                                               self.local_worker.iteration))
+                if self.update_thread.inqueue.full():
+                    self.num_grads_dropped += 1
                 self.update_thread.inqueue.put([grads, learner_stats])
 
         self.num_updated_steps = self.update_thread.iteration
