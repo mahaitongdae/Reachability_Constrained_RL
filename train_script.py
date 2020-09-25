@@ -193,11 +193,11 @@ def built_MPG_parser(version):
     parser.add_argument('--sample_num_in_learner', type=int, default=25)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=list(range(0,20,2)))
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=list(range(0,20,2)) if version == 'MPG-v1' else [])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 25])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 25] if version == 'MPG-v1' else [])
     if version == 'MPG-v2' or version == 'MPG-v3':
         parser.add_argument("--eta", type=float, default=0.1)
-        parser.add_argument("--rule_based_bias_total_ite", type=int, default=20000)
+        parser.add_argument("--rule_based_bias_total_ite", type=int, default=5000)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
@@ -233,7 +233,7 @@ def built_MPG_parser(version):
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=2)
-    parser.add_argument('--tau', type=float, default=0.001)
+    parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=True if version == 'MPG-v2' else False)
     parser.add_argument("--target", default=True, action='store_true')
@@ -342,7 +342,7 @@ def built_NADP_parser():
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.001)
+    parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=False, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
@@ -451,7 +451,7 @@ def built_NDPG_parser():
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.001)
+    parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=False, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
@@ -560,7 +560,7 @@ def built_TD3_parser():
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=2)
-    parser.add_argument('--tau', type=float, default=0.001)
+    parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
     parser.add_argument("--double_Q", default=True, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
@@ -673,7 +673,7 @@ def built_SAC_parser():
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.001)
+    parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument("--deterministic_policy", default=False, action='store_true')
     parser.add_argument("--double_Q", default=True, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
@@ -712,8 +712,6 @@ def built_SAC_parser():
     parser.add_argument("--ppc_load_dir", type=str, default=None)
 
     return parser.parse_args()
-
-
 
 def built_parser(alg_name):
     if alg_name == 'TD3':

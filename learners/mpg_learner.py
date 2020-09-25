@@ -86,7 +86,7 @@ class MPGLearner(object):
                 action = self.tf.convert_to_tensor(start_action)
             else:
                 processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
-                action, neglogp = self.policy_with_value.compute_action(processed_obs)
+                action, logp = self.policy_with_value.compute_action(processed_obs)
             obs_tp1, reward, _, info = self.env.step(action.numpy())
 
             done = np.zeros((self.batch_size,), dtype=np.int)
