@@ -297,7 +297,7 @@ class MPGLearner(object):
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(total_loss,
                                             self.policy_with_value.policy.trainable_weights)
-            return policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var
+            return policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var, minus_reduced_model_returns
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -374,7 +374,7 @@ class MPGLearner(object):
 
         with self.policy_gradient_timer:
             self.policy_for_rollout.set_weights(self.policy_with_value.get_weights())
-            policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var = \
+            policy_gradient, total_loss, value_mean, ws, ws_new, ws_bias, ws_var, all_losses = \
                 self.policy_forward_and_backward(mb_obs,
                                                  self.tf.convert_to_tensor(iteration, dtype=self.tf.float32),
                                                  self.tf.convert_to_tensor(rewards_mean, dtype=self.tf.float32),
@@ -397,7 +397,8 @@ class MPGLearner(object):
             w_bias_list=list(ws_bias.numpy()),
             w_var_list=list(ws_var.numpy()),
             w_list_new=list(ws_new.numpy()),
-            w_list=list(ws.numpy())
+            w_list=list(ws.numpy()),
+            all_losses=list(all_losses.numpy())
         ))
         if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
             gradient_tensor = q_gradient1 + policy_gradient
