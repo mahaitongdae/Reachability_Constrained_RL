@@ -244,7 +244,7 @@ def built_MPG_parser(version):
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -354,7 +354,7 @@ def built_NADP_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -462,7 +462,7 @@ def built_NDPG_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -572,7 +572,7 @@ def built_TD3_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -685,7 +685,7 @@ def built_SAC_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
