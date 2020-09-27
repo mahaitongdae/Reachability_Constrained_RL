@@ -157,7 +157,7 @@ class Evaluator(object):
                     'stationary_rew_mean', 'steer_mse', 'acc_mse']
         episode_return = episode_info['episode_return']
         episode_len = episode_info['episode_len']
-        delta_v_list = list(map(lambda x: x[0]-20, episode_info['obs_list']))
+        delta_v_list = list(map(lambda x: x[0], episode_info['obs_list']))
         delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
         delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
         steer_list = list(map(lambda x: x[0]*1.2 * np.pi / 9, episode_info['action_list']))
