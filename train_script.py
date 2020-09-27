@@ -122,7 +122,7 @@ def built_AMPC_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=0.01)
 
@@ -197,7 +197,7 @@ def built_MPG_parser(version):
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 25] if version == 'MPG-v1' else [])
     if version == 'MPG-v2' or version == 'MPG-v3':
         parser.add_argument("--eta", type=float, default=0.1)
-        parser.add_argument("--rule_based_bias_total_ite", type=int, default=5000)
+        parser.add_argument("--rule_based_bias_total_ite", type=int, default=9000)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)

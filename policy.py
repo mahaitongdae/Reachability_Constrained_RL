@@ -283,5 +283,18 @@ def test_mlp():
     print(gradient)
 
 
+def test_decay(decay_rate, steps):
+    import matplotlib.pyplot as plt
+    exp_lr = [8e-4 * pow(decay_rate, (step / steps)) for step in range(100000)]
+    linear_lr = [8e-4 - 8e-4/100000 * step for step in range(100000)]
+    linear_lr2 = [8e-4 - 8e-4/90000 * step for step in range(100000)]
+
+    plt.plot(exp_lr, 'r')
+    plt.plot(linear_lr, 'g')
+    plt.plot(linear_lr2, 'b')
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    test_policy_with_Qs()
+    test_decay(0.9, 6000)

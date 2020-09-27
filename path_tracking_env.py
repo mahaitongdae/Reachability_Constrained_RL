@@ -418,10 +418,10 @@ class EnvironmentModel(object):  # all tensors
         self.veh_states = None
         self.num_future_data = num_future_data
         self.history_positions = deque(maxlen=100)
+        self.expected_vs = 20.
         # veh_state: v_xs, v_ys, rs, delta_ys, delta_phis, xs
-        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
+        # obs: delta_v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
         #      future_delta_phis1,..., future_delta_phisn
-        # veh_full_state: v_xs, v_ys, rs, ys, phis, xs
 
     def reset(self, obses):
         self.obses = obses
@@ -432,13 +432,16 @@ class EnvironmentModel(object):  # all tensors
     def _get_obs(self, veh_states):
         v_xs, v_ys, rs, delta_ys, delta_phis, xs = veh_states[:, 0], veh_states[:, 1], veh_states[:, 2], \
                                                    veh_states[:, 3], veh_states[:, 4], veh_states[:, 5]
-        lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis, xs] + \
+        lists_to_stack = [v_xs-self.expected_vs, v_ys, rs, delta_ys, delta_phis, xs] + \
                          [delta_ys for _ in range(self.num_future_data)]  # + \
                          # [delta_phis for _ in range(self.num_future_data)]
         return tf.stack(lists_to_stack, axis=1)
 
     def _get_state(self, obses):
-        return obses[:, :6]
+        delta_v_xs, v_ys, rs, delta_ys, delta_phis, xs = obses[:, 0], obses[:, 1], obses[:, 2], \
+                                                         obses[:, 3], obses[:, 4], obses[:, 5]
+        lists_to_stack = [delta_v_xs + self.expected_vs, v_ys, rs, delta_ys, delta_phis, xs]
+        return tf.stack(lists_to_stack, axis=1)
 
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
@@ -520,7 +523,7 @@ class EnvironmentModel(object):  # all tensors
 class PathTrackingEnv(gym.Env, ABC):
     def __init__(self, num_future_data=0, **kwargs):
         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, xs
-        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
+        # obs: delta_v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
         #         #      future_delta_phis1,..., future_delta_phisn
         # veh_full_state: v_xs, v_ys, rs, ys, phis, xs
         self.vehicle_dynamics = VehicleDynamics()
@@ -560,13 +563,16 @@ class PathTrackingEnv(gym.Env, ABC):
             future_delta_ys_list.append(self.vehicle_dynamics.path.compute_delta_y(x_, ys))
             # future_delta_phi_list.append(self.vehicle_dynamics.path.compute_delta_phi(x_, phis))
 
-        lists_to_stack = [v_xs, v_ys, rs, delta_ys, delta_phis, xs] + \
+        lists_to_stack = [v_xs-self.expected_vs, v_ys, rs, delta_ys, delta_phis, xs] + \
                          future_delta_ys_list  # + \
                          # future_delta_phi_list
         return np.stack(lists_to_stack, axis=1)
 
     def _get_state(self, obses):
-        return obses[:, :6]
+        delta_v_xs, v_ys, rs, delta_ys, delta_phis, xs = obses[:, 0], obses[:, 1], obses[:, 2], \
+                                                         obses[:, 3], obses[:, 4], obses[:, 5]
+        lists_to_stack = [delta_v_xs + self.expected_vs, v_ys, rs, delta_ys, delta_phis, xs]
+        return np.stack(lists_to_stack, axis=1)
 
     def reset(self, **kwargs):
         if 'init_obs' in kwargs.keys():
@@ -729,9 +735,10 @@ def test_path_tracking_env():
     env = PathTrackingEnv(num_agent=1)
     obs = env.reset()
     print(obs)
-    action = np.array([[-1, 0]], np.float32)
+    action = np.array([[0, 0.3]], np.float32)
     for _ in range(1000):
         obs, reward, done, info = env.step(action)
+        print(obs[0][0], )
         env.render()
         # env.reset()
 
@@ -743,9 +750,10 @@ def test_environment():
     print(obs)
     model.reset(obs)
     # model.render()
-    actions = np.array([[-1, 0]], np.float32)
+    actions = np.array([[0, -1]], np.float32)
     for _ in range(1000):
         model.rollout_out(actions)
+        print(model.obses[0][0])
         model.render()
 
 
