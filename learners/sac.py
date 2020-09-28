@@ -128,7 +128,7 @@ class SACLearner(object):
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
 
-            policy_entropy = self.tf.reduce_mean(logps)
+            policy_entropy = -self.tf.reduce_mean(logps)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = self.tf.reduce_mean(all_Qs_min)
 

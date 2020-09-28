@@ -637,7 +637,7 @@ def built_SAC_parser():
     parser.add_argument("--alg_name", default='SAC')
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
-    parser.add_argument("--alpha", default='auto')
+    parser.add_argument("--alpha", default=0.03)  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument("--target_entropy", type=float, default=-2)
