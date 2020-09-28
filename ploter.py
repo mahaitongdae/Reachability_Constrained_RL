@@ -22,11 +22,11 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
                 'stationary_rew_mean']#, 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['SAC']:
-        date2plot_dir = './results/{}/data2plot'.format(alg)
-        date2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(date2plot_dir)
-        for num_run, dir in enumerate(date2plot_dirs_list):
-            eval_dir = dir + '/logs/evaluator'
+    for alg in ['MPG-v3', 'NDPG', 'NADP']:
+        data2plot_dir = './results/{}/data2plot'.format(alg)
+        data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
+        for num_run, dir in enumerate(data2plot_dirs_list):
+            eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
             eval_file = os.path.join(eval_dir,
                                      [file_name for file_name in os.listdir(eval_dir) if file_name.startswith('events')][0])
             eval_summarys = tf.data.TFRecordDataset([eval_file])
@@ -55,8 +55,9 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax1.set_ylabel('Episode Return', fontsize=15)
     ax1.set_xlabel("Ten Thousand Iteration", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    ax1.legend(handles=handles[1:], labels=labels[1:], loc='lower right', frameon=False, fontsize=15)
-    plt.ylim(-1000, 0)
+    labels = ['Mixed PG', 'DPG', 'ADP']
+    ax1.legend(handles=handles, labels=labels, loc='lower right', frameon=False, fontsize=15)
+    plt.ylim(-800, 0)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     plt.show()
@@ -65,10 +66,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
 def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['update_time']  # , 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['SAC']:
-        date2plot_dir = './results/{}/data2plot'.format(alg)
-        date2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(date2plot_dir)
-        for num_run, dir in enumerate(date2plot_dirs_list):
+    for alg in ['MPG-v3', 'NDPG', 'NADP']:
+        data2plot_dir = './results/{}/data2plot'.format(alg)
+        data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
+        for num_run, dir in enumerate(data2plot_dirs_list):
             opt_dir = dir + '/logs/optimizer'
             opt_file = os.path.join(opt_dir,
                                      [file_name for file_name in os.listdir(opt_dir) if
