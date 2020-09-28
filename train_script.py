@@ -762,4 +762,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v3')
+    main('SAC')

@@ -165,7 +165,10 @@ class PolicyWithQs(object):
     def compute_mode(self, obs):
         logits = self.policy(obs)
         mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        return mean
+        if self.args.deterministic_policy:
+            return mean
+        else:
+            return self.tf.tanh(mean)
 
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
