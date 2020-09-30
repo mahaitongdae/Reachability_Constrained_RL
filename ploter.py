@@ -22,7 +22,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
                 'stationary_rew_mean']#, 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['MPG-v3', 'NDPG', 'NADP']:
+    for alg in ['MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
         data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
         for num_run, dir in enumerate(data2plot_dirs_list):
@@ -51,11 +51,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     f1 = plt.figure(1)
     ax1 = f1.add_axes([0.20, 0.12, 0.78, 0.86])
     sns.lineplot(x="iteration", y="episode_return", hue="algorithm", data=total_dataframe, linewidth=2, palette="bright")
-
     ax1.set_ylabel('Episode Return', fontsize=15)
     ax1.set_xlabel("Ten Thousand Iteration", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    labels = ['Mixed PG', 'DPG', 'ADP']
+    labels = ['Mixed PG', 'DPG', 'ADP', 'TD3', 'SAC']
     ax1.legend(handles=handles, labels=labels, loc='lower right', frameon=False, fontsize=15)
     plt.ylim(-800, 0)
     plt.yticks(fontsize=15)
@@ -66,7 +65,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
 def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['update_time']  # , 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['MPG-v3', 'NDPG', 'NADP']:
+    for alg in ['MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
         data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
         for num_run, dir in enumerate(data2plot_dirs_list):
@@ -100,6 +99,9 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     sns.boxplot(x="algorithm", y="update_time", data=total_dataframe)
     sns.despine(offset=10, trim=True)
     ax1.set_ylabel('Wall-clock Time per Iterations [s]', fontsize=15)
+    labels = ax1.get_xticklabels()
+    labels = ['Mixed PG', 'DPG', 'ADP', 'TD3', 'SAC']
+    ax1.set_xticklabels(labels, fontsize=15)
     ax1.set_xlabel("", fontsize=15)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
