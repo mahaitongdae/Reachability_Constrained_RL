@@ -555,7 +555,6 @@ def built_TD3_parser():
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
 
-
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
@@ -667,7 +666,6 @@ def built_SAC_parser():
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument("--num_eval_agent", type=int, default=num_eval_episode)
 
-
     # policy and model
     parser.add_argument("--policy_only", default=False, action='store_true')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
@@ -681,7 +679,6 @@ def built_SAC_parser():
     parser.add_argument("--double_Q", default=True, action='store_true')
     parser.add_argument("--target", default=True, action='store_true')
     parser.add_argument("--policy_out_activation", type=str, default='linear')
-
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)

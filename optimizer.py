@@ -19,6 +19,7 @@ import tensorflow as tf
 from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
+from queue import Empty
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -68,7 +69,10 @@ class UpdateThread(threading.Thread):
                                     ))
         # fetch grad
         with self.grad_queue_get_timer:
-            grads, learner_stats = self.inqueue.get()
+            try:
+                grads, learner_stats = self.inqueue.get(timeout=30)
+            except Empty:
+                return
 
         # apply grad
         with self.grad_apply_timer:
@@ -263,11 +267,4 @@ class OffPolicyAsyncOptimizer(object):
         self.get_stats()
 
     def stop(self):
-        for r in self.workers['remote_workers']:
-            r.__ray_terminate__.remote()
-        for r in self.learners:
-            r.__ray_terminate__.remote()
-        for r in self.replay_buffers:
-            r.__ray_terminate__.remote()
-        self.evaluator.__ray_terminate__.remote()
         self.update_thread.stopped = True
