@@ -285,13 +285,13 @@ class MPGLearner(object):
             return q_loss1, q_loss2, q_gradient1, q_gradient2, self.tf.convert_to_tensor(model_mse_list)
 
     @tf.function
-    def policy_forward_and_backward(self, mb_obs, ite, model_mse_tensor):
+    def policy_forward_and_backward(self, mb_obs, ite, model_mse_tensor, ws_old):
         with self.tf.GradientTape() as tape:
             model_returns_var, minus_reduced_model_returns, value_mean = self.model_rollout_for_policy_update(mb_obs)
             if self.args.learner_version == 'MPG-v2' or self.args.learner_version == 'MPG-v3':
                 ws = ws_new = self.rule_based_weights(ite, self.args.rule_based_bias_total_ite, self.args.eta)
             else:
-                ws, ws_new = self.heuristic_weights(model_mse_tensor)
+                ws, ws_new = self.heuristic_weights(ws_old, model_mse_tensor)
             total_loss = self.tf.reduce_sum(self.tf.stop_gradient(ws)*minus_reduced_model_returns)
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(total_loss,
@@ -310,7 +310,8 @@ class MPGLearner(object):
         self.tf.summary.trace_on(graph=True, profiler=False)
         self.policy_forward_and_backward(mb_obs,
                                          self.tf.constant(0, dtype=self.tf.int32),
-                                         self.tf.ones(len(self.num_rollout_list_for_policy_update)))
+                                         self.tf.ones(len(self.num_rollout_list_for_policy_update)),
+                                         self.ws_old)
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
@@ -331,12 +332,11 @@ class MPGLearner(object):
         ws = self.tf.nn.softmax(bias_inverses)
         return ws
 
-    def heuristic_weights(self, model_mse_tensor):
+    def heuristic_weights(self, ws_old, model_mse_tensor):
         epsilon = 1e-8
         mse_inverse = 1. / (model_mse_tensor + epsilon)
         ws_new = (1. / (model_mse_tensor + epsilon)) / self.tf.reduce_sum(mse_inverse)
-        ws = self.ws_old + self.args.w_moving_rate * (ws_new - self.ws_old)
-        self.ws_old = ws
+        ws = ws_old + self.args.w_moving_rate * (ws_new - ws_old)
         return ws, ws_new
 
     def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
@@ -364,7 +364,9 @@ class MPGLearner(object):
             policy_gradient, total_loss, value_mean, ws, ws_new, all_losses = \
                 self.policy_forward_and_backward(mb_obs,
                                                  self.tf.convert_to_tensor(iteration, dtype=self.tf.float32),
-                                                 model_mse_tensor)
+                                                 model_mse_tensor,
+                                                 self.ws_old)
+            self.ws_old = ws
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
@@ -442,6 +444,14 @@ def test_rule_based_weights():
 
     plt.show()
 
+def test_moving_weights():
+    w_old = 0.
+    for i in range(100):
+        w_new = 0.8
+        w = w_old + 0.2 * (w_new - w_old)
+        w_old = w
+        print(w)
+
 
 if __name__ == '__main__':
-    test_rule_based_weights()
+    test_moving_weights()
