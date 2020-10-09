@@ -202,7 +202,7 @@ def built_MPG_parser(version):
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10 if version == 'MPG-v1' or version == 'MPG-v3' else 1)
-    parser.add_argument("--w_moving_rate", type=float, default=0.005 if version == 'MPG-v1' else 1.)
+    parser.add_argument("--w_moving_rate", type=float, default=0.01 if version == 'MPG-v1' else 1.)
     parser.add_argument("--alpha", default=None)
 
     # worker
