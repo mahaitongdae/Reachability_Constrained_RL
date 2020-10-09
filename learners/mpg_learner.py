@@ -335,9 +335,14 @@ class MPGLearner(object):
     def heuristic_weights(self, ws_old, model_mse_tensor):
         epsilon = 1e-8
         mse_inverse = 1. / (model_mse_tensor + epsilon)
-        ws_new = (1. / (model_mse_tensor + epsilon)) / self.tf.reduce_sum(mse_inverse)
-        ws = ws_old + self.args.w_moving_rate * (ws_new - ws_old)
-        return ws, ws_new
+        if ws_old[0] < 0.98:
+            ws_new = (1. / (model_mse_tensor + epsilon)) / self.tf.reduce_sum(mse_inverse)
+
+            ws = ws_old + self.args.w_moving_rate * (ws_new - ws_old)
+            return ws, ws_new
+        else:
+            ws = ws_new = self.tf.convert_to_tensor([1., 0])
+            return ws, ws_new
 
     def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
         if self.counter % self.num_batch_reuse == 0:
