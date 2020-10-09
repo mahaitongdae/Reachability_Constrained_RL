@@ -198,11 +198,14 @@ def built_MPG_parser(version):
     if version == 'MPG-v2' or version == 'MPG-v3':
         parser.add_argument("--eta", type=float, default=0.1)
         parser.add_argument("--rule_based_bias_total_ite", type=int, default=9000)
+    else:
+        assert version == 'MPG-v1'
+        parser.add_argument("--thres", type=float, default=0.95)
+        parser.add_argument("--w_moving_rate", type=float, default=0.01)
 
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--gradient_clip_norm", type=float, default=3)
     parser.add_argument("--num_batch_reuse", type=int, default=10 if version == 'MPG-v1' or version == 'MPG-v3' else 1)
-    parser.add_argument("--w_moving_rate", type=float, default=0.01 if version == 'MPG-v1' else 1.)
     parser.add_argument("--alpha", default=None)
 
     # worker
@@ -735,7 +738,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(redis_max_memory=512*1024*1024, object_store_memory=5120*1024*1024)
+        ray.init(object_store_memory=5120*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)

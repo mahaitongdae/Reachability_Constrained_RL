@@ -335,7 +335,7 @@ class MPGLearner(object):
     def heuristic_weights(self, ws_old, model_mse_tensor):
         epsilon = 1e-8
         mse_inverse = 1. / (model_mse_tensor + epsilon)
-        if ws_old[0] < 0.98:
+        if ws_old[0] < self.args.thres:
             ws_new = (1. / (model_mse_tensor + epsilon)) / self.tf.reduce_sum(mse_inverse)
 
             ws = ws_old + self.args.w_moving_rate * (ws_new - ws_old)
