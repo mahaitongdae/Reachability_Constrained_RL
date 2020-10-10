@@ -23,7 +23,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
                 'stationary_rew_mean']#, 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
+    for alg in ['MPG-v1', 'MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
         data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
         for num_run, dir in enumerate(data2plot_dirs_list):
@@ -56,12 +56,12 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax1.set_ylabel('Episode Return', fontsize=15)
     ax1.set_xlabel("Ten Thousand Iteration", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    labels = ['MPG', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.legend(handles=handles, labels=labels, loc='lower right', frameon=False, fontsize=11)
     plt.ylim(-800, 50)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
-    # plt.show()
+    plt.show()
     allresults = {}
     results2print = {}
 
@@ -81,7 +81,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
 
 def compute_convergence_speed(goal_perf, dirs_dict_for_plot=None):
     result_dict = {}
-    for alg in ['MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
+    for alg in ['MPG-v1', 'MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         result_dict.update({alg: []})
         data2plot_dir = './results/{}/data2plot'.format(alg)
         data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
@@ -134,7 +134,7 @@ def plot_convergence_speed_for_different_goal_perf(goal_perf_list):
     ax1.set_ylabel('Convergence speed', fontsize=15)
     ax1.set_xlabel("Goal performance", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    labels = ['MPG', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.legend(handles=handles, labels=labels, loc='upper left', frameon=False, fontsize=11)
     ax1.set_xticklabels([str(goal) for goal in goal_perf_list])
     plt.yticks(fontsize=15)
@@ -146,7 +146,7 @@ def plot_convergence_speed_for_different_goal_perf(goal_perf_list):
 def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['update_time']  # , 'steer_mse', 'acc_mse']
     df_list = []
-    for alg in ['MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
+    for alg in ['MPG-v1', 'MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
         data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
         for num_run, dir in enumerate(data2plot_dirs_list):
@@ -181,7 +181,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     sns.despine(offset=10, trim=True)
     ax1.set_ylabel('Wall-clock Time per Iteration [s]', fontsize=15)
     labels = ax1.get_xticklabels()
-    labels = ['MPG', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.set_xticklabels(labels, fontsize=15)
     ax1.set_xlabel("", fontsize=15)
     plt.yticks(fontsize=15)
@@ -190,7 +190,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
 
 
 if __name__ == "__main__":
-    # plot_eval_results_of_all_alg_n_runs()
+    plot_eval_results_of_all_alg_n_runs()
     # plot_opt_results_of_all_alg_n_runs()
     # print(compute_convergence_speed(-100.))
-    plot_convergence_speed_for_different_goal_perf([-200, -100, -50, -30, -20, -10, -5])
+    # plot_convergence_speed_for_different_goal_perf([-200, -100, -50, -30, -20, -10, -5])
