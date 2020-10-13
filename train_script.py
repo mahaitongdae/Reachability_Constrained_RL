@@ -200,7 +200,7 @@ def built_MPG_parser(version):
         parser.add_argument("--rule_based_bias_total_ite", type=int, default=9000)
     else:
         assert version == 'MPG-v1'
-        parser.add_argument("--thres", type=float, default=0.95)
+        parser.add_argument("--thres", type=float, default=0.98)
         parser.add_argument("--w_moving_rate", type=float, default=0.01)
 
     parser.add_argument("--gamma", type=float, default=0.98)
