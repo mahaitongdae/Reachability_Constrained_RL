@@ -21,7 +21,7 @@ sns.set(style="darkgrid")
 
 def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
-                'stationary_rew_mean']#, 'steer_mse', 'acc_mse']
+                'stationary_rew_mean', 'steer_mse', 'acc_mse']
     df_list = []
     for alg in ['MPG-v1', 'MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
@@ -51,16 +51,72 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
     f1 = plt.figure(1)
     ax1 = f1.add_axes([0.20, 0.12, 0.78, 0.86])
-    sns.lineplot(x="iteration", y="episode_return", hue="algorithm", data=total_dataframe, linewidth=2, palette="bright")
+    sns.lineplot(x="iteration", y="episode_return", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 )
     print(ax1.lines[0].get_data())
     ax1.set_ylabel('Episode Return', fontsize=15)
     ax1.set_xlabel("Ten Thousand Iteration", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v2', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.legend(handles=handles, labels=labels, loc='lower right', frameon=False, fontsize=11)
     plt.ylim(-800, 50)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
+
+    f2 = plt.figure(2)
+    ax2 = f2.add_axes([0.15, 0.12, 0.83, 0.86])
+    sns.lineplot(x="iteration", y="delta_y_mse", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 )
+    ax2.set_ylabel('Position Error [m]', fontsize=15)
+    ax2.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    handles, labels = ax2.get_legend_handles_labels()
+    labels = ['MPG-v1', 'MPG-v2', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    ax2.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=11)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+
+    f3 = plt.figure(3)
+    ax3 = f3.add_axes([0.15, 0.12, 0.83, 0.86])
+    sns.lineplot(x="iteration", y="delta_phi_mse", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 legend=False)
+    ax3.set_ylabel('Heading Angle Error [rad]', fontsize=15)
+    ax3.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+
+    f4 = plt.figure(4)
+    ax4 = f4.add_axes([0.15, 0.12, 0.83, 0.86])
+    sns.lineplot(x="iteration", y="delta_v_mse", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 legend=False)
+    ax4.set_ylabel('Velocity Error [m/s]', fontsize=15)
+    ax4.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+
+    f5 = plt.figure(5)
+    ax5 = f5.add_axes([0.15, 0.12, 0.83, 0.86])
+    sns.lineplot(x="iteration", y="steer_mse", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 legend=False)
+    ax5.set_ylabel('Steer [rad]', fontsize=15)
+    ax5.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+
+    f6 = plt.figure(6)
+    ax6 = f6.add_axes([0.15, 0.12, 0.83, 0.86])
+    sns.lineplot(x="iteration", y="acc_mse", hue="algorithm",
+                 data=total_dataframe, linewidth=2, palette="bright",
+                 legend=False)
+    ax6.set_ylabel('Acceleration [$m^2$/s]', fontsize=15)
+    ax6.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+
     plt.show()
     allresults = {}
     results2print = {}
@@ -130,11 +186,11 @@ def plot_convergence_speed_for_different_goal_perf(goal_perf_list):
     f1 = plt.figure(1)
     ax1 = f1.add_axes([0.20, 0.12, 0.78, 0.86])
     sns.lineplot(x="goal_perf", y="first_arrive_steps", hue="algorithm", data=total_dataframe, linewidth=2,
-                 palette="bright")
+                 palette="bright", legend=False)
     ax1.set_ylabel('Convergence speed', fontsize=15)
     ax1.set_xlabel("Goal performance", fontsize=15)
     handles, labels = ax1.get_legend_handles_labels()
-    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v2', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.legend(handles=handles, labels=labels, loc='upper left', frameon=False, fontsize=11)
     ax1.set_xticklabels([str(goal) for goal in goal_perf_list])
     plt.yticks(fontsize=15)
@@ -144,7 +200,7 @@ def plot_convergence_speed_for_different_goal_perf(goal_perf_list):
 
 
 def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
-    tag2plot = ['update_time']  # , 'steer_mse', 'acc_mse']
+    tag2plot = ['pg_time']  # 'update_time' , 'steer_mse', 'acc_mse']
     df_list = []
     for alg in ['MPG-v1', 'MPG-v3', 'NDPG', 'NADP', 'TD3', 'SAC']:
         data2plot_dir = './results/{}/data2plot'.format(alg)
@@ -179,9 +235,9 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax1 = f1.add_axes([0.20, 0.15, 0.78, 0.84])
     sns.boxplot(x="algorithm", y=tag2plot[0], data=total_dataframe)
     sns.despine(offset=10, trim=True)
-    ax1.set_ylabel('Wall-clock Time per Iteration [s]', fontsize=15)
+    ax1.set_ylabel('Wall-clock Time per Gradient [s]', fontsize=15)
     labels = ax1.get_xticklabels()
-    labels = ['MPG-v1', 'MPG-v3', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    labels = ['MPG-v1', 'MPG-v2', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
     ax1.set_xticklabels(labels, fontsize=15)
     ax1.set_xlabel("", fontsize=15)
     plt.yticks(fontsize=15)
