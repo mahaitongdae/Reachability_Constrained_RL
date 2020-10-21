@@ -404,13 +404,13 @@ class MPGLearner(object):
 def test_rule_based_weights():
     import matplotlib.pyplot as plt
     import tensorflow as tf
-    num_rollout_list_for_policy_update = [i for i in range(0,20,2)]
+    num_rollout_list_for_policy_update = [0, 25]
 
     def rule_based_bias(ite, total_ite, eta):
         start = 1 - eta
         slope = 2 * eta / total_ite
         lam = start + slope * ite
-        lam = np.clip(lam, 0, 1.5)
+        lam = np.clip(lam, 0, 1 + eta)
         if lam < 1:
             bias_list = [np.power(lam, i) for i in num_rollout_list_for_policy_update]
         else:
@@ -420,12 +420,14 @@ def test_rule_based_weights():
         bias_inverse_sum = sum(bias_inverse)
         w_bias_list = list(map(lambda x: (1. / (x + 1e-8)) / bias_inverse_sum, bias_list))
         w_sm = tf.nn.softmax(bias_inverse).numpy()
-        return bias_list, w_sm
+        return bias_list, w_sm, w_bias_list
 
     # plot i-th elem of all iters
     ite = list(range(30000))
     i = 0
-    elem_i_weights1 = list(map(lambda x_: rule_based_bias(x_, 20000, 0.1)[1][i], ite))
+    elem_i_weights1 = list(map(lambda x_: rule_based_bias(x_, 9000, 0.1)[1][i], ite))
+    # elem_i_weights2 = list(map(lambda x_: rule_based_bias(x_, 9000, 0.1)[2][i], ite))
+
     # elem_i_weights2 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.2)[1][i], ite))
     # elem_i_weights3 = list(map(lambda x_: rule_based_bias(x_, 10000, 0.3)[1][i], ite))
 
@@ -435,13 +437,13 @@ def test_rule_based_weights():
     # plt.plot(elem_i_weights3, 'b')
     #
     # plot all elems in some iter
-    ite = 30000
-    _, w_bias_list1 = rule_based_bias(ite, 20000, 0.1)
+    # ite = 30000
+    # _, w_bias_list1 = rule_based_bias(ite, 20000, 0.1)
     # _, w_bias_list2 = rule_based_bias(ite, 20000, 0.2)
     # _, w_bias_list3 = rule_based_bias(ite, 20000, 0.3)
 
-    plt.figure('all elems in some iter')
-    plt.plot(w_bias_list1, 'r')
+    # plt.figure('all elems in some iter')
+    # plt.plot(w_bias_list1, 'r')
     # plt.plot(w_bias_list2, 'g')
     # plt.plot(w_bias_list3, 'b')
 
@@ -459,4 +461,4 @@ def test_moving_weights():
 
 
 if __name__ == '__main__':
-    test_moving_weights()
+    test_rule_based_weights()
