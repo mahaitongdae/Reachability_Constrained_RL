@@ -101,9 +101,12 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax5 = f5.add_axes([0.15, 0.12, 0.83, 0.86])
     sns.lineplot(x="iteration", y="steer_mse", hue="algorithm",
                  data=total_dataframe, linewidth=2, palette="bright",
-                 legend=False)
-    ax5.set_ylabel('Steer [rad]', fontsize=15)
+                 )
+    ax5.set_ylabel('Front wheel angle [rad]', fontsize=15)
     ax5.set_xlabel("Ten Thousand Iteration", fontsize=15)
+    handles, labels = ax5.get_legend_handles_labels()
+    labels = ['MPG-v1', 'MPG-v2', r'$n$-step DPG', r'$n$-step ADP', 'TD3', 'SAC']
+    ax5.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=11)
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
 
