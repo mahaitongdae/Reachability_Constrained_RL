@@ -36,7 +36,7 @@ class NDPGLearner(object):
 
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
@@ -93,9 +93,9 @@ class NDPGLearner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
-        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()[:, 0]
+        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
         td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
@@ -133,7 +133,7 @@ class NDPGLearner(object):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
-                q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
                 q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
 
         with self.tf.name_scope('q_gradient') as scope:
@@ -145,7 +145,7 @@ class NDPGLearner(object):
         with self.tf.GradientTape(persistent=True) as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            all_Qs = self.policy_with_value.compute_Q1(processed_obses, actions)[:, 0]
+            all_Qs = self.policy_with_value.compute_Q1(processed_obses, actions)
             policy_loss = -self.tf.reduce_mean(all_Qs)
             value_var = self.tf.math.reduce_variance(all_Qs)
             value_mean = -policy_loss

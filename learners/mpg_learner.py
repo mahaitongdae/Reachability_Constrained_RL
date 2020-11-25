@@ -40,7 +40,7 @@ class MPGLearner(object):
 
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
@@ -99,8 +99,8 @@ class MPGLearner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
-        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
+        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()
         clipped_double_q_target = processed_rewards + self.args.gamma * np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)
         return clipped_double_q_target
 
@@ -109,9 +109,9 @@ class MPGLearner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
-        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()[:, 0]
+        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
         td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
@@ -171,7 +171,7 @@ class MPGLearner(object):
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q1_target(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
             all_targets = all_rewards_sums + all_gammas * all_Qs
@@ -217,14 +217,14 @@ class MPGLearner(object):
             all_gammas = self.tf.concat(gammas_list, 0)
             if self.args.learner_version == 'MPG-v2':
                 all_Q1s = self.policy_with_value.compute_Q1(
-                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
                 all_Q2s = self.policy_with_value.compute_Q2(
-                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
                 all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
                 final = self.tf.reshape(all_rewards_sums + all_gammas * all_min_Qs, (max_num_rollout + 1, self.M, -1))
             else:
                 all_Qs = self.policy_with_value.compute_Q1(
-                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                    self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
                 final = self.tf.reshape(all_rewards_sums + all_gammas * all_Qs, (max_num_rollout + 1, self.M, -1))
             # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
             #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
@@ -261,7 +261,7 @@ class MPGLearner(object):
         if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
             with self.tf.GradientTape() as tape:
                 with self.tf.name_scope('q_loss') as scope:
-                    q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                    q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
                     q_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred1 - mb_targets))
 
             with self.tf.name_scope('q_gradient') as scope:
@@ -272,10 +272,10 @@ class MPGLearner(object):
         else:
             with self.tf.GradientTape(persistent=True) as tape:
                 with self.tf.name_scope('q_loss') as scope:
-                    q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                    q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
                     q_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred1 - mb_targets))
 
-                    q_pred2 = self.policy_with_value.compute_Q2(processed_mb_obs, mb_actions)[:, 0]
+                    q_pred2 = self.policy_with_value.compute_Q2(processed_mb_obs, mb_actions)
                     q_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred2 - mb_targets))
 
             with self.tf.name_scope('q_gradient') as scope:

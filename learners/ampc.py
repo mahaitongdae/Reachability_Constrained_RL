@@ -39,7 +39,7 @@ class AMPCLearner(object):
 
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.stats = {}

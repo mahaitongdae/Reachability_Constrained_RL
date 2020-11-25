@@ -131,7 +131,7 @@ class OffPolicyAsyncOptimizer(object):
         self.replay_buffers = replay_buffers
         self.evaluator = evaluator
         self.num_sampled_steps = 0
-        self.num_updated_steps = 0
+        self.iteration = 0
         self.num_samples_dropped = 0
         self.num_grads_dropped = 0
         self.optimizer_steps = 0
@@ -172,7 +172,7 @@ class OffPolicyAsyncOptimizer(object):
 
     def get_stats(self):
         self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
-                               num_updated_steps=self.num_updated_steps,
+                               iteration=self.iteration,
                                optimizer_steps=self.optimizer_steps,
                                num_samples_dropped=self.num_samples_dropped,
                                num_grads_dropped=self.num_grads_dropped,
@@ -214,6 +214,7 @@ class OffPolicyAsyncOptimizer(object):
         assert self.update_thread.is_alive()
         assert len(self.workers['remote_workers']) > 0
         weights = None
+        ppc_params = None
 
         # sampling
         with self.timers['sampling_timer']:
@@ -222,6 +223,7 @@ class OffPolicyAsyncOptimizer(object):
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
                 self.steps_since_update[worker] += count
+                ppc_params = worker.get_ppc_params.remote()
                 if self.steps_since_update[worker] >= self.max_weight_sync_delay:
                     judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
                     if weights is None:
@@ -250,9 +252,9 @@ class OffPolicyAsyncOptimizer(object):
                     info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
                                                                    info_for_buffer['td_error'])
                 rb, samples = self.learner_queue.get(block=False)
-                if self.args.obs_preprocess_type == 'normalize' or \
-                        self.args.reward_preprocess_type == 'normalize':
-                    learner.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+                if ppc_params and \
+                        (self.args.obs_preprocess_type == 'normalize' or self.args.reward_preprocess_type == 'normalize'):
+                    learner.set_ppc_params.remote(ppc_params)
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
@@ -262,9 +264,124 @@ class OffPolicyAsyncOptimizer(object):
                     self.num_grads_dropped += 1
                 self.update_thread.inqueue.put([grads, learner_stats])
 
-        self.num_updated_steps = self.update_thread.iteration
+        self.iteration = self.update_thread.iteration
         self.optimizer_steps += 1
         self.get_stats()
 
     def stop(self):
         self.update_thread.stopped = True
+
+
+class SingleProcessOffPolicyOptimizer(object):
+    def __init__(self, worker, learner, replay_buffer, evaluator, args):
+        self.args = args
+        self.worker = worker
+        self.learner = learner
+        self.replay_buffer = replay_buffer
+        self.evaluator = evaluator
+        self.num_sampled_steps = 0
+        self.iteration = 0
+        self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer", "learning_timer", "grad_apply_timer"]}
+        self.stats = {}
+        self.log_dir = self.args.log_dir
+        self.model_dir = self.args.model_dir
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+
+        self.args.log_interval = 10
+        self.args.eval_interval = 3000
+        self.args.save_interval = 3000
+
+        # fill buffer to replay starts
+        logger.info('start filling the replay')
+        while not len(self.replay_buffer) >= self.args.replay_starts:
+            sample_batch, count = self.worker.sample_with_count()
+            self.num_sampled_steps += count
+            self.replay_buffer.add_batch(sample_batch)
+        logger.info('end filling the replay')
+        self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
+        logger.info('Optimizer initialized')
+        self.get_stats()
+
+    def get_stats(self):
+        self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               iteration=self.iteration,
+                               sampling_time=self.timers['sampling_timer'].mean,
+                               replay_time=self.timers["replay_timer"].mean,
+                               learning_time=self.timers['learning_timer'].mean,
+                               grad_apply_timer=self.timers['grad_apply_timer'].mean
+                               )
+                          )
+        return self.stats
+
+    def step(self):
+        # sampling
+        sampling_interval = 10
+        if self.iteration % sampling_interval == 0:
+            with self.timers['sampling_timer']:
+                sample_batch, count = self.worker.sample_with_count()
+                self.num_sampled_steps += count
+                self.replay_buffer.add_batch(sample_batch)
+
+        # replay
+        with self.timers["replay_timer"]:
+            samples = self.replay_buffer.replay()
+
+        # learning
+        with self.timers['learning_timer']:
+            self.learner.set_weights(self.worker.get_weights())
+            if self.args.obs_preprocess_type == 'normalize' or \
+                    self.args.reward_preprocess_type == 'normalize':
+                self.learner.set_ppc_params(self.worker.get_ppc_params())
+            grads = self.learner.compute_gradient(samples[:5], self.replay_buffer, samples[-1], self.iteration)
+            learner_stats = self.learner.get_stats()
+            if self.args.buffer_type == 'priority':
+                info_for_buffer = self.learner.get_info_for_buffer()
+                info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'], info_for_buffer['td_error'])
+
+        # apply grad
+        with self.timers['grad_apply_timer']:
+            try:
+                judge_is_nan(grads)
+            except ValueError:
+                grads = [tf.zeros_like(grad) for grad in grads]
+                logger.info('Grad is nan!, zero it')
+            self.worker.apply_gradients(self.iteration, grads)
+
+        # log
+        if self.iteration % self.args.log_interval == 0:
+            logger.info('updating {} in total'.format(self.iteration))
+            logger.info('sampling {} in total'.format(self.stats['num_sampled_steps']))
+            with self.writer.as_default():
+                for key, val in learner_stats.items():
+                    if not isinstance(val, list):
+                        tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val,
+                                          step=self.iteration)
+                    else:
+                        assert isinstance(val, list)
+                        for i, v in enumerate(val):
+                            tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v,
+                                              step=self.iteration)
+                for key, val in self.stats.items():
+                    tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
+                self.writer.flush()
+
+        # evaluate
+        if self.iteration % self.args.eval_interval == 0:
+            self.evaluator.set_weights(self.worker.get_weights())
+            self.evaluator.set_ppc_params(self.worker.get_ppc_params())
+            self.evaluator.run_evaluation(self.iteration)
+
+        # save
+        if self.iteration % self.args.save_interval == 0:
+            self.worker.save_weights(self.model_dir, self.iteration)
+            self.worker.save_ppc_params(self.model_dir)
+
+        self.get_stats()
+        self.iteration += 1
+
+    def stop(self):
+        pass
+

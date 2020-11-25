@@ -19,8 +19,6 @@ from utils.misc import TimerStat
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# logger.setLevel(logging.INFO)
-
 
 class Evaluator(object):
     import tensorflow as tf
@@ -40,7 +38,7 @@ class Evaluator(object):
             os.makedirs(self.log_dir)
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma, num_agent=self.args.num_eval_agent)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)

@@ -31,7 +31,7 @@ class TD3Learner(object):
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_data = {}
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
@@ -76,8 +76,8 @@ class TD3Learner(object):
                                                 -self.args.policy_smoothing_clip,
                                                 self.args.policy_smoothing_clip)
 
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
-        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
+        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()
         clipped_double_q_target = processed_rewards + self.args.gamma * np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)
         return clipped_double_q_target
 
@@ -86,9 +86,9 @@ class TD3Learner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
-        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()[:, 0]
+        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
         td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
@@ -106,10 +106,10 @@ class TD3Learner(object):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape(persistent=True) as tape:
             with self.tf.name_scope('q_loss') as scope:
-                q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
                 q_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred1 - mb_targets))
 
-                q_pred2 = self.policy_with_value.compute_Q2(processed_mb_obs, mb_actions)[:, 0]
+                q_pred2 = self.policy_with_value.compute_Q2(processed_mb_obs, mb_actions)
                 q_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred2 - mb_targets))
 
         with self.tf.name_scope('q_gradient') as scope:
@@ -123,8 +123,8 @@ class TD3Learner(object):
         with self.tf.GradientTape(persistent=True) as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)[:, 0]
-            all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)[:, 0]
+            all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)
+            all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             policy_loss = -self.tf.reduce_mean(all_Qs_min)
             value_var = self.tf.math.reduce_variance(all_Qs_min)

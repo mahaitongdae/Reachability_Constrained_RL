@@ -36,7 +36,7 @@ class NADPLearner(object):
 
         self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
@@ -69,9 +69,9 @@ class NADPLearner(object):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
-        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()[:, 0]
+        values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()[:, 0]
+        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
         td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
@@ -111,7 +111,7 @@ class NADPLearner(object):
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q1_target(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
             all_targets = all_rewards_sums + all_gammas * all_Qs
@@ -153,7 +153,7 @@ class NADPLearner(object):
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q1(
-                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))[:, 0]
+                self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
 
@@ -176,7 +176,7 @@ class NADPLearner(object):
         model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
-                q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)[:, 0]
+                q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
                 q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - model_targets))
         with self.tf.name_scope('q_gradient') as scope:
             q_gradient = tape.gradient(q_loss, self.policy_with_value.Q1.trainable_weights)

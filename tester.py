@@ -9,16 +9,14 @@
 
 import logging
 
-from evaluator import Evaluator
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 class Tester(object):
-    def __init__(self, policy_cls, args):
+    def __init__(self, policy_cls, evaluator_cls, args):
         self.args = args
-        self.evaluator = Evaluator(policy_cls, self.args.env_id, self.args)
+        self.evaluator = evaluator_cls(policy_cls, self.args.env_id, self.args)
 
     def evaluate_saved_model(self, model_load_dir, ppc_params_load_dir, iteration):
         self.evaluator.evaluate_saved_model(model_load_dir, ppc_params_load_dir, iteration)
