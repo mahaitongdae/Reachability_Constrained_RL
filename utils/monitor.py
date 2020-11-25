@@ -7,11 +7,12 @@
 # @FileName: monitor.py
 # =====================================
 
-from gym.core import Wrapper
 import time
 
+from gym.core import Wrapper
 
-class Monitor(Wrapper):
+
+class MonitorMultiAgent(Wrapper):
     def __init__(self, env):
         Wrapper.__init__(self, env=env)
         self.tstart = time.time()
@@ -49,3 +50,41 @@ class Monitor(Wrapper):
             info['episode'] = epinfos
 
         self.total_steps += 1
+
+
+class Monitor(Wrapper):
+    def __init__(self, env):
+        Wrapper.__init__(self, env=env)
+        self.tstart = time.time()
+        self.rewards = None
+        self.needs_reset = True
+        self.total_steps = 0
+
+    def reset(self, **kwargs):
+        self.reset_state()
+        return self.env.reset(**kwargs)
+
+    def reset_state(self):
+        self.rewards = []
+        self.needs_reset = False
+
+    def step(self, action):
+        if self.needs_reset:
+            raise RuntimeError("Tried to step environment that needs reset")
+        ob, rew, done, info = self.env.step(action)
+        self.update(ob, rew, done, info)
+        return ob, rew, done, info
+
+    def update(self, ob, rew, done, info):
+        self.rewards.append(rew)
+        if done:
+            self.needs_reset = True
+            eprew = sum(self.rewards)
+            eplen = len(self.rewards)
+            epinfo = {"r": round(eprew, 6), "l": eplen, "t": round(time.time() - self.tstart, 6)}
+            assert isinstance(info, dict)
+            if isinstance(info, dict):
+                info['episode'] = epinfo
+
+        self.total_steps += 1
+

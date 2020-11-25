@@ -28,11 +28,11 @@ def judge_is_nan(list_of_np_or_tensor):
     for m in list_of_np_or_tensor:
         if hasattr(m, 'numpy'):
             if np.any(np.isnan(m.numpy())):
-                # print(list_of_np_or_tensor)
+                print(list_of_np_or_tensor)
                 raise ValueError
         else:
             if np.any(np.isnan(m)):
-                # print(list_of_np_or_tensor)
+                print(list_of_np_or_tensor)
                 raise ValueError
 
 
