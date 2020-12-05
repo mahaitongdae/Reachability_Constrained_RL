@@ -9,7 +9,6 @@
 
 import tensorflow as tf
 import numpy as np
-from gym import spaces
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 
 from model import MLPNet, AlphaModel
@@ -24,46 +23,61 @@ class PolicyWithQs(tf.Module):
     tfb = tfp.bijectors
     tf.config.experimental.set_visible_devices([], 'GPU')
 
-    def __init__(self, obs_space, act_space, args):
+    def __init__(self, obs_dim, act_dim,
+                 value_model_cls, value_num_hidden_layers, value_num_hidden_units,
+                 value_hidden_activation, value_lr_schedule,
+                 policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
+                 policy_out_activation, policy_lr_schedule,
+                 alpha, alpha_lr_schedule,
+                 policy_only, double_Q, target, tau, delay_update,
+                 deterministic_policy, action_range, **kwargs):
         super().__init__()
-        self.args = args
-        assert isinstance(obs_space, spaces.Box)
-        assert isinstance(act_space, spaces.Box)
-        obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
-        act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
-        n_hiddens, n_units, hidden_activation = self.args.num_hidden_layers, self.args.num_hidden_units, self.args.hidden_activation
-        value_model_cls, policy_model_cls = NAME2MODELCLS[self.args.value_model_cls], \
-                                            NAME2MODELCLS[self.args.policy_model_cls]
-        self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy',
-                                       output_activation=self.args.policy_out_activation)
-        self.policy_target = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy_target',
-                                              output_activation=self.args.policy_out_activation)
-        policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
-        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
+        self.policy_only = policy_only
+        self.double_Q = double_Q
+        self.target = target
+        self.tau = tau
+        self.delay_update = delay_update
+        self.deterministic_policy = deterministic_policy
+        self.action_range = action_range
+        self.alpha = alpha
 
-        self.Q1 = value_model_cls(obs_dim + act_dim, n_hiddens, n_units, hidden_activation, 1, name='Q1')
-        self.Q1_target = value_model_cls(obs_dim + act_dim, n_hiddens, n_units, hidden_activation, 1, name='Q1_target')
+        value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
+                                            NAME2MODELCLS[policy_model_cls]
+        self.policy = policy_model_cls(obs_dim, policy_num_hidden_layers, policy_num_hidden_units,
+                                       policy_hidden_activation, act_dim * 2, name='policy',
+                                       output_activation=policy_out_activation)
+        self.policy_target = policy_model_cls(obs_dim, policy_num_hidden_layers, policy_num_hidden_units,
+                                              policy_hidden_activation, act_dim * 2, name='policy_target',
+                                              output_activation=policy_out_activation)
+        policy_lr = PolynomialDecay(*policy_lr_schedule)
+        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr, name='policy_adam_opt')
+
+        self.Q1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                  value_hidden_activation, 1, name='Q1')
+        self.Q1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                         value_hidden_activation, 1, name='Q1_target')
         self.Q1_target.set_weights(self.Q1.get_weights())
-        self.Q1_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
-            *self.args.value_lr_schedule), name='Q1_adam_opt')
+        value_lr = PolynomialDecay(*value_lr_schedule)
+        self.Q1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q1_adam_opt')
 
-        self.Q2 = value_model_cls(obs_dim + act_dim, n_hiddens, n_units, hidden_activation, 1, name='Q2')
-        self.Q2_target = value_model_cls(obs_dim + act_dim, n_hiddens, n_units, hidden_activation, 1, name='Q2_target')
+        self.Q2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                  value_hidden_activation, 1, name='Q2')
+        self.Q2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                         value_hidden_activation, 1, name='Q2_target')
         self.Q2_target.set_weights(self.Q2.get_weights())
-        self.Q2_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
-            *self.args.value_lr_schedule), name='Q2_adam_opt')
+        self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
 
-        if self.args.policy_only:
+        if self.policy_only:
             self.target_models = ()
             self.models = (self.policy,)
             self.optimizers = (self.policy_optimizer,)
         else:
-            if self.args.double_Q:
-                assert self.args.target
+            if self.double_Q:
+                assert self.target
                 self.target_models = (self.Q1_target, self.Q2_target, self.policy_target,)
                 self.models = (self.Q1, self.Q2, self.policy,)
                 self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.policy_optimizer,)
-            elif self.args.target:
+            elif self.target:
                 self.target_models = (self.Q1_target, self.policy_target,)
                 self.models = (self.Q1, self.policy,)
                 self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
@@ -72,10 +86,10 @@ class PolicyWithQs(tf.Module):
                 self.models = (self.Q1, self.policy,)
                 self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
 
-        if self.args.alpha == 'auto':
+        if self.alpha == 'auto':
             self.alpha_model = AlphaModel(name='alpha')
-            self.alpha_optimizer = self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
-                                         *self.args.alpha_lr_schedule), name='alpha_adam_opt')
+            alpha_lr = self.tf.keras.optimizers.schedules.PolynomialDecay(*alpha_lr_schedule)
+            self.alpha_optimizer = self.tf.keras.optimizers.Adam(alpha_lr, name='alpha_adam_opt')
             self.models += (self.alpha_model,)
             self.optimizers += (self.alpha_optimizer,)
 
@@ -105,23 +119,23 @@ class PolicyWithQs(tf.Module):
                 self.target_models[i-len(self.models)].set_weights(weight)
 
     def apply_gradients(self, iteration, grads):
-        if self.args.policy_only:
+        if self.policy_only:
             policy_grad = grads
             self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
         else:
-            if self.args.double_Q:
+            if self.double_Q:
                 q_weights_len = len(self.Q1.trainable_weights)
                 policy_weights_len = len(self.policy.trainable_weights)
                 q1_grad, q2_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:2*q_weights_len], \
                                                 grads[2*q_weights_len:2*q_weights_len+policy_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
-                if iteration % self.args.delay_update == 0:
+                if iteration % self.delay_update == 0:
                     self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
                     self.update_policy_target()
                     self.update_Q1_target()
                     self.update_Q2_target()
-                    if self.args.alpha == 'auto':
+                    if self.alpha == 'auto':
                         alpha_grad = grads[-1:]
                         self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
             else:
@@ -129,17 +143,17 @@ class PolicyWithQs(tf.Module):
                 policy_weights_len = len(self.policy.trainable_weights)
                 q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:q_weights_len+policy_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
-                if iteration % self.args.delay_update == 0:
+                if iteration % self.delay_update == 0:
                     self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-                    if self.args.alpha == 'auto':
+                    if self.alpha == 'auto':
                         alpha_grad = grads[-1:]
                         self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
-                    if self.args.target:
+                    if self.target:
                         self.update_policy_target()
                         self.update_Q1_target()
 
     def update_Q1_target(self):
-        tau = self.args.tau
+        tau = self.tau
         source_params = self.Q1.get_weights()
         target_params = self.Q1_target.get_weights()
         self.Q1_target.set_weights([
@@ -148,7 +162,7 @@ class PolicyWithQs(tf.Module):
         ])
 
     def update_Q2_target(self):
-        tau = self.args.tau
+        tau = self.tau
         source_params = self.Q2.get_weights()
         target_params = self.Q2_target.get_weights()
         self.Q2_target.set_weights([
@@ -157,7 +171,7 @@ class PolicyWithQs(tf.Module):
         ])
 
     def update_policy_target(self):
-        tau = self.args.tau
+        tau = self.tau
         source_params = self.policy.get_weights()
         target_params = self.policy_target.get_weights()
         self.policy_target.set_weights([
@@ -168,17 +182,17 @@ class PolicyWithQs(tf.Module):
     def compute_mode(self, obs):
         logits = self.policy(obs)
         mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        return self.args.action_range * self.tf.tanh(mean) if self.args.action_range is not None else mean
+        return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean
 
     def _logits2dist(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
         act_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
-        if self.args.action_range is not None:
+        if self.action_range is not None:
             act_dist = (
                 self.tfp.distributions.TransformedDistribution(
                     distribution=act_dist,
                     bijector=self.tfb.Chain(
-                        [self.tfb.Affine(scale_identity_multiplier=self.args.action_range),
+                        [self.tfb.Affine(scale_identity_multiplier=self.action_range),
                          self.tfb.Tanh()])
                 ))
         return act_dist
@@ -187,9 +201,9 @@ class PolicyWithQs(tf.Module):
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
-            if self.args.deterministic_policy:
+            if self.deterministic_policy:
                 mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-                return self.args.action_range * self.tf.tanh(mean) if self.args.action_range is not None else mean, 0.
+                return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
             else:
                 act_dist = self._logits2dist(logits)
                 actions = act_dist.sample()
@@ -200,9 +214,9 @@ class PolicyWithQs(tf.Module):
     def compute_target_action(self, obs):
         with self.tf.name_scope('compute_target_action') as scope:
             logits = self.policy_target(obs)
-            if self.args.deterministic_policy:
+            if self.deterministic_policy:
                 mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-                return self.args.action_range * self.tf.tanh(mean) if self.args.action_range is not None else mean, 0.
+                return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
             else:
                 act_dist = self._logits2dist(logits)
                 actions = act_dist.sample()

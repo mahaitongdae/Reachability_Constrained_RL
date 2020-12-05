@@ -9,6 +9,7 @@
 
 import logging
 import os
+import copy
 
 import gym
 import numpy as np
@@ -27,8 +28,11 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
-        self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
+        kwargs = copy.deepcopy(vars(self.args))
+        if self.args.num_eval_agent:
+            kwargs.update({'num_agent': self.args.num_eval_agent})
+        self.env = gym.make(env_id, **kwargs)
+        self.policy_with_value = policy_cls(**kwargs)
         self.iteration = 0
         if self.args.mode == 'training':
             self.log_dir = self.args.log_dir + '/evaluator'
@@ -37,9 +41,7 @@ class Evaluator(object):
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
-        self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
-                                         gamma=self.args.gamma, num_agent=self.args.num_eval_agent)
+        self.preprocessor = Preprocessor(**kwargs)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)
         self.stats = {}

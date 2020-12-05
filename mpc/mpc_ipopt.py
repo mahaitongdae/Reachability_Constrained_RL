@@ -19,7 +19,7 @@ import seaborn as sns
 import tensorflow as tf
 from casadi import *
 
-from path_tracking_env import PathTrackingEnv
+from envs_and_models.path_tracking_env import PathTrackingEnv
 from policy import PolicyWithQs
 from preprocessor import Preprocessor
 

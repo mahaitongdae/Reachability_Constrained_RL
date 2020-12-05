@@ -9,11 +9,10 @@
 
 import logging
 
-import gym
 import numpy as np
-from gym.envs.user_defined.path_tracking_env import EnvironmentModel
 
 from preprocessor import Preprocessor
+from envs_and_models import NAME2MODELCLS
 from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)
@@ -26,20 +25,15 @@ class AMPCLearner(object):
     def __init__(self, policy_cls, args):
         self.args = args
         self.batch_size = self.args.replay_batch_size
-        self.env = gym.make(self.args.env_id,
-                            num_agent=self.batch_size,
-                            num_future_data=self.args.num_future_data)
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.env.close()
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
         self.all_data = {}
         self.M = self.args.M
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
 
-        self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
+        self.model = NAME2MODELCLS[self.args.env_id](**vars(self.args))
+        self.preprocessor = Preprocessor(self.args.obs_dim, self.args.obs_ptype, self.args.rew_ptype,
+                                         self.args.obs_scale, self.args.rew_scale, self.args.rew_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.stats = {}

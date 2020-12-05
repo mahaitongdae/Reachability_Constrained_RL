@@ -13,6 +13,7 @@ import json
 import logging
 import os
 
+import gym
 import ray
 
 from buffer import PrioritizedReplayBuffer, ReplayBuffer
@@ -45,8 +46,8 @@ NAME2LEARNERCLS = dict([('MPG', MPGLearner),
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('priority', PrioritizedReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICIES = dict([('PolicyWithQs', PolicyWithQs)])
-NAME2EVALUATORS = dict([('Evaluator', Evaluator)])
+NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs)])
+NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
 
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
@@ -82,7 +83,6 @@ def built_AMPC_parser():
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='AMPC')
@@ -113,27 +113,36 @@ def built_AMPC_parser():
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=True, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--deterministic_policy', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=None)
+    parser.add_argument('--policy_only', default=True, action='store_true')
+    parser.add_argument('--double_Q', type=bool, default=False)
+    parser.add_argument('--target', type=bool, default=False)
+    parser.add_argument('--tau', type=float, default=None)
+    parser.add_argument('--delay_update', type=int, default=None)
+    parser.add_argument('--deterministic_policy', type=bool, default=True)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='normalize')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -197,7 +206,6 @@ def built_MPG_parser(version):
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='MPG')
@@ -218,7 +226,6 @@ def built_MPG_parser(version):
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
     parser.add_argument('--num_batch_reuse', type=int, default=10 if version == 'MPG-v1' or version == 'MPG-v3' else 1)
-    parser.add_argument('--alpha', default=None)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -242,30 +249,36 @@ def built_MPG_parser(version):
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=False, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--delay_update', type=int, default=2)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--deterministic_policy', default=True, action='store_true')
-    parser.add_argument('--double_Q', default=True if version == 'MPG-v2' else False)
-    parser.add_argument('--target', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--alpha', default=None)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=None)
+    parser.add_argument('--policy_only', type=bool, default=False)
+    parser.add_argument('--double_Q', type=bool, default=True if version == 'MPG-v2' else False)
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=2)
+    parser.add_argument('--deterministic_policy', type=bool, default=True)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -325,7 +338,6 @@ def built_NADP_parser():
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='NADP')
@@ -358,31 +370,37 @@ def built_NADP_parser():
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=False, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--deterministic_policy', default=True, action='store_true')
-    parser.add_argument('--double_Q', default=False, action='store_true')
-    parser.add_argument('--target', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=None)
+    parser.add_argument('--policy_only', type=bool, default=False)
+    parser.add_argument('--double_Q', type=bool, default=False)
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=1)
+    parser.add_argument('--deterministic_policy', type=bool, default=True)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
+
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -442,7 +460,6 @@ def built_NDPG_parser():
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='NDPG')
@@ -450,7 +467,6 @@ def built_NDPG_parser():
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
     parser.add_argument('--num_batch_reuse', type=int, default=10)
-    parser.add_argument('--alpha', default=None)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -474,30 +490,36 @@ def built_NDPG_parser():
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=False, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--deterministic_policy', default=True, action='store_true')
-    parser.add_argument('--double_Q', default=False, action='store_true')
-    parser.add_argument('--target', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--alpha', default=None)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=None)
+    parser.add_argument('--policy_only', type=bool, default=False)
+    parser.add_argument('--double_Q', type=bool, default=False)
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=1)
+    parser.add_argument('--deterministic_policy', type=bool, default=True)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -557,7 +579,6 @@ def built_TD3_parser():
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='TD3')
@@ -589,31 +610,36 @@ def built_TD3_parser():
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=False, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--delay_update', type=int, default=2)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--deterministic_policy', default=True, action='store_true')
-    parser.add_argument('--double_Q', default=True, action='store_true')
-    parser.add_argument('--target', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=None)
+    parser.add_argument('--policy_only', type=bool, default=False)
+    parser.add_argument('--double_Q', type=bool, default=True)
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=2)
+    parser.add_argument('--deterministic_policy', type=bool, default=True)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -673,16 +699,11 @@ def built_SAC_parser():
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--action_range', type=float, default=None)
 
     # learner
     parser.add_argument('--alg_name', default='SAC')
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
-    parser.add_argument('--alpha', default=0.03)  # 'auto' 0.02
-    alpha = parser.parse_args().alpha
-    if alpha == 'auto':
-        parser.add_argument('--target_entropy', type=float, default=-2)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
 
     # worker
@@ -707,31 +728,39 @@ def built_SAC_parser():
     parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
 
     # policy and model
+    parser.add_argument('--obs_dim', type=int, default=None)
+    parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=False, action='store_true')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--value_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
+    parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
-    parser.add_argument('--delay_update', type=int, default=1)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--deterministic_policy', default=False, action='store_true')
-    parser.add_argument('--double_Q', default=True, action='store_true')
-    parser.add_argument('--target', default=True, action='store_true')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
+    parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
+    parser.add_argument('--alpha', default=0.03)  # 'auto' 0.02
+    alpha = parser.parse_args().alpha
+    if alpha == 'auto':
+        parser.add_argument('--target_entropy', type=float, default=-2)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument('--policy_only', type=bool, default=False)
+    parser.add_argument('--double_Q', type=bool, default=True)
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=1)
+    parser.add_argument('--deterministic_policy', type=bool, default=False)
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1/1200] + [1.] * num_future_data)
-    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.01)
-    parser.add_argument('--reward_shift', type=float, default=0.)
+    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -759,21 +788,24 @@ def built_SAC_parser():
 
 def built_parser(alg_name):
     if alg_name == 'TD3':
-        return built_TD3_parser()
+        args = built_TD3_parser()
     elif alg_name == 'SAC':
-        return built_SAC_parser()
+        args = built_SAC_parser()
     elif alg_name == 'MPG-v1':
-        return built_MPG_parser('MPG-v1')
+        args = built_MPG_parser('MPG-v1')
     elif alg_name == 'MPG-v2':
-        return built_MPG_parser('MPG-v2')
+        args = built_MPG_parser('MPG-v2')
     elif alg_name == 'MPG-v3':
-        return built_MPG_parser('MPG-v3')
+        args = built_MPG_parser('MPG-v3')
     elif alg_name == 'NDPG':
-        return built_NDPG_parser()
+        args = built_NDPG_parser()
     elif alg_name == 'NADP':
-        return built_NADP_parser()
+        args = built_NADP_parser()
     elif alg_name == 'AMPC':
-        return built_AMPC_parser()
+        args = built_AMPC_parser()
+    env = gym.make(args.env_id, **vars(args))
+    args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    return args
 
 def main(alg_name):
     args = built_parser(alg_name)
@@ -783,12 +815,12 @@ def main(alg_name):
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
-        trainer = Trainer(policy_cls=NAME2POLICIES[args.policy_type],
+        trainer = Trainer(policy_cls=NAME2POLICYCLS[args.policy_type],
                           worker_cls=NAME2WORKERCLS[args.worker_type],
                           learner_cls=NAME2LEARNERCLS[args.alg_name],
                           buffer_cls=NAME2BUFFERCLS[args.buffer_type],
                           optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
-                          evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
+                          evaluator_cls=NAME2EVALUATORCLS[args.evaluator_type],
                           args=args)
         if args.model_load_dir is not None:
             logger.info('loading model')
@@ -802,11 +834,11 @@ def main(alg_name):
         os.makedirs(args.test_log_dir)
         with open(args.test_log_dir + '/test_config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
-        tester = Tester(policy_cls=NAME2POLICIES[args.policy_type],
-                        evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
+        tester = Tester(policy_cls=NAME2POLICYCLS[args.policy_type],
+                        evaluator_cls=NAME2EVALUATORCLS[args.evaluator_type],
                         args=args)
         tester.test()
 
 
 if __name__ == '__main__':
-    main('AMPC')
+    main('SAC')

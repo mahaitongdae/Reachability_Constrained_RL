@@ -199,173 +199,6 @@ class VehicleDynamics(object):
         return rewards
 
 
-# class VehicleDynamics(object):
-#     def __init__(self, if_model=False):
-#         if if_model:
-#             self.vehicle_params = OrderedDict(C_f=100000.,  # front wheel cornering stiffness [N/rad]
-#                                               C_r=100000.,  # rear wheel cornering stiffness [N/rad]
-#                                               a=1.5,  # distance from CG to front axle [m]
-#                                               b=1.5,  # distance from CG to rear axle [m]
-#                                               mass=3000.,  # mass [kg]
-#                                               I_z=4000.,  # Polar moment of inertia at CG [kg*m^2]
-#                                               miu=0.8,  # tire-road friction coefficient
-#                                               g=9.81,  # acceleration of gravity [m/s^2]
-#                                               )
-#         else:
-#             self.vehicle_params = OrderedDict(C_f=88000.,  # front wheel cornering stiffness [N/rad]
-#                                               C_r=94000.,  # rear wheel cornering stiffness [N/rad]
-#                                               a=1.14,  # distance from CG to front axle [m]
-#                                               b=1.40,  # distance from CG to rear axle [m]
-#                                               mass=1500.,  # mass [kg]
-#                                               I_z=2420.,  # Polar moment of inertia at CG [kg*m^2]
-#                                               miu=1.0,  # tire-road friction coefficient
-#                                               g=9.81,  # acceleration of gravity [m/s^2]
-#                                               )
-#         self.if_model = if_model
-#         self.expected_vs = 20.
-#         self.path = ReferencePath()
-#
-#     def f_xu(self, states, actions):  # states and actions are tensors, [[], [], ...]
-#         with tf.name_scope('f_xu') as scope:
-#             # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
-#             # 1, 2, 0.2, 2.4, 1, 2, 0.4
-#
-#             # 0.2 * torch.tensor([1, 5, 10, 12, 5, 10, 2]
-#             # vx, vy, r, delta_phi, delta_y, x
-#             # veh_full_state: v_ys, rs, v_xs, phis, ys, xs
-#             v_x, v_y, r, delta_y, delta_phi, x = states[:, 0], states[:, 1], states[:, 2], \
-#                                                  states[:, 3], states[:, 4], states[:, 5]
-#             steer, a_x = actions[:, 0], actions[:, 1]
-#
-#             C_f = tf.convert_to_tensor(self.vehicle_params['C_f'], dtype=tf.float32)
-#             C_r = tf.convert_to_tensor(self.vehicle_params['C_r'], dtype=tf.float32)
-#             a = tf.convert_to_tensor(self.vehicle_params['a'], dtype=tf.float32)
-#             b = tf.convert_to_tensor(self.vehicle_params['b'], dtype=tf.float32)
-#             mass = tf.convert_to_tensor(self.vehicle_params['mass'], dtype=tf.float32)
-#             I_z = tf.convert_to_tensor(self.vehicle_params['I_z'], dtype=tf.float32)
-#             miu = tf.convert_to_tensor(self.vehicle_params['miu'], dtype=tf.float32)
-#             g = tf.convert_to_tensor(self.vehicle_params['g'], dtype=tf.float32)
-#
-#             F_zf, F_zr = b * mass * g / (a + b), a * mass * g / (a + b)
-#             F_xf = tf.where(a_x < 0, mass * a_x / 2, tf.zeros_like(a_x, dtype=tf.float32))
-#             F_xr = tf.where(a_x < 0, mass * a_x / 2, mass * a_x)
-#             miu_f = tf.sqrt(tf.square(miu * F_zf) - tf.square(F_xf)) / F_zf
-#             miu_r = tf.sqrt(tf.square(miu * F_zr) - tf.square(F_xr)) / F_zr
-#             alpha_f = tf.atan((v_y + a * r) / v_x) - steer
-#             alpha_r = tf.atan((v_y - b * r) / v_x)
-#
-#             Ff_w1 = tf.square(C_f) / (3 * F_zf * miu_f)
-#             Ff_w2 = tf.pow(C_f, 3) / (27 * tf.pow(F_zf * miu_f, 2))
-#             F_yf_max = F_zf * miu_f
-#
-#             Fr_w1 = tf.square(C_r) / (3 * F_zr * miu_r)
-#             Fr_w2 = tf.pow(C_r, 3) / (27 * tf.pow(F_zr * miu_r, 2))
-#             F_yr_max = F_zr * miu_r
-#
-#             F_yf = - C_f * tf.tan(alpha_f) + Ff_w1 * tf.tan(alpha_f) * tf.abs(
-#                 tf.tan(alpha_f)) - Ff_w2 * tf.pow(tf.tan(alpha_f), 3)
-#             F_yr = - C_r * tf.tan(alpha_r) + Fr_w1 * tf.tan(alpha_r) * tf.abs(
-#                 tf.tan(alpha_r)) - Fr_w2 * tf.pow(tf.tan(alpha_r), 3)
-#
-#             F_yf = tf.minimum(F_yf, F_yf_max)
-#             F_yf = tf.maximum(F_yf, -F_yf_max)
-#
-#             F_yr = tf.minimum(F_yr, F_yr_max)
-#             F_yr = tf.maximum(F_yr, -F_yr_max)
-#
-#             # tmp_f = tf.square(C_f * tf.tan(alpha_f)) / (27 * tf.square(miu_f * F_zf)) - C_f * tf.abs(tf.tan(alpha_f)) / (
-#             #         3 * miu_f * F_zf) + 1
-#             # tmp_r = tf.square(C_r * tf.tan(alpha_r)) / (27 * tf.square(miu_r * F_zr)) - C_r * tf.abs(tf.tan(alpha_r)) / (
-#             #         3 * miu_r * F_zr) + 1
-#             #
-#             # F_yf = -tf.sign(alpha_f) * tf.minimum(tf.abs(C_f * tf.tan(alpha_f) * tmp_f), tf.abs(miu_f * F_zf))
-#             # F_yr = -tf.sign(alpha_r) * tf.minimum(tf.abs(C_r * tf.tan(alpha_r) * tmp_r), tf.abs(miu_r * F_zr))
-#             if self.if_model:
-#                 state_deriv = [a_x + 1.5,
-#                                (F_yf + F_yr) / mass,
-#                                (a * F_yf - b * F_yr) / I_z,
-#                                v_x * tf.sin(delta_phi),
-#                                r+1,
-#                                v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)
-#                                ]
-#             else:
-#                 state_deriv = [a_x + v_y * r,
-#                                (F_yf * tf.cos(steer) + F_yr) / mass - v_x * r,
-#                                (a * F_yf * tf.cos(steer) - b * F_yr) / I_z,
-#                                v_x * tf.sin(delta_phi) + v_y * tf.cos(delta_phi),
-#                                r,
-#                                v_x * tf.cos(delta_phi) - v_y * tf.sin(delta_phi)
-#                                ]
-#
-#             state_deriv_stack = tf.stack(state_deriv, axis=1)
-#
-#         alpha_f_bounds, alpha_r_bounds = 3 * miu_f * F_zf / C_f, 3 * miu_r * F_zr / C_r
-#         r_bounds = miu_r * g / np.abs(v_x)
-#         return state_deriv_stack, tf.stack([alpha_f, alpha_r, r, alpha_f_bounds, alpha_r_bounds, r_bounds], axis=1)
-#
-#     def prediction(self, x_1, u_1, frequency, RK):
-#         f_xu_1, others = self.f_xu(x_1, u_1)
-#         x_next = f_xu_1 / frequency + x_1
-#         return x_next, others
-#
-#     def simulation(self, states, full_states, actions, base_freq, simu_times):
-#         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs
-#         # veh_full_state: v_xs, v_ys, rs, ys, phis, steers, a_xs, xs
-#         # others: alpha_f, alpha_r, r, alpha_f_bounds, alpha_r_bounds, r_bounds
-#         for i in range(simu_times):
-#             states = tf.convert_to_tensor(states.copy(), dtype=tf.float32)
-#             states, others = self.prediction(states, actions, base_freq, 1)
-#             states = states.numpy()
-#             others = others.numpy()
-#             states[:, 0] = np.clip(states[:, 0], 1, 35)
-#             # states[:, 1] = np.clip(states[:, 1], -2, 2)
-#
-#             v_xs, v_ys, rs, phis = full_states[:, 0], full_states[:, 1], full_states[:, 2], full_states[:, 4]
-#
-#             full_states[:, 4] += rs / base_freq
-#             full_states[:, 3] += (v_xs * np.sin(phis) + v_ys * np.cos(phis)) / base_freq
-#             full_states[:, -1] += (v_xs * np.cos(phis) - v_ys * np.sin(phis)) / base_freq
-#             full_states[:, 0:3] = states[:, 0:3].copy()
-#
-#             path_y, path_phi = self.path.compute_path_y(full_states[:, -1]), \
-#                                self.path.compute_path_phi(full_states[:, -1])
-#             states[:, 4] = full_states[:, 4] - path_phi
-#             states[:, 3] = full_states[:, 3] - path_y
-#
-#             full_states[:, 4][full_states[:, 4] > np.pi] -= 2 * np.pi
-#             full_states[:, 4][full_states[:, 4] <= -np.pi] += 2 * np.pi
-#
-#             full_states[:, -1][full_states[:, -1] > self.path.period] -= self.path.period
-#             full_states[:, -1][full_states[:, -1] <= 0] += self.path.period
-#
-#             states[:, -1] = full_states[:, -1]
-#
-#             states[:, 4][states[:, 4] > np.pi] -= 2 * np.pi
-#             states[:, 4][states[:, 4] <= -np.pi] += 2 * np.pi
-#
-#         return states, full_states, others
-#
-#     def compute_rewards(self, states, actions):  # obses and actions are tensors
-#         with tf.name_scope('compute_reward') as scope:
-#             # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis
-#             # veh_full_state: v_xs, v_ys, rs, ys, phis, xs
-#             v_xs, v_ys, rs, delta_ys, delta_phis = states[:, 0], states[:, 1], states[:, 2], \
-#                                                                  states[:, 3], states[:, 4],
-#             steers, a_xs = actions[:, 0], actions[:, 1]
-#
-#             devi_v = -tf.square(v_xs - self.expected_vs)
-#             devi_y = -tf.square(delta_ys)
-#             devi_phi = -tf.square(delta_phis)
-#             punish_yaw_rate = -tf.square(rs)
-#             punish_steer = -tf.square(steers)
-#             punish_a_x = -tf.square(a_xs)
-#
-#             rewards = 0.01 * devi_v + 0.04 * devi_y + 0.1 * devi_phi + 0.02 * punish_yaw_rate + \
-#                       0.05 * punish_steer + 0.0005 * punish_a_x
-#
-#         return rewards
-
-
 class ReferencePath(object):
     def __init__(self):
         self.curve_list = [(7.5, 200, 0.), (2.5, 300., 0.), (-5., 400., 0.)]
@@ -409,8 +242,8 @@ class ReferencePath(object):
         return delta_phi
 
 
-class EnvironmentModel(object):  # all tensors
-    def __init__(self, num_future_data=0):
+class PathTrackingModel(object):  # all tensors
+    def __init__(self, num_future_data=0, **kwargs):
         self.vehicle_dynamics = VehicleDynamics(if_model=True)
         self.base_frequency = 10.
         self.obses = None
@@ -521,7 +354,7 @@ class EnvironmentModel(object):  # all tensors
 
 
 class PathTrackingEnv(gym.Env, ABC):
-    def __init__(self, num_future_data=0, **kwargs):
+    def __init__(self, num_future_data=0, num_agent=1, **kwargs):
         # veh_state = obs: v_xs, v_ys, rs, delta_ys, delta_phis, xs
         # obs: delta_v_xs, v_ys, rs, delta_ys, delta_phis, xs, future_delta_ys1,..., future_delta_ysn,
         #         #      future_delta_phis1,..., future_delta_phisn
@@ -533,7 +366,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.veh_full_state = None
         self.simulation_time = 0
         self.action = None
-        self.num_agent = kwargs['num_agent']
+        self.num_agent = num_agent
         self.expected_vs = 20.
         self.done = np.zeros((self.num_agent,), dtype=np.int)
         self.base_frequency = 200
@@ -607,8 +440,9 @@ class PathTrackingEnv(gym.Env, ABC):
         if self.veh_full_state is None:
             self.veh_full_state = init_veh_full_state
         else:
-            for i, done in enumerate(self.done):
-                self.veh_full_state[i, :] = np.where(done == 1, init_veh_full_state[i, :], self.veh_full_state[i, :])
+            # for i, done in enumerate(self.done):
+            #     self.veh_full_state[i, :] = np.where(done == 1, init_veh_full_state[i, :], self.veh_full_state[i, :])
+            self.veh_full_state = np.where(self.done.reshape((-1, 1)) == 1, init_veh_full_state, self.veh_full_state)
         self.veh_state = self.veh_full_state.copy()
         path_y, path_phi = self.vehicle_dynamics.path.compute_path_y(self.veh_full_state[:, -1]), \
                            self.vehicle_dynamics.path.compute_path_phi(self.veh_full_state[:, -1])

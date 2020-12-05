@@ -31,15 +31,12 @@ class OffPolicyWorker(object):
         self.worker_id = worker_id
         self.args = args
         self.num_agent = self.args.num_agent
-        self.env = gym.make(env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.env = gym.make(env_id, **vars(args))
+        self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
         self.done = False
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
-                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
+        self.preprocessor = Preprocessor(**vars(self.args))
 
         self.explore_sigma = self.args.explore_sigma
         self.iteration = 0
@@ -89,7 +86,7 @@ class OffPolicyWorker(object):
         for _ in range(int(self.batch_size/self.num_agent)):
             processed_obs = self.preprocessor.process_obs(self.obs)
             judge_is_nan([processed_obs])
-            action, logp = self.policy_with_value.compute_action(processed_obs)
+            action, logp = self.policy_with_value.compute_action(self.tf.constant(processed_obs))
             if self.explore_sigma is not None:
                 action += np.random.normal(0, self.explore_sigma, np.shape(action))
             try:

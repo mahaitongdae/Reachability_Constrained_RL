@@ -103,7 +103,8 @@ class UpdateThread(threading.Thread):
         # evaluate
         if self.iteration % self.args.eval_interval == 0:
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
-            self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+            if self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize':
+                self.evaluator.set_ppc_params.remote(self.local_worker.get_ppc_params())
             self.evaluator.run_evaluation.remote(self.iteration)
 
         # save
@@ -202,8 +203,8 @@ class OffPolicyAsyncOptimizer(object):
         ppc_params = self.workers['remote_workers'][0].get_ppc_params.remote()
         for learner in self.learners:
             learner.set_weights.remote(weights)
-            if self.args.obs_preprocess_type == 'normalize' or \
-                    self.args.reward_preprocess_type == 'normalize':
+            if self.args.obs_ptype == 'normalize' or \
+                    self.args.rew_ptype == 'normalize':
                 learner.set_ppc_params.remote(ppc_params)
             rb, _ = random_choice_with_index(self.replay_buffers)
             samples = ray.get(rb.replay.remote())
@@ -253,8 +254,9 @@ class OffPolicyAsyncOptimizer(object):
                                                                    info_for_buffer['td_error'])
                 rb, samples = self.learner_queue.get(block=False)
                 if ppc_params and \
-                        (self.args.obs_preprocess_type == 'normalize' or self.args.reward_preprocess_type == 'normalize'):
+                        (self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize'):
                     learner.set_ppc_params.remote(ppc_params)
+                    self.local_worker.set_ppc_params(ppc_params)
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
@@ -332,8 +334,8 @@ class SingleProcessOffPolicyOptimizer(object):
         # learning
         with self.timers['learning_timer']:
             self.learner.set_weights(self.worker.get_weights())
-            if self.args.obs_preprocess_type == 'normalize' or \
-                    self.args.reward_preprocess_type == 'normalize':
+            if self.args.obs_ptype == 'normalize' or \
+                    self.args.rew_ptype == 'normalize':
                 self.learner.set_ppc_params(self.worker.get_ppc_params())
             grads = self.learner.compute_gradient(samples[:5], self.replay_buffer, samples[-1], self.iteration)
             learner_stats = self.learner.get_stats()
@@ -369,7 +371,7 @@ class SingleProcessOffPolicyOptimizer(object):
                 self.writer.flush()
 
         # evaluate
-        if self.iteration % self.args.eval_interval == 0:
+        if self.iteration % self.args.eval_interval == 0 and self.evaluator is not None:
             self.evaluator.set_weights(self.worker.get_weights())
             self.evaluator.set_ppc_params(self.worker.get_ppc_params())
             self.evaluator.run_evaluation(self.iteration)

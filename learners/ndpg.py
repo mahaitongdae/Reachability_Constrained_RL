@@ -11,7 +11,6 @@ import logging
 
 import gym
 import numpy as np
-from gym.envs.user_defined.path_tracking_env import EnvironmentModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat
@@ -28,15 +27,12 @@ class NDPGLearner(object):
         self.sample_num_in_learner = self.args.sample_num_in_learner
         self.batch_size = self.args.replay_batch_size
         self.env = gym.make(self.args.env_id, num_agent=self.batch_size, num_future_data=self.args.num_future_data)
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
         self.counter = 0
         self.num_batch_reuse = self.args.num_batch_reuse
-
-        self.model = EnvironmentModel(num_future_data=self.args.num_future_data)  # TODO
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
+        self.preprocessor = Preprocessor(self.args.obs_dim, self.args.obs_ptype, self.args.rew_ptype,
+                                         self.args.obs_scale, self.args.rew_scale, self.args.rew_shift,
                                          gamma=self.args.gamma)
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
