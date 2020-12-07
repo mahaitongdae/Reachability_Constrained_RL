@@ -169,6 +169,13 @@ def testModel():
 
 
 def testModel2():
+    import time
+    def _get_state(obs):
+        p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot \
+            = obs[0], obs[1], obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]
+        theta1 = np.arctan2(sintheta1, costheta1)
+        theta2 = np.arctan2(sintheta2, costheta2)
+        return np.array([p, theta1, theta2, pdot, theta1dot, theta2dot])
     import gym
     env = gym.make('InvertedDoublePendulum-v2')
     obs = env.reset()
@@ -178,13 +185,19 @@ def testModel2():
     for _ in range(10):
         print('reset')
         obs = env.reset()
+        done = 0
         model.reset(np.array([obs], dtype=np.float32))
-        for i in range(50):
-            print('step {}'.format(i))
+        while not done:
+            time.sleep(1)
             actions = tf.random.normal((1, 1), dtype=tf.float32)
-            env.step(actions.numpy()[0])
+            env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
+            env_state = _get_state(env_obs)
             env.render()
-            model.rollout_out(actions)
+            _, model_rew, _ = model.rollout_out(actions)
+            model_rew = model_rew.numpy()[0]
+            model_state = model.states.numpy()[0]
+            print('env_state', env_state, env_rew)
+            print('model_state', model_state, model_rew)
             model.render()
 
 
