@@ -293,8 +293,9 @@ class PathTrackingModel(object):  # all tensors
             self.veh_states = tf.stack([v_xs, v_ys, rs, delta_ys, delta_phis, xs], axis=1)
             self.obses = self._get_obs(self.veh_states)
             self.history_positions.append((self.veh_states[0, -1], self.veh_states[0, 3]))
+            dones = tf.zeros_like(self.obses[:, 0], dtype=tf.bool)
 
-        return self.obses, rewards
+        return self.obses, rewards, dones
 
     def render(self, mode='human'):
         plt.cla()
@@ -469,7 +470,7 @@ class PathTrackingEnv(gym.Env, ABC):
         self.done = self.judge_done(self.veh_state, stability_related)
         self.obs = self._get_obs(self.veh_state, self.veh_full_state)
         info = {}
-        return self.obs, reward, self.done, info
+        return self.obs, reward, np.zeros_like(self.obs[:, 0], dtype=np.bool), info
 
     def judge_done(self, veh_state, stability_related):
         v_xs, v_ys, rs, delta_ys, delta_phis, xs = veh_state[:, 0], veh_state[:, 1], veh_state[:, 2], \

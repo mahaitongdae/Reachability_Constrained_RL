@@ -49,6 +49,7 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
 
+
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
 
@@ -56,7 +57,7 @@ def built_AMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/toyota/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -80,9 +81,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=0)
+    parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
 
     # learner
     parser.add_argument('--alg_name', default='AMPC')
@@ -179,7 +178,7 @@ def built_MPG_parser(version):
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/toyota/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -203,9 +202,8 @@ def built_MPG_parser(version):
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=0)
+    parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
+    parser.add_argument('--is_episodic', type=bool, default=True)
 
     # learner
     parser.add_argument('--alg_name', default='MPG')
@@ -243,10 +241,9 @@ def built_MPG_parser(version):
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=False)
     parser.add_argument('--eval_render', type=bool, default=True)
-    num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -273,9 +270,8 @@ def built_MPG_parser(version):
     parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_ptype', type=str, default='scale')
-    num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--obs_ptype', type=str, default=None)
+    parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
     parser.add_argument('--rew_scale', type=float, default=0.01)
     parser.add_argument('--rew_shift', type=float, default=0.)
@@ -841,4 +837,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('SAC')
+    main('MPG-v1')

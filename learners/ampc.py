@@ -76,7 +76,7 @@ class AMPCLearner(object):
         for _ in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            obses, rewards = self.model.rollout_out(actions)
+            obses, rewards, _ = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
 
         policy_loss = -self.tf.reduce_mean(rewards_sum)

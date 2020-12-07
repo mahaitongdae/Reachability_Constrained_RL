@@ -29,9 +29,11 @@ class Evaluator(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
         kwargs = copy.deepcopy(vars(self.args))
-        if self.args.num_eval_agent:
-            kwargs.update({'num_agent': self.args.num_eval_agent})
-        self.env = gym.make(env_id, **kwargs)
+        if self.args.env_id == 'PathTracking-v0':
+            self.env = gym.make(self.args.env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
+        else:
+            env = gym.make(self.args.env_id)
+            self.env = DummyVecEnv(env)
         self.policy_with_value = policy_cls(**kwargs)
         self.iteration = 0
         if self.args.mode == 'training':
@@ -79,7 +81,7 @@ class Evaluator(object):
                 obs, reward, done, info = self.env.step(action.numpy())
                 if render: self.env.render()
                 reward_list.append(reward[0])
-                info_list.append(info)
+                info_list.append(info[0])
         else:
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
@@ -129,7 +131,7 @@ class Evaluator(object):
             actions = self.policy_with_value.compute_mode(processed_obses)
             obses_list.append(obses)
             actions_list.append(actions)
-            obses, rewards, dones, infos = self.env.step(actions.numpy())
+            obses, rewards, dones, _ = self.env.step(actions.numpy())
             if self.args.eval_render: self.env.render()
             rewards_list.append(rewards)
         for i in range(n):
@@ -153,27 +155,29 @@ class Evaluator(object):
 
 
     def metrics_for_an_episode(self, episode_info):  # user defined, transform episode info dict to metric dict
-        key_list = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
-                    'stationary_rew_mean', 'steer_mse', 'acc_mse']
+        key_list = ['episode_return', 'episode_len']
         episode_return = episode_info['episode_return']
         episode_len = episode_info['episode_len']
-        delta_v_list = list(map(lambda x: x[0], episode_info['obs_list']))
-        delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
-        delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
-        steer_list = list(map(lambda x: x[0]*1.2 * np.pi / 9, episode_info['action_list']))
-        acc_list = list(map(lambda x: x[1]*3., episode_info['action_list']))
+        value_list = [episode_return, episode_len]
+        if self.args.env_id == 'PathTracking-v0':
+            delta_v_list = list(map(lambda x: x[0], episode_info['obs_list']))
+            delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
+            delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
+            steer_list = list(map(lambda x: x[0]*1.2 * np.pi / 9, episode_info['action_list']))
+            acc_list = list(map(lambda x: x[1]*3., episode_info['action_list']))
 
-        rew_list = episode_info['reward_list']
-        stationary_rew_mean = sum(rew_list[20:])/len(rew_list[20:])
+            rew_list = episode_info['reward_list']
+            stationary_rew_mean = sum(rew_list[20:])/len(rew_list[20:])
 
-        delta_y_mse = np.sqrt(np.mean(np.square(np.array(delta_y_list))))
-        delta_phi_mse = np.sqrt(np.mean(np.square(np.array(delta_phi_list))))
-        delta_v_mse = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
-        steer_mse = np.sqrt(np.mean(np.square(np.array(steer_list))))
-        acc_mse = np.sqrt(np.mean(np.square(np.array(acc_list))))
-
-        value_list = [episode_return, episode_len, delta_y_mse, delta_phi_mse, delta_v_mse,
-                      stationary_rew_mean, steer_mse, acc_mse]
+            delta_y_mse = np.sqrt(np.mean(np.square(np.array(delta_y_list))))
+            delta_phi_mse = np.sqrt(np.mean(np.square(np.array(delta_phi_list))))
+            delta_v_mse = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
+            steer_mse = np.sqrt(np.mean(np.square(np.array(steer_list))))
+            acc_mse = np.sqrt(np.mean(np.square(np.array(acc_list))))
+            key_list.extend(['delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
+                             'stationary_rew_mean', 'steer_mse', 'acc_mse'])
+            value_list.extend([delta_y_mse, delta_phi_mse, delta_v_mse,
+                               stationary_rew_mean, steer_mse, acc_mse])
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):

@@ -53,7 +53,7 @@ class Dynamics(object):
 
         return next_states
 
-    def compute_rewards(self, states, actions):  # obses and actions are tensors
+    def compute_rewards(self, states):  # obses and actions are tensors
         with tf.name_scope('compute_reward') as scope:
             p, theta1, theta2, pdot, theta1dot, theta2dot = states[:, 0], states[:, 1], states[:, 2], \
                                                             states[:, 3], states[:, 4], states[:, 5]
@@ -61,10 +61,12 @@ class Dynamics(object):
             tip_y = self.l_rod1 * tf.cos(theta1) + self.l_rod2 * tf.cos(theta2)
             dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 2)
             v1, v2 = theta1dot, theta2dot
+            alive_bonus = 10.
             vel_penalty = 1e-3 * v1 ** 2 + 5e-3 * v2 ** 2
-            rewards = -dist_penalty-vel_penalty
+            rewards = alive_bonus-dist_penalty-vel_penalty
+            dones = tf.constant(tip_y <= 1, dtype=tf.bool)
 
-        return rewards
+        return rewards, dones
 
 
 class InvertedDoublePendulumModel(object):  # all tensors
@@ -101,11 +103,10 @@ class InvertedDoublePendulumModel(object):  # all tensors
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
             self.actions = self.action_trans(actions)
-            rewards = self.dynamics.compute_rewards(self.states, self.actions)
             self.states = self.dynamics.f_xu(self.states, self.actions, self.tau)
             self.obses = self._get_obs(self.states)
-
-        return self.obses, rewards
+            rewards, dones = self.dynamics.compute_rewards(self.states)
+        return self.obses, rewards, dones
 
     def action_trans(self, actions):
         return 500. * actions
