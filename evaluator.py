@@ -7,14 +7,15 @@
 # @FileName: evaluator.py
 # =====================================
 
+import copy
 import logging
 import os
-import copy
 
 import gym
 import numpy as np
 
 from preprocessor import Preprocessor
+from utils.dummy_vec_env import DummyVecEnv
 from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)

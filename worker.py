@@ -13,8 +13,8 @@ import gym
 import numpy as np
 
 from preprocessor import Preprocessor
-from utils.misc import judge_is_nan
 from utils.dummy_vec_env import DummyVecEnv
+from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
