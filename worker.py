@@ -14,6 +14,7 @@ import numpy as np
 
 from preprocessor import Preprocessor
 from utils.misc import judge_is_nan
+from utils.dummy_vec_env import DummyVecEnv
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +32,11 @@ class OffPolicyWorker(object):
         self.worker_id = worker_id
         self.args = args
         self.num_agent = self.args.num_agent
-        self.env = gym.make(env_id, **vars(args))
+        if self.args.env_id == 'PathTracking-v0':
+            self.env = gym.make(self.args.env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
+        else:
+            env = gym.make(self.args.env_id)
+            self.env = DummyVecEnv(env)
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()

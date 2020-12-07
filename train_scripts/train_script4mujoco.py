@@ -203,6 +203,7 @@ def built_MPG_parser(version):
 
     # env
     parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
+    parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--is_episodic', type=bool, default=True)
 
     # learner
@@ -782,6 +783,7 @@ def built_SAC_parser():
 
     return parser.parse_args()
 
+
 def built_parser(alg_name):
     if alg_name == 'TD3':
         args = built_TD3_parser()
@@ -799,9 +801,10 @@ def built_parser(alg_name):
         args = built_NADP_parser()
     elif alg_name == 'AMPC':
         args = built_AMPC_parser()
-    env = gym.make(args.env_id, **vars(args))
+    env = gym.make(args.env_id)
     args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
     return args
+
 
 def main(alg_name):
     args = built_parser(alg_name)
