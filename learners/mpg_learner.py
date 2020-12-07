@@ -100,7 +100,7 @@ class MPGLearner(object):
                     all_obs.append(obs.copy()[0])
                     all_actions.append(action.numpy()[0])
                     all_rewards.append(reward[0])
-                    all_obs_tp1.append(all_obs_tp1.copy()[0])
+                    all_obs_tp1.append(obs_tp1.copy()[0])
                     if self.is_episodic:
                         all_dones.append(done[0])
                         obs = self.env.reset()
