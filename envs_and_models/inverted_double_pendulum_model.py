@@ -105,8 +105,9 @@ class InvertedDoublePendulumModel(object):  # all tensors
     def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
         with tf.name_scope('model_step') as scope:
             self.actions = self.action_trans(actions)
-            self.states = self.dynamics.f_xu(self.states, self.actions, self.tau)
-            self.obses = self._get_obs(self.states)
+            for i in range(5):
+                self.states = self.dynamics.f_xu(self.states, self.actions, self.tau)
+                self.obses = self._get_obs(self.states)
             rewards, dones = self.dynamics.compute_rewards(self.states)
         return self.obses, rewards, dones
 
