@@ -168,5 +168,25 @@ def testModel():
             model.render()
 
 
+def testModel2():
+    import gym
+    env = gym.make('InvertedDoublePendulum-v2')
+    obs = env.reset()
+    model = InvertedDoublePendulumModel()
+    model.reset(np.array([obs]))
+    # p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot, frc1, frc2, frc3
+    for _ in range(10):
+        print('reset')
+        obs = env.reset()
+        model.reset(np.array([obs], dtype=np.float32))
+        for i in range(50):
+            print('step {}'.format(i))
+            actions = np.random.random((1, 1))
+            env.step(actions[0])
+            env.render()
+            model.rollout_out(actions)
+            model.render()
+
+
 if __name__ == '__main__':
-    testModel()
+    testModel2()
