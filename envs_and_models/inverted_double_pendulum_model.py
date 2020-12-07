@@ -181,8 +181,8 @@ def testModel2():
         model.reset(np.array([obs], dtype=np.float32))
         for i in range(50):
             print('step {}'.format(i))
-            actions = np.random.random((1, 1))
-            env.step(actions[0])
+            actions = tf.random.normal((1, 1), dtype=tf.float32)
+            env.step(actions.numpy()[0])
             env.render()
             model.rollout_out(actions)
             model.render()
