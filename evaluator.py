@@ -92,7 +92,7 @@ class Evaluator(object):
                 obs, reward, done, info = self.env.step(action.numpy())
                 if render: self.env.render()
                 reward_list.append(reward[0])
-                info_list.append(info)
+                info_list.append(info[0])
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
