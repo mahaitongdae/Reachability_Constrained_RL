@@ -64,7 +64,7 @@ class Dynamics(object):
             alive_bonus = 10.
             vel_penalty = 1e-3 * v1 ** 2 + 5e-3 * v2 ** 2
             rewards = alive_bonus-dist_penalty-vel_penalty
-            dones = tf.constant(tip_y <= 1, dtype=tf.bool)
+            dones = tf.less_equal(tip_y, 1)
 
         return rewards, dones
 
