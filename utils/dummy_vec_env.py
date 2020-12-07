@@ -13,8 +13,8 @@ from gym.core import Wrapper
 def _get_state4inverted_double_pendulumv2(obs):
     p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot \
         = obs[0], obs[1], obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]
-    theta1 = np.atan2(sintheta1, costheta1)
-    theta2 = np.atan2(sintheta2, costheta2)
+    theta1 = np.arctan2(sintheta1, costheta1)
+    theta2 = np.arctan2(sintheta2, costheta2)
     return np.array([p, theta1, theta2, pdot, theta1dot, theta2dot])
 
 
