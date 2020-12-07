@@ -242,7 +242,7 @@ def built_MPG_parser(version):
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=False)
+    parser.add_argument('--fixed_steps', type=int, default=None)
     parser.add_argument('--eval_render', type=bool, default=True)
     parser.add_argument('--num_eval_agent', type=int, default=1)
 
