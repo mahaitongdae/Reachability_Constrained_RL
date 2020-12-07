@@ -17,9 +17,6 @@ class Dynamics(object):
         self.mass_rod1 = 4.1033127
         self.mass_rod2 = 4.1033127
         self.mass_rod2 = 4.1033127
-        self.damping_cart = 0.
-        self.damping_rod1 = 0.
-        self.damping_rod2 = 0.
         self.l_rod1 = 0.6
         self.l_rod2 = 0.6
         self.g = 9.81
@@ -29,24 +26,29 @@ class Dynamics(object):
                     tf.constant(self.mass_rod1, dtype=tf.float32), \
                     tf.constant(self.mass_rod2, dtype=tf.float32),
         l1, l2 = tf.constant(self.l_rod1, dtype=tf.float32), tf.constant(self.l_rod2, dtype=tf.float32)
-        d1, d2, d3 = tf.constant(self.damping_cart, dtype=tf.float32),\
-                     tf.constant(self.damping_rod1, dtype=tf.float32), \
-                     tf.constant(self.damping_rod2, dtype=tf.float32),
         g = tf.constant(self.g, dtype=tf.float32)
         p, theta1, theta2, pdot, theta1dot, theta2dot = states[:, 0], states[:, 1], states[:, 2], \
                                                         states[:, 3], states[:, 4], states[:, 5]
         u = actions[:, 0]
         ones = tf.ones_like(p, dtype=tf.float32)
-        M = tf.reshape(tf.stack([(m+m1+m2)*ones, l1*(m1+m2)*tf.cos(theta1), m2*l2*tf.cos(theta2),
-                                 l1*(m1+m2)*tf.cos(theta1), tf.square(l1)*(m1+m2)*ones, l1*l2*m2*tf.cos(theta1-theta2),
-                                 l2*m2*tf.cos(theta2), l1*l2*m2*tf.cos(theta1-theta2), tf.square(l2)*m2*ones], axis=1),
+        d1 = m+m1+m2
+        d2 = (0.5*m1+m2)*l1
+        d3 = 0.5*m2*l2
+        d4 = (1./3*m1+m2)*l1**2
+        d5 = 0.5*m2*l1*l2
+        d6 = 1./3*m2*l2**2
+        f1 = (0.5*m1+m2)*l1*g
+        f2 = 0.5*m2*l2*g
+        D = tf.reshape(tf.stack([d1*ones, d2*tf.cos(theta1), d3*tf.cos(theta2),
+                                 d2*tf.cos(theta1), d4*ones, d5*tf.cos(theta1-theta2),
+                                 d3*tf.cos(theta2), d5*tf.cos(theta1-theta2), d6*ones], axis=1),
                        shape=(-1, 3, 3))
-        f = tf.reshape(tf.stack([l1*(m1+m2)*tf.square(theta1dot)*tf.sin(theta1)+m2*l2*tf.square(theta2dot)*tf.sin(theta2)-d1*pdot+u,
-                                 -l1*l2*m2*tf.square(theta2dot)*tf.sin(theta1-theta2)+g*(m1+m2)*l1*tf.sin(theta1)-d2*theta1dot,
-                                 l1*l2*m2*tf.square(theta1dot)*tf.sin(theta1-theta2)+g*l2*m2*tf.sin(theta2)], axis=1),
+        f = tf.reshape(tf.stack([d2*tf.sin(theta1)*tf.square(theta1dot)+d3*tf.sin(theta2)*tf.square(theta2dot)+u,
+                                 -d5*tf.sin(theta1-theta2)*tf.square(theta2dot)+f1*tf.sin(theta1),
+                                 d5*tf.sin(theta1-theta2)*tf.square(theta1dot)+f2*tf.sin(theta2)], axis=1),
                        shape=(-1, 3, 1))
-        M_inv = tf.linalg.inv(M)
-        tmp = tf.squeeze(tf.matmul(M_inv, f), axis=-1)
+        D_inv = tf.linalg.inv(D)
+        tmp = tf.squeeze(tf.matmul(D_inv, f), axis=-1)
 
         deriv = tf.concat([states[:, 3:], tmp], axis=-1)
         next_states = states + tau * deriv
