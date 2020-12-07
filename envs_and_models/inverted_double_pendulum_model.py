@@ -178,15 +178,17 @@ def testModel2():
         return np.array([p, theta1, theta2, pdot, theta1dot, theta2dot])
     import gym
     env = gym.make('InvertedDoublePendulum-v2')
-    obs = env.reset()
     model = InvertedDoublePendulumModel()
-    model.reset(np.array([obs]))
     # p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot, frc1, frc2, frc3
     for _ in range(10):
         print('reset')
-        obs = env.reset()
+        env_obs = env.reset()
         done = 0
-        model.reset(np.array([obs], dtype=np.float32))
+        model.reset(np.array([env_obs], dtype=np.float32))
+        env_state = _get_state(env_obs)
+        model_state = model.states.numpy()[0]
+        print('env_state', env_state)
+        print('model_state', model_state)
         while not done:
             time.sleep(1)
             actions = tf.random.normal((1, 1), dtype=tf.float32)
