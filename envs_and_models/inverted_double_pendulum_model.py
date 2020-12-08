@@ -16,7 +16,6 @@ class Dynamics(object):
         self.mass_cart = 9.42477796
         self.mass_rod1 = 4.1033127
         self.mass_rod2 = 4.1033127
-        self.mass_rod2 = 4.1033127
         self.l_rod1 = 0.6
         self.l_rod2 = 0.6
         self.g = 9.81
@@ -64,7 +63,7 @@ class Dynamics(object):
             dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 2)
             v1, v2 = theta1dot, theta2dot
             alive_bonus = 10.
-            vel_penalty = 1e-3 * v1 ** 2 + 5e-3 * v2 ** 2
+            vel_penalty = 1e-3 * tf.square(v1) + 5e-3 * tf.square(v2)
             rewards = alive_bonus-dist_penalty-vel_penalty
             dones = tf.less_equal(tip_y, 1)
 
@@ -112,7 +111,7 @@ class InvertedDoublePendulumModel(object):  # all tensors
         return self.obses, rewards, dones
 
     def action_trans(self, actions):
-        return 500. * actions
+        return tf.constant(500.) * actions
 
     def render(self, mode='human'):
         plt.cla()
@@ -180,21 +179,27 @@ def testModel2():
         theta2 = np.arctan2(sintheta2, costheta2)
         return np.array([p, theta1, theta2, pdot, theta1dot, theta2dot])
     import gym
+    from policy import PolicyWithQs
+    from train_scripts.train_script4mujoco import built_AMPC_parser
+    args = built_AMPC_parser()
     env = gym.make('InvertedDoublePendulum-v2')
     model = InvertedDoublePendulumModel()
+    args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    policy = PolicyWithQs(**vars(args))
+    policy.load_weights()
     # p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot, frc1, frc2, frc3
     for _ in range(10):
         print('reset')
         env_obs = env.reset()
         done = 0
-        model.reset(np.array([env_obs], dtype=np.float32))
+        env_obs = np.array([env_obs], dtype=np.float32)
+        model.reset(env_obs)
         env_state = _get_state(env_obs)
         model_state = model.states.numpy()[0]
         print('env_state', env_state)
         print('model_state', model_state)
         while not done:
-            time.sleep(1)
-            actions = tf.random.normal((1, 1), dtype=tf.float32)
+            actions, _ = policy.compute_action(env_obs)
             env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
             env_state = _get_state(env_obs)
             env.render()
@@ -211,21 +216,23 @@ def test_policy():
     from train_scripts.train_script4mujoco import built_AMPC_parser
     import gym
     args = built_AMPC_parser()
-    policy = PolicyWithQs(**vars(args))
-    policy.load_weights()
     env = gym.make('InvertedDoublePendulum-v2')
     model = InvertedDoublePendulumModel()
+    args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    policy = PolicyWithQs(**vars(args))
+    policy.load_weights()
     for _ in range(10):
         print('reset')
         env_obs = env.reset()
+        env_obs = np.array([env_obs], dtype=np.float32)
         done = 0
-        model.reset(np.array([env_obs], dtype=np.float32))
+        model.reset(env_obs)
         model.render()
         while not done:
-            actions = policy.compute_action(np.array([env_obs]))
-            env_obs, env_rew, done = model.rollout_out(actions.numpy()[0])
+            actions, _ = policy.compute_action(env_obs)
+            env_obs, env_rew, done = model.rollout_out(actions.numpy())
             model.render()
 
 
 if __name__ == '__main__':
-    testModel2()
+    test_policy()
