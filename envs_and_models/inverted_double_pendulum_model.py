@@ -192,18 +192,19 @@ def testModel2():
         print('reset')
         env_obs = env.reset()
         done = 0
-        env_obs = np.array([env_obs], dtype=np.float32)
-        model.reset(env_obs)
+        model_obs = np.array([env_obs], dtype=np.float32)
+        model.reset(model_obs)
         env_state = _get_state(env_obs)
         model_state = model.states.numpy()[0]
         print('env_state', env_state)
         print('model_state', model_state)
         while not done:
-            actions, _ = policy.compute_action(env_obs)
+            actions, _ = policy.compute_action(np.array(env_obs, dtype=np.float32))
+            model_actions, _ = policy.compute_action(model_obs)
             env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
             env_state = _get_state(env_obs)
             env.render()
-            _, model_rew, _ = model.rollout_out(actions)
+            model_obs, model_rew, _ = model.rollout_out(model_actions)
             model_rew = model_rew.numpy()[0]
             model_state = model.states.numpy()[0]
             print('env_state', env_state, env_rew)
