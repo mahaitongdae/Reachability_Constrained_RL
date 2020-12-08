@@ -8,7 +8,9 @@
 # =====================================
 from envs_and_models.inverted_double_pendulum_model import InvertedDoublePendulumModel
 from envs_and_models.path_tracking_env import PathTrackingModel
+from envs_and_models.inverted_pendulum_model import InvertedPendulumModel
 
 NAME2MODELCLS = dict([('PathTracking-v0', PathTrackingModel),
-                      ('InvertedDoublePendulum-v2', InvertedDoublePendulumModel)])
+                      ('InvertedDoublePendulum-v2', InvertedDoublePendulumModel),
+                      ('InvertedPendulum-v2', InvertedPendulumModel)])
 

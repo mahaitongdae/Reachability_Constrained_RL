@@ -81,7 +81,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulum-v2')
     parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
@@ -123,7 +123,7 @@ def built_AMPC_parser():
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
     parser.add_argument('--alpha_lr_schedule', type=list, default=None)
@@ -133,13 +133,13 @@ def built_AMPC_parser():
     parser.add_argument('--tau', type=float, default=None)
     parser.add_argument('--delay_update', type=int, default=None)
     parser.add_argument('--deterministic_policy', type=bool, default=True)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # optimizer (PABAL)
@@ -201,7 +201,7 @@ def built_MPG_parser(version):
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulum-v2')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--is_episodic', type=bool, default=True)
 
@@ -257,7 +257,7 @@ def built_MPG_parser(version):
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
     parser.add_argument('--alpha_lr_schedule', type=list, default=None)
@@ -267,13 +267,13 @@ def built_MPG_parser(version):
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=2)
     parser.add_argument('--deterministic_policy', type=bool, default=True)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
@@ -331,7 +331,7 @@ def built_NADP_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedDoublePendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulum-v2')
     parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
@@ -375,7 +375,7 @@ def built_NADP_parser():
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
     parser.add_argument('--alpha_lr_schedule', type=list, default=None)
@@ -385,13 +385,13 @@ def built_NADP_parser():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--deterministic_policy', type=bool, default=True)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # optimizer (PABAL)

@@ -32,9 +32,10 @@ class DummyVecEnv(Wrapper):
     def reset(self, **kwargs):
         if 'init_obs' in kwargs.keys():
             init_obs = kwargs.get('init_obs')
-            state = _get_state4inverted_double_pendulumv2(init_obs[0])
+            # state = _get_state4inverted_double_pendulumv2(init_obs[0])
+            state = init_obs[0]  # todo: only for inverted pendulum
             self.env.reset()
-            self.env.set_state(state[:3], state[3:])
+            self.env.set_state(state[:2], state[2:])  # todo: only for inverted pendulum
             return init_obs
         else:
             if self.done:

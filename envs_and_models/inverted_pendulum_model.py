@@ -13,8 +13,8 @@ import numpy as np
 
 class Dynamics(object):
     def __init__(self, if_model=False):
-        self.mass_cart = 9.42477796
-        self.mass_rod1 = 4.1033127
+        self.mass_cart = 9.42
+        self.mass_rod1 = 4.89
         self.mass_rod2 = 0.
         self.l_rod1 = 0.6
         self.l_rod2 = 0.
@@ -72,49 +72,31 @@ class Dynamics(object):
 
 class InvertedPendulumModel(object):  # all tensors
     def __init__(self, **kwargs):
-        # obs: p, sintheta1, costheta1, pdot, theta1dot, frc1, frc2
-        # state: p, theta1, pdot, theta1dot
+        # obs: p, theta1, pdot, theta1dot
         self.dynamics = Dynamics()
         self.obses = None
-        self.states = None
         self.actions = None
         self.tau = 0.02
         plt.ion()
 
     def reset(self, obses):
         self.obses = obses
-        self.states = self._get_state(self.obses)
 
-    def _get_obs(self, states):
-        p, theta1, pdot, theta1dot = states[:, 0], states[:, 1], states[:, 2], states[:, 3]
-        zeros = tf.zeros_like(p, tf.float32)
-        lists_to_stack = [p, tf.sin(theta1), tf.cos(theta1), pdot, theta1dot,
-                          zeros, zeros]
-        return tf.stack(lists_to_stack, axis=1)
-
-    def _get_state(self, obses):
-        p, sintheta1, costheta1, pdot, theta1dot\
-            = obses[:, 0], obses[:, 1], obses[:, 2], obses[:, 3], obses[:, 4]
-        theta1 = tf.atan2(sintheta1, costheta1)
-        lists_to_stack = [p, theta1, pdot, theta1dot]
-        return tf.stack(lists_to_stack, axis=1)
-
-    def rollout_out(self, actions):  # obses and actions are tensors, think of actions are in range [-1, 1]
+    def rollout_out(self, actions):  # action [-3,3]
         with tf.name_scope('model_step') as scope:
             self.actions = self.action_trans(actions)
             for i in range(2):
-                self.states = self.dynamics.f_xu(self.states, self.actions, self.tau)
-                self.obses = self._get_obs(self.states)
-            rewards, dones = self.dynamics.compute_rewards(self.states)
+                self.obses = self.dynamics.f_xu(self.obses, self.actions, self.tau)
+            rewards, dones = self.dynamics.compute_rewards(self.obses)
         return self.obses, rewards, dones
 
     def action_trans(self, actions):
-        return tf.constant(300.) * actions
+        return tf.constant(100.) * actions
 
     def render(self, mode='human'):
         plt.cla()
-        states = self.states.numpy()
-        p, theta1, pdot, theta1dot = states[0, 0], states[0, 1], states[0, 2], states[0, 3],
+        obs = self.obses.numpy()
+        p, theta1, pdot, theta1dot = obs[0, 0], obs[0, 1], obs[0, 2], obs[0, 3],
         point0x, point0y = p, 0
         point1x, point1y = point0x + self.dynamics.l_rod1 * np.sin(theta1), \
                            point0y + self.dynamics.l_rod1 * np.cos(theta1)
@@ -161,10 +143,43 @@ def testModel():
             model.render()
 
 
+def testModel2():
+    import time
+    import gym
+    from policy import PolicyWithQs
+    from train_scripts.train_script4mujoco import built_AMPC_parser
+    args = built_AMPC_parser()
+    env = gym.make('InvertedDoublePendulum-v2')
+    model = InvertedPendulumModel()
+    args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    # policy = PolicyWithQs(**vars(args))
+    # policy.load_weights()
+    for _ in range(100):
+        print('reset')
+        env_obs = env.reset()
+        done = 0
+        model_obs = np.array([env_obs], dtype=np.float32)
+        model.reset(model_obs)
+        while not done:
+            actions = tf.random.normal((1, 1), dtype=tf.float32)
+            model_actions = actions
+            # actions, _ = policy.compute_action(np.array([env_obs], dtype=np.float32))
+            # model_actions, _ = policy.compute_action(model_obs)
+            env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
+            env.render()
+            model_obs, model_rew, _ = model.rollout_out(model_actions)
+            model_rew = model_rew.numpy()[0]
+            model_obs = model_obs.numpy()[0]
+            print('env_obs', env_obs, env_rew)
+            print('model_obs', model_obs, model_rew)
+            model.render()
+
+
 def testInvPen():
     import gym
     env = gym.make('InvertedPendulum-v2')
     env.reset()
+
 
 if __name__ == '__main__':
     testModel()
