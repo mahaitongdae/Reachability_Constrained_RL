@@ -156,7 +156,7 @@ def built_AMPC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/ampc/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/ampc/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -425,7 +425,7 @@ def built_NDPG_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/NDPG/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/NDPG/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -527,7 +527,7 @@ def built_NDPG_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/NDPG/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/NDPG/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')

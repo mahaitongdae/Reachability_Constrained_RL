@@ -206,5 +206,26 @@ def testModel2():
             model.render()
 
 
+def test_policy():
+    from policy import PolicyWithQs
+    from train_scripts.train_script4mujoco import built_AMPC_parser
+    import gym
+    args = built_AMPC_parser()
+    policy = PolicyWithQs(**vars(args))
+    policy.load_weights()
+    env = gym.make('InvertedDoublePendulum-v2')
+    model = InvertedDoublePendulumModel()
+    for _ in range(10):
+        print('reset')
+        env_obs = env.reset()
+        done = 0
+        model.reset(np.array([env_obs], dtype=np.float32))
+        model.render()
+        while not done:
+            actions = policy.compute_action(np.array([env_obs]))
+            env_obs, env_rew, done = model.rollout_out(actions.numpy()[0])
+            model.render()
+
+
 if __name__ == '__main__':
     testModel2()
