@@ -96,10 +96,11 @@ class Dynamics(object):
             v1, v2 = theta1dot, theta2dot
             alive_bonus = 10.
             vel_penalty = 1e-3 * tf.square(v1) + 5e-3 * tf.square(v2)
-            rewards = alive_bonus-dist_penalty-vel_penalty
+            rewards4conti = -dist_penalty-vel_penalty
+            rewards4episo = alive_bonus + rewards4conti
             dones = tf.less_equal(tip_y, 1)
 
-        return rewards, dones
+        return rewards4conti, dones, rewards4episo
 
 
 class InvertedDoublePendulumModel(object):  # all tensors
@@ -139,8 +140,8 @@ class InvertedDoublePendulumModel(object):  # all tensors
             for i in range(5):
                 self.states = self.dynamics.f_xu_old(self.states, self.actions, self.tau)
                 self.obses = self._get_obs(self.states)
-            rewards, dones = self.dynamics.compute_rewards(self.states)
-        return self.obses, rewards, dones
+            rewards4conti, dones, rewards4episo = self.dynamics.compute_rewards(self.states)
+        return self.obses, rewards4conti, rewards4episo, dones
 
     def action_trans(self, actions):
         return tf.constant(500.) * actions

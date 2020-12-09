@@ -57,7 +57,7 @@ class RunningMeanStd(object):
 
 
 class Preprocessor(object):
-    def __init__(self, obs_dim, obs_ptype='normalize', rew_ptype='normalize', obs_scale=None,
+    def __init__(self, obs_dim, obs_ptype=None, rew_ptype=None, obs_scale=None,
                  rew_scale=None, rew_shift=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, **kwargs):
         self.obs_ptype = obs_ptype
         self.ob_rms = RunningMeanStd(shape=(obs_dim,)) if self.obs_ptype == 'normalize' else None

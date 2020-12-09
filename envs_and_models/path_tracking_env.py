@@ -294,8 +294,9 @@ class PathTrackingModel(object):  # all tensors
             self.obses = self._get_obs(self.veh_states)
             self.history_positions.append((self.veh_states[0, -1], self.veh_states[0, 3]))
             dones = tf.zeros_like(self.obses[:, 0], dtype=tf.bool)
+            rewards4episo = rewards
 
-        return self.obses, rewards, dones
+        return self.obses, rewards, rewards4episo, dones
 
     def render(self, mode='human'):
         plt.cla()

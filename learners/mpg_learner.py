@@ -204,7 +204,8 @@ class MPGLearner(object):
         max_num_rollout = max(self.num_rollout_list_for_q_estimation)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards, dones_new = self.model.rollout_out(actions_tile)
+                obses_tile, rewards4conti, rewards4episo, dones_new = self.model.rollout_out(actions_tile)
+                rewards = rewards4episo if self.args.is_episodic else rewards4conti
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
                 processed_rewards = self.preprocessor.tf_process_rewards(rewards)
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri)*processed_rewards*\
@@ -250,9 +251,9 @@ class MPGLearner(object):
         self.model.reset(obses_tile)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards, _ = self.model.rollout_out(actions_tile)
+                obses_tile, rewards4conti, _, _ = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards4conti)
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_for_rollout.compute_action(processed_obses_tile) if not \
