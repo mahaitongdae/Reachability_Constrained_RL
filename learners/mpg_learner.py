@@ -33,7 +33,6 @@ class MPGLearner(object):
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
-        self.is_episodic = self.args.is_episodic
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
         self.counter = 0
@@ -88,7 +87,6 @@ class MPGLearner(object):
             all_actions = []
             all_rewards = []
             all_obs_tp1 = []
-            all_dones = []
             for i in range(len(start_obs)):
                 obs = start_obs[i][np.newaxis, :]
                 self.env.reset(init_obs=obs)
@@ -96,20 +94,14 @@ class MPGLearner(object):
                     processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
                     action, _ = self.policy_with_value.compute_action(processed_obs)
                     action = self.tf.constant(start_action[i][np.newaxis, :]) if t == 0 else action
-                    obs_tp1, reward, done, _ = self.env.step(action.numpy())
+                    obs_tp1, reward, _, _ = self.env.step(action.numpy())
                     all_obs.append(obs.copy()[0])
                     all_actions.append(action.numpy()[0])
                     all_rewards.append(reward[0])
                     all_obs_tp1.append(obs_tp1.copy()[0])
-                    if self.is_episodic:
-                        all_dones.append(done[0])
-                        obs = self.env.reset()
-                    else:
-                        all_dones.append(False)
-                        obs = obs_tp1.copy()
+                    obs = obs_tp1.copy()
             return {'all_rewards': np.swapaxes(np.array(all_rewards, dtype=np.float32).reshape((self.batch_size, self.sample_num_in_learner)), 0, 1),
                     'all_obs_tp1': np.swapaxes(np.array(all_obs_tp1, dtype=np.float32).reshape((self.batch_size, self.sample_num_in_learner, -1)), 0, 1),
-                    'all_dones': np.swapaxes(np.array(all_dones, dtype=np.bool).reshape((self.batch_size, self.sample_num_in_learner)), 0, 1)
                     }
         else:
             assert self.env.num_agent == self.batch_size
@@ -120,62 +112,48 @@ class MPGLearner(object):
                 processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
                 action, logp = self.policy_with_value.compute_action(processed_obs)
                 action = self.tf.constant(start_action) if t == 0 else action
-                obs_tp1, reward, done, _ = self.env.step(action.numpy())
-                if self.is_episodic:
-                    batch_data.append((obs.copy(), action.numpy(), reward, obs_tp1.copy(), done))
-                    obs = self.env.reset()
-                else:
-                    done = np.zeros((self.batch_size,), dtype=np.bool)
-                    batch_data.append((obs.copy(), action.numpy(), reward, obs_tp1.copy(), done))
-                    obs = obs_tp1.copy()
+                obs_tp1, reward, _, _ = self.env.step(action.numpy())
+                batch_data.append((obs.copy(), action.numpy(), reward, obs_tp1.copy()))
+                obs = obs_tp1.copy()
 
             return {'all_rewards': np.asarray(list(map(lambda x: x[2], batch_data)), dtype=np.float32),
                     'all_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
-                    'all_dones': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.bool),
                     }
 
     def compute_clipped_double_q_target(self):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-        dones = self.batch_data['batch_dones']
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, target_act_tp1).numpy()
         clipped_double_q_target = processed_rewards + \
-                                  self.args.gamma * np.minimum(target_Q1_of_tp1, target_Q2_of_tp1) * (1.-dones)
+                                  self.args.gamma * np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)
         return clipped_double_q_target
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-        dones = self.batch_data['batch_dones']
         values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
-        td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 * (1.-dones) - values_t
+        td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
     def compute_n_step_target(self):
         rollouts = self.sample(self.batch_data['batch_obs'], self.batch_data['batch_actions'])
         processed_all_obs_tp1 = self.preprocessor.tf_process_obses(rollouts['all_obs_tp1']).numpy()
         processed_all_rewards = self.preprocessor.tf_process_rewards(rollouts['all_rewards']).numpy()
-        all_dones = rollouts['all_dones']
         act_tp1, _ = self.policy_with_value.compute_target_action(
             processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
         all_values_tp1 = \
             self.policy_with_value.compute_Q1_target(
                 processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
                 act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
-
         n_step_target = np.zeros((self.batch_size,), dtype=np.float32)
-        terminal = np.zeros((self.batch_size,), dtype=np.bool)
         for t in range(self.sample_num_in_learner):
-            n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t] * (1. - terminal)
-            terminal = np.logical_or(terminal, all_dones[t])
-        n_step_target += np.where(terminal,
-                                  np.zeros((self.batch_size,), dtype=np.float32),
-                                  np.power(self.args.gamma, self.sample_num_in_learner) * all_values_tp1[-1, :])
+            n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t]
+        n_step_target += np.power(self.args.gamma, self.sample_num_in_learner) * all_values_tp1[-1, :]
         return n_step_target
 
     def get_weights(self):
@@ -196,35 +174,28 @@ class MPGLearner(object):
         actions_tile_list = [actions_tile]
         rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
         rewards_sum_list = [rewards_sum_tile]
-        dones_tile = self.tf.zeros((obses_tile.shape[0],), dtype=self.tf.bool)
-        dones_list = [dones_tile]
         gammas_list = [self.tf.ones((obses_tile.shape[0],))]
 
         self.model.reset(obses_tile)
         max_num_rollout = max(self.num_rollout_list_for_q_estimation)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards4conti, rewards4episo, dones_new = self.model.rollout_out(actions_tile)
-                rewards = rewards4episo if self.args.is_episodic else rewards4conti
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
                 processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                rewards_sum_tile += self.tf.pow(self.args.gamma, ri)*processed_rewards*\
-                                    (1.-self.tf.cast(dones_tile, self.tf.float32))
+                rewards_sum_tile += self.tf.pow(self.args.gamma, ri)*processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
                 processed_obses_tile_list.append(processed_obses_tile)
                 actions_tile_list.append(actions_tile)
                 gammas_list.append(self.tf.pow(self.args.gamma, ri + 1)*self.tf.ones((obses_tile.shape[0],)))
-                dones_tile = self.tf.logical_or(dones_tile, dones_new)
-                dones_list.append(dones_tile)
 
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q1_target(
                 self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
-            all_dones = self.tf.concat(dones_list, 0)
-            all_targets = all_rewards_sums+all_gammas*all_Qs*(1.-self.tf.cast(all_dones, self.tf.float32))
+            all_targets = all_rewards_sums+all_gammas*all_Qs
 
             final = self.tf.reshape(all_targets, (max_num_rollout + 1, self.M, -1))
             all_model_returns = self.tf.reduce_mean(final, axis=1)
@@ -251,9 +222,9 @@ class MPGLearner(object):
         self.model.reset(obses_tile)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards4conti, _, _ = self.model.rollout_out(actions_tile)
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards4conti)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_for_rollout.compute_action(processed_obses_tile) if not \

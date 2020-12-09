@@ -94,13 +94,10 @@ class Dynamics(object):
             tip_y = self.l_rod1 * tf.cos(theta1) + self.l_rod2 * tf.cos(theta2)
             dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 2)
             v1, v2 = theta1dot, theta2dot
-            alive_bonus = 10.
             vel_penalty = 1e-3 * tf.square(v1) + 5e-3 * tf.square(v2)
-            rewards4conti = -dist_penalty-vel_penalty
-            rewards4episo = alive_bonus + rewards4conti
-            dones = tf.less_equal(tip_y, 1)
+            rewards = -dist_penalty-vel_penalty
 
-        return rewards4conti, dones, rewards4episo
+        return rewards
 
 
 class InvertedDoublePendulumModel(object):  # all tensors
@@ -140,8 +137,8 @@ class InvertedDoublePendulumModel(object):  # all tensors
             for i in range(5):
                 self.states = self.dynamics.f_xu_old(self.states, self.actions, self.tau)
                 self.obses = self._get_obs(self.states)
-            rewards4conti, dones, rewards4episo = self.dynamics.compute_rewards(self.states)
-        return self.obses, rewards4conti, rewards4episo, dones
+            rewards = self.dynamics.compute_rewards(self.states)
+        return self.obses, rewards
 
     def action_trans(self, actions):
         return tf.constant(500.) * actions
@@ -237,7 +234,7 @@ def testModel2():
             env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
             env_state = _get_state(env_obs)
             env.render()
-            model_obs, model_rew, _ = model.rollout_out(model_actions)
+            model_obs, model_rew = model.rollout_out(model_actions)
             model_rew = model_rew.numpy()[0]
             model_state = model.states.numpy()[0]
             print('env_state', env_state, env_rew)
@@ -264,7 +261,7 @@ def test_policy():
         model.render()
         while not done:
             actions, _ = policy.compute_action(env_obs)
-            env_obs, env_rew, done = model.rollout_out(actions.numpy())
+            env_obs, env_rew = model.rollout_out(actions.numpy())
             model.render()
 
 

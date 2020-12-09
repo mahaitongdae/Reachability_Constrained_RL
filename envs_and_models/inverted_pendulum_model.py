@@ -70,14 +70,10 @@ class Dynamics(object):
             tip_y = self.l_rod1 * tf.cos(theta1)
             dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 0.6)
             v1 = theta1dot
-            alive_bonus = 1.
             vel_penalty = 1e-3 * tf.square(v1)
-            rewards4conti = -dist_penalty-vel_penalty
-            # dones = tf.greater(tf.abs(theta1), 0.2)
-            dones = tf.zeros_like(p, dtype=tf.bool)
-            rewards4episo = alive_bonus*tf.ones_like(rewards4conti)
+            rewards = -dist_penalty-vel_penalty
 
-        return rewards4conti, dones, rewards4episo
+        return rewards
 
 
 class InvertedPendulumModel(object):  # all tensors
@@ -97,8 +93,8 @@ class InvertedPendulumModel(object):  # all tensors
             self.actions = self.action_trans(actions)
             for i in range(2):
                 self.obses = self.dynamics.f_xu(self.obses, self.actions, self.tau)
-            rewards4conti, dones, rewards4episo = self.dynamics.compute_rewards(self.obses)
-        return self.obses, rewards4conti, rewards4episo, dones
+            rewards = self.dynamics.compute_rewards(self.obses)
+        return self.obses, rewards
 
     def action_trans(self, actions):
         return tf.constant(100.) * actions
@@ -177,11 +173,11 @@ def testModel2():
             # model_actions, _ = policy.compute_action(model_obs)
             env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
             env.render()
-            model_obs, model_rew, model_rew4epi, model_done = model.rollout_out(model_actions)
-            model_obs, model_rew, model_rew4epi, model_done = model_obs.numpy()[0], model_rew.numpy()[0], \
-                                                              model_rew4epi.numpy()[0], model_done.numpy()[0]
+            model_obs, model_rew = model.rollout_out(model_actions)
+            model_obs, model_rew = model_obs.numpy()[0], model_rew.numpy()[0]
+
             print('env_obs', env_obs, env_rew, done)
-            print('model_obs', model_obs, model_rew, model_rew4epi, model_done)
+            print('model_obs', model_obs, model_rew)
             model.render()
 
 

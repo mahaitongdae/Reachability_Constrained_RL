@@ -66,11 +66,10 @@ class NADPLearner(object):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-        dones = self.batch_data['batch_dones']
         values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
-        td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 * (1.-dones) - values_t
+        td_error = processed_rewards + self.args.gamma * target_Q1_of_tp1 - values_t
         return td_error
 
     def get_weights(self):
@@ -97,9 +96,9 @@ class NADPLearner(object):
         max_num_rollout = max(self.num_rollout_list_for_q_estimation)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards4conti, _, _ = self.model.rollout_out(actions_tile)
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards4conti)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
@@ -139,9 +138,9 @@ class NADPLearner(object):
         self.model.reset(obses_tile)
         if max_num_rollout > 0:
             for ri in range(max_num_rollout):
-                obses_tile, rewards4conti, _, _ = self.model.rollout_out(actions_tile)
+                obses_tile, rewards = self.model.rollout_out(actions_tile)
                 processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards4conti)
+                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
                 rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
                 rewards_sum_list.append(rewards_sum_tile)
                 actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)

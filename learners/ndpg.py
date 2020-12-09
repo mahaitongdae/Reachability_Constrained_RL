@@ -14,6 +14,7 @@ import numpy as np
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat
+from utils.dummy_vec_env import DummyVecEnv
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +27,11 @@ class NDPGLearner(object):
         self.args = args
         self.sample_num_in_learner = self.args.sample_num_in_learner
         self.batch_size = self.args.replay_batch_size
-        self.env = gym.make(self.args.env_id, num_agent=self.batch_size, num_future_data=self.args.num_future_data)
+        if self.args.env_id == 'PathTracking-v0':
+            self.env = gym.make(self.args.env_id, num_agent=self.batch_size, num_future_data=self.args.num_future_data)
+        else:
+            env = gym.make(self.args.env_id)
+            self.env = DummyVecEnv(env)
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
         self.counter = 0
@@ -67,22 +72,43 @@ class NDPGLearner(object):
         # print(self.batch_data['batch_actions'].shape)  # batch_size * act_dim
 
     def sample(self, start_obs, start_action):
-        batch_data = []
-        obs = start_obs
-        self.env.reset(init_obs=obs)
-        for t in range(self.sample_num_in_learner):
-            if t == 0:
-                action = self.tf.convert_to_tensor(start_action)
-            else:
+        if self.env.num_agent == 1:
+            all_obs = []
+            all_actions = []
+            all_rewards = []
+            all_obs_tp1 = []
+            for i in range(len(start_obs)):
+                obs = start_obs[i][np.newaxis, :]
+                self.env.reset(init_obs=obs)
+                for t in range(self.sample_num_in_learner):
+                    processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
+                    action, _ = self.policy_with_value.compute_action(processed_obs)
+                    action = self.tf.constant(start_action[i][np.newaxis, :]) if t == 0 else action
+                    obs_tp1, reward, _, _ = self.env.step(action.numpy())
+                    all_obs.append(obs.copy()[0])
+                    all_actions.append(action.numpy()[0])
+                    all_rewards.append(reward[0])
+                    all_obs_tp1.append(obs_tp1.copy()[0])
+                    obs = obs_tp1.copy()
+            return {'all_rewards': np.swapaxes(np.array(all_rewards, dtype=np.float32).reshape((self.batch_size, self.sample_num_in_learner)), 0, 1),
+                    'all_obs_tp1': np.swapaxes(np.array(all_obs_tp1, dtype=np.float32).reshape((self.batch_size, self.sample_num_in_learner, -1)), 0, 1),
+                    }
+        else:
+            assert self.env.num_agent == self.batch_size
+            batch_data = []
+            obs = start_obs
+            self.env.reset(init_obs=obs)
+            for t in range(self.sample_num_in_learner):
                 processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
-                action, neglogp = self.policy_with_value.compute_action(processed_obs)
-            obs_tp1, reward, _, info = self.env.step(action.numpy())
+                action, logp = self.policy_with_value.compute_action(processed_obs)
+                action = self.tf.constant(start_action) if t == 0 else action
+                obs_tp1, reward, _, _ = self.env.step(action.numpy())
+                batch_data.append((obs.copy(), action.numpy(), reward, obs_tp1.copy()))
+                obs = obs_tp1.copy()
 
-            done = np.zeros((self.batch_size,), dtype=np.int)
-            batch_data.append((obs, action.numpy(), reward, obs_tp1, done))
-            obs = obs_tp1.copy()
-
-        return batch_data
+            return {'all_rewards': np.asarray(list(map(lambda x: x[2], batch_data)), dtype=np.float32),
+                    'all_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
+                    }
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
@@ -97,11 +123,8 @@ class NDPGLearner(object):
 
     def compute_n_step_target(self):
         rollouts = self.sample(self.batch_data['batch_obs'], self.batch_data['batch_actions'])
-        tmp = {'all_rewards': np.asarray(list(map(lambda x: x[2], rollouts)), dtype=np.float32),
-               'all_obs_tp1': np.asarray(list(map(lambda x: x[3], rollouts)), dtype=np.float32),
-               }
-        processed_all_obs_tp1 = self.preprocessor.tf_process_obses(tmp['all_obs_tp1']).numpy()
-        processed_all_rewards = self.preprocessor.tf_process_rewards(tmp['all_rewards']).numpy()
+        processed_all_obs_tp1 = self.preprocessor.tf_process_obses(rollouts['all_obs_tp1']).numpy()
+        processed_all_rewards = self.preprocessor.tf_process_rewards(rollouts['all_rewards']).numpy()
         act_tp1, _ = self.policy_with_value.compute_target_action(
             processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
         all_values_tp1 = \

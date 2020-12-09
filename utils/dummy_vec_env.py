@@ -10,15 +10,7 @@ import numpy as np
 from gym.core import Wrapper
 
 
-def _get_state4inverted_double_pendulumv2(obs):
-    p, sintheta1, sintheta2, costheta1, costheta2, pdot, theta1dot, theta2dot \
-        = obs[0], obs[1], obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]
-    theta1 = np.arctan2(sintheta1, costheta1)
-    theta2 = np.arctan2(sintheta2, costheta2)
-    return np.array([p, theta1, theta2, pdot, theta1dot, theta2dot])
-
-
-class DummyVecEnv(Wrapper):
+class DummyVecEnv(Wrapper):  # todo: only for conti task
     def __init__(self, env):
         super().__init__(env)
         self.num_agent = 1
@@ -32,7 +24,6 @@ class DummyVecEnv(Wrapper):
     def reset(self, **kwargs):
         if 'init_obs' in kwargs.keys():
             init_obs = kwargs.get('init_obs')
-            # state = _get_state4inverted_double_pendulumv2(init_obs[0])
             state = init_obs[0]  # todo: only for inverted pendulum
             self.env.reset()
             self.env.set_state(state[:2], state[2:])  # todo: only for inverted pendulum

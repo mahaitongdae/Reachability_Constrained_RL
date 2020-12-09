@@ -206,7 +206,6 @@ def built_MPG_parser(version):
     parser.add_argument('--env_id', default='PathTracking-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--is_episodic', type=bool, default=False)
 
     # learner
     parser.add_argument('--alg_name', default='MPG')
@@ -285,7 +284,7 @@ def built_MPG_parser(version):
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=12)
+    parser.add_argument('--num_learners', type=int, default=2)
     parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)

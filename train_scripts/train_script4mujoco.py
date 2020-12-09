@@ -67,7 +67,7 @@ def built_AMPC_parser():
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=None))
+                           fixed_steps=500))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -187,7 +187,7 @@ def built_MPG_parser(version):
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=None))
+                           fixed_steps=500))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -203,7 +203,6 @@ def built_MPG_parser(version):
     # env
     parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
     parser.add_argument('--num_agent', type=int, default=1)
-    parser.add_argument('--is_episodic', type=bool, default=False)
 
     # learner
     parser.add_argument('--alg_name', default='MPG')
@@ -317,7 +316,7 @@ def built_NADP_parser():
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=None))
+                           fixed_steps=500))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -435,7 +434,7 @@ def built_NDPG_parser():
                            num_eval_episode=5,
                            num_eval_agent=5,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=500))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -449,9 +448,8 @@ def built_NDPG_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=0)
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
     parser.add_argument('--alg_name', default='NDPG')
@@ -476,10 +474,9 @@ def built_NDPG_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=500)
     parser.add_argument('--eval_render', type=bool, default=True)
-    num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -493,7 +490,7 @@ def built_NDPG_parser():
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
     parser.add_argument('--alpha_lr_schedule', type=list, default=None)
@@ -503,15 +500,14 @@ def built_NDPG_parser():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--deterministic_policy', type=bool, default=True)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
-    parser.add_argument('--obs_ptype', type=str, default='scale')
-    num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
-    parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
-    parser.add_argument('--rew_shift', type=float, default=0.)
+    parser.add_argument('--obs_ptype', type=str, default=None)
+    parser.add_argument('--obs_scale', type=list, default=None)
+    parser.add_argument('--rew_ptype', type=str, default=None)
+    parser.add_argument('--rew_scale', type=float, default=None)
+    parser.add_argument('--rew_shift', type=float, default=None)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
