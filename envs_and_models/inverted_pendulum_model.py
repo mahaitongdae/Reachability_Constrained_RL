@@ -58,7 +58,7 @@ class Dynamics(object):
         next_p, next_theta1, next_pdot, next_theta1dot = next_states[:, 0], next_states[:, 1],\
                                                          next_states[:, 2], next_states[:, 3]
         if self.if_model:
-            next_theta1 += tfd.Normal(0.01*tf.ones_like(next_p), 0.005).sample()
+            next_theta1dot += tfd.Normal(0.05*tf.ones_like(next_p), 0.005).sample()
         next_states = tf.stack([next_p, next_theta1, next_pdot, next_theta1dot], axis=1)
 
         return next_states
@@ -68,12 +68,13 @@ class Dynamics(object):
             p, theta1, pdot, theta1dot = states[:, 0], states[:, 1], states[:, 2], states[:, 3]
             tip_x = p + self.l_rod1 * tf.sin(theta1)
             tip_y = self.l_rod1 * tf.cos(theta1)
-            dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 2)
+            dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 0.6)
             v1 = theta1dot
             alive_bonus = 1.
             vel_penalty = 1e-3 * tf.square(v1)
             rewards4conti = -dist_penalty-vel_penalty
-            dones = tf.greater(tf.abs(theta1), 0.2)
+            # dones = tf.greater(tf.abs(theta1), 0.2)
+            dones = tf.zeros_like(p, dtype=tf.bool)
             rewards4episo = alive_bonus*tf.ones_like(rewards4conti)
 
         return rewards4conti, dones, rewards4episo

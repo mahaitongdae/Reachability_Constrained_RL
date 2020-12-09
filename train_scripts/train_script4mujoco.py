@@ -81,7 +81,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedPendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
     parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
@@ -201,9 +201,9 @@ def built_MPG_parser(version):
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedPendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
     parser.add_argument('--num_agent', type=int, default=1)
-    parser.add_argument('--is_episodic', type=bool, default=True)
+    parser.add_argument('--is_episodic', type=bool, default=False)
 
     # learner
     parser.add_argument('--alg_name', default='MPG')
@@ -331,7 +331,7 @@ def built_NADP_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='InvertedPendulum-v2')
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
     parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
