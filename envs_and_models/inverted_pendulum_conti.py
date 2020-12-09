@@ -17,7 +17,7 @@ class InvertedPendulumContiEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         v1 = theta1dot
         vel_penalty = 1e-3 * np.power(v1, 2)
         reward = -dist_penalty - vel_penalty
-        notdone = (np.abs(theta1) <= .2)
+        notdone = (np.abs(p) <= 1.) and (np.abs(theta1) <= .2)
         done = not notdone
         return ob, reward, done, {}
 
