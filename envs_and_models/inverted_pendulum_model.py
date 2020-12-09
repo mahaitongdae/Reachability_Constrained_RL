@@ -64,8 +64,8 @@ class Dynamics(object):
             v1 = theta1dot
             alive_bonus = 1.
             vel_penalty = 1e-3 * tf.square(v1)
-            rewards = alive_bonus-dist_penalty-vel_penalty
-            dones = tf.less_equal(tip_y, 1)
+            rewards = -dist_penalty-vel_penalty
+            dones = tf.greater(tf.abs(theta1), 0.2)
 
         return rewards, dones
 
@@ -149,7 +149,7 @@ def testModel2():
     from policy import PolicyWithQs
     from train_scripts.train_script4mujoco import built_AMPC_parser
     args = built_AMPC_parser()
-    env = gym.make('InvertedDoublePendulum-v2')
+    env = gym.make('InvertedPendulum-v2')
     model = InvertedPendulumModel()
     args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
     # policy = PolicyWithQs(**vars(args))
@@ -167,11 +167,10 @@ def testModel2():
             # model_actions, _ = policy.compute_action(model_obs)
             env_obs, env_rew, done, _ = env.step(actions.numpy()[0])
             env.render()
-            model_obs, model_rew, _ = model.rollout_out(model_actions)
-            model_rew = model_rew.numpy()[0]
-            model_obs = model_obs.numpy()[0]
-            print('env_obs', env_obs, env_rew)
-            print('model_obs', model_obs, model_rew)
+            model_obs, model_rew, model_done = model.rollout_out(model_actions)
+            model_obs, model_rew, model_done = model_obs.numpy()[0], model_rew.numpy()[0], model_done.numpy()[0]
+            print('env_obs', env_obs, env_rew, done)
+            print('model_obs', model_obs, model_rew, model_done)
             model.render()
 
 
@@ -182,5 +181,5 @@ def testInvPen():
 
 
 if __name__ == '__main__':
-    testModel()
+    testModel2()
 
