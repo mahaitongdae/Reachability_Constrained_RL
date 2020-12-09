@@ -12,5 +12,5 @@ from envs_and_models.inverted_pendulum_model import InvertedPendulumModel
 
 NAME2MODELCLS = dict([('PathTracking-v0', PathTrackingModel),
                       ('InvertedDoublePendulum-v2', InvertedDoublePendulumModel),
-                      ('InvertedPendulum-v2', InvertedPendulumModel)])
+                      ('InvertedPendulumConti-v0', InvertedPendulumModel)])
 
