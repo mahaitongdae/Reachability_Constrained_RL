@@ -7,6 +7,8 @@
 # @FileName: inverted_pendulum_model.py
 # =====================================
 import tensorflow as tf
+import tensorflow_probability as tfp
+tfd = tfp.distributions
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -21,6 +23,7 @@ class Dynamics(object):
         self.g = 9.81
         self.damping_cart = 0.
         self.damping_rod1 = 0.
+        self.if_model = if_model
 
     def f_xu(self, states, actions, tau):
         m, m1, m2 = tf.constant(self.mass_cart, dtype=tf.float32),\
@@ -52,6 +55,8 @@ class Dynamics(object):
 
         deriv = tf.concat([states[:, 2:], tmp], axis=-1)
         next_states = states + tau * deriv
+        if self.if_model:
+            next_states[:, 1] += tfd.Normal(0.01*tf.ones_like(p), 0.005).sample()
 
         return next_states
 
@@ -74,7 +79,7 @@ class Dynamics(object):
 class InvertedPendulumModel(object):  # all tensors
     def __init__(self, **kwargs):
         # obs: p, theta1, pdot, theta1dot
-        self.dynamics = Dynamics()
+        self.dynamics = Dynamics(if_model=True)
         self.obses = None
         self.actions = None
         self.tau = 0.02

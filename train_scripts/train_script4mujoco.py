@@ -62,12 +62,12 @@ def built_AMPC_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[0],
+                           test_iter_list=[99000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
-                           num_eval_agent=5,
+                           num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=None))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -182,12 +182,12 @@ def built_MPG_parser(version):
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[0],
+                           test_iter_list=[99000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
-                           num_eval_agent=5,
+                           num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=None))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -312,12 +312,12 @@ def built_NADP_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[32000],
+                           test_iter_list=[99000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
-                           num_eval_agent=5,
+                           num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=200))
+                           fixed_steps=None))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
