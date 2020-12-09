@@ -55,8 +55,11 @@ class Dynamics(object):
 
         deriv = tf.concat([states[:, 2:], tmp], axis=-1)
         next_states = states + tau * deriv
+        next_p, next_theta1, next_pdot, next_theta1dot = next_states[:, 0], next_states[:, 1],\
+                                                         next_states[:, 2], next_states[:, 3]
         if self.if_model:
-            next_states[:, 1] += tfd.Normal(0.01*tf.ones_like(p), 0.005).sample()
+            next_theta1 += tfd.Normal(0.01*tf.ones_like(next_p), 0.005).sample()
+        next_states = tf.stack([next_p, next_theta1, next_pdot, next_theta1dot], axis=1)
 
         return next_states
 
