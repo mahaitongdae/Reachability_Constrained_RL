@@ -100,7 +100,7 @@ class NDPGLearner(object):
             self.env.reset(init_obs=obs)
             for t in range(self.sample_num_in_learner):
                 processed_obs = self.preprocessor.tf_process_obses(obs).numpy()
-                action, logp = self.policy_with_value.compute_action(processed_obs)
+                action, _ = self.policy_with_value.compute_action(processed_obs)
                 action = self.tf.constant(start_action) if t == 0 else action
                 obs_tp1, reward, _, _ = self.env.step(action.numpy())
                 batch_data.append((obs.copy(), action.numpy(), reward, obs_tp1.copy()))
