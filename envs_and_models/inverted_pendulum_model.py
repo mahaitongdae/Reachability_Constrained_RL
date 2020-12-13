@@ -69,8 +69,7 @@ class Dynamics(object):
             tip_x = p + self.l_rod1 * tf.sin(theta1)
             tip_y = self.l_rod1 * tf.cos(theta1)
             dist_penalty = 0.01 * tf.square(tip_x) + tf.square(tip_y - 0.6)
-            v1 = theta1dot
-            vel_penalty = 1e-3 * tf.square(v1)
+            vel_penalty = 1e-3 * tf.square(pdot) + 1e-3 * tf.square(theta1dot)
             rewards = -dist_penalty-vel_penalty
 
         return rewards
