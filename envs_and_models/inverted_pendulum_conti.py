@@ -33,3 +33,21 @@ class InvertedPendulumContiEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         v = self.viewer
         v.cam.trackbodyid = 0
         v.cam.distance = self.model.stat.extent
+
+
+def test_reset():
+    from utils.dummy_vec_env import DummyVecEnv
+    env = InvertedPendulumContiEnv()
+    obs = env.reset()
+    wrapenv = DummyVecEnv(env)
+    for i in range(10):
+        wrapenv.reset(init_obs=np.array([obs]))
+        wrapenv.render()
+        for j in range(100):
+            action = np.array([wrapenv.action_space.sample()])
+            wrapenv.step(action)
+            wrapenv.render()
+
+
+if __name__ == '__main__':
+    test_reset()
