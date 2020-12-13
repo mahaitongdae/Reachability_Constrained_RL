@@ -138,9 +138,9 @@ def built_AMPC_parser():
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
-    parser.add_argument('--rew_ptype', type=str, default=None)
-    parser.add_argument('--rew_scale', type=float, default=None)
-    parser.add_argument('--rew_shift', type=float, default=None)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -271,9 +271,9 @@ def built_MPG_parser(version):
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
-    parser.add_argument('--rew_ptype', type=str, default=None)
-    parser.add_argument('--rew_scale', type=float, default=None)
-    parser.add_argument('--rew_shift', type=float, default=None)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -389,9 +389,9 @@ def built_NADP_parser():
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
-    parser.add_argument('--rew_ptype', type=str, default=None)
-    parser.add_argument('--rew_scale', type=float, default=None)
-    parser.add_argument('--rew_shift', type=float, default=None)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -505,9 +505,9 @@ def built_NDPG_parser():
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default=None)
     parser.add_argument('--obs_scale', type=list, default=None)
-    parser.add_argument('--rew_ptype', type=str, default=None)
-    parser.add_argument('--rew_scale', type=float, default=None)
-    parser.add_argument('--rew_shift', type=float, default=None)
+    parser.add_argument('--rew_ptype', type=str, default='scale')
+    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
