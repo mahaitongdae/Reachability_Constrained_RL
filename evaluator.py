@@ -179,6 +179,25 @@ class Evaluator(object):
                              'stationary_rew_mean', 'steer_mse', 'acc_mse'])
             value_list.extend([delta_y_mse, delta_phi_mse, delta_v_mse,
                                stationary_rew_mean, steer_mse, acc_mse])
+        elif self.args.env_id == 'InvertedPendulumConti-v0':
+            x_list = list(map(lambda x: x[0], episode_info['obs_list']))
+            theta_list = list(map(lambda x: x[1], episode_info['obs_list']))
+            xdot_list = list(map(lambda x: x[2], episode_info['obs_list']))
+            thetadot_list = list(map(lambda x: x[3], episode_info['obs_list']))
+            x_mean, x_var = np.mean(np.array(x_list)), np.var(np.array(x_list))
+            theta_mean, theta_var = np.mean(np.array(theta_list)), np.var(np.array(theta_list))
+            xdot_mean, xdot_var = np.mean(np.array(xdot_list)), np.var(np.array(xdot_list))
+            thetadot_mean, thetadot_var = np.mean(np.array(thetadot_list)), np.var(np.array(thetadot_list))
+            xdot_mse, thetadot_mse = np.sqrt(np.mean(np.square(np.array(xdot_list)))),\
+                                     np.sqrt(np.mean(np.square(np.array(thetadot_list))))
+            deltay_mse = np.sqrt(np.mean(np.square(0.6*np.cos(theta_list)-0.6)))
+            key_list.extend(['x_mean', 'x_var', 'theta_mean', 'theta_var',
+                             'xdot_mean', 'xdot_var', 'thetadot_mean', 'thetadot_var',
+                             'xdot_mse', 'thetadot_mse', 'deltay_mse'])
+            value_list.extend([x_mean, x_var, theta_mean, theta_var,
+                               xdot_mean, xdot_var, thetadot_mean, thetadot_var,
+                               xdot_mse, thetadot_mse, deltay_mse])
+
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
