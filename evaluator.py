@@ -188,16 +188,23 @@ class Evaluator(object):
             theta_mean, theta_var = np.mean(np.array(theta_list)), np.var(np.array(theta_list))
             xdot_mean, xdot_var = np.mean(np.array(xdot_list)), np.var(np.array(xdot_list))
             thetadot_mean, thetadot_var = np.mean(np.array(thetadot_list)), np.var(np.array(thetadot_list))
+            x_mse, theta_mse = np.sqrt(np.mean(np.square(np.array(x_list)))),\
+                               np.sqrt(np.mean(np.square(np.array(theta_list))))
+
             xdot_mse, thetadot_mse = np.sqrt(np.mean(np.square(np.array(xdot_list)))),\
                                      np.sqrt(np.mean(np.square(np.array(thetadot_list))))
+            x_mse_25, theta_mse_25 = np.sqrt(np.mean(np.square(np.array(x_list)[:25]))), \
+                                     np.sqrt(np.mean(np.square(np.array(theta_list)[:25])))
             xdot_mse_25, thetadot_mse_25 = np.sqrt(np.mean(np.square(np.array(xdot_list)[:25]))), \
                                      np.sqrt(np.mean(np.square(np.array(thetadot_list)[:25])))
             key_list.extend(['x_mean', 'x_var', 'theta_mean', 'theta_var',
                              'xdot_mean', 'xdot_var', 'thetadot_mean', 'thetadot_var',
-                             'xdot_mse', 'thetadot_mse', 'xdot_mse_25', 'thetadot_mse_25'])
+                             'x_mse', 'theta_mse', 'xdot_mse', 'thetadot_mse',
+                             'x_mse_25', 'theta_mse_25', 'xdot_mse_25', 'thetadot_mse_25'])
             value_list.extend([x_mean, x_var, theta_mean, theta_var,
                                xdot_mean, xdot_var, thetadot_mean, thetadot_var,
-                               xdot_mse, thetadot_mse, xdot_mse_25, thetadot_mse_25])
+                               x_mse, theta_mse, xdot_mse, thetadot_mse,
+                               x_mse_25, theta_mse_25, xdot_mse_25, thetadot_mse_25])
 
         return dict(zip(key_list, value_list))
 
