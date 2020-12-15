@@ -540,7 +540,7 @@ def built_TD3_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/TD3/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/TD3/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -558,15 +558,14 @@ def built_TD3_parser():
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
-    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=0)
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
     parser.add_argument('--alg_name', default='TD3')
@@ -592,10 +591,9 @@ def built_TD3_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=100)
     parser.add_argument('--eval_render', type=bool, default=True)
-    num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -609,7 +607,7 @@ def built_TD3_parser():
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--alpha', default=None)
     parser.add_argument('--alpha_lr_schedule', type=list, default=None)
@@ -619,15 +617,14 @@ def built_TD3_parser():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=2)
     parser.add_argument('--deterministic_policy', type=bool, default=True)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
-    num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.1, 0.5])
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
-    parser.add_argument('--rew_shift', type=float, default=0.)
+    parser.add_argument('--rew_scale', type=float, default=1.)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -643,7 +640,7 @@ def built_TD3_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/TD3/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/TD3/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -660,7 +657,7 @@ def built_SAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/SAC/experiment-2020-09-22-14-46-31'
+        test_dir = '../results/SAC/experiment-2020-09-22-14-46-31'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -678,15 +675,14 @@ def built_SAC_parser():
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
-    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
-    parser.add_argument('--num_future_data', type=int, default=0)
+    parser.add_argument('--env_id', default='InvertedPendulumConti-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
 
     # learner
     parser.add_argument('--alg_name', default='SAC')
@@ -710,10 +706,9 @@ def built_SAC_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=100)
     parser.add_argument('--eval_render', type=bool, default=True)
-    num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -740,17 +735,16 @@ def built_SAC_parser():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--deterministic_policy', type=bool, default=False)
-    parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--action_range', type=float, default=3.)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
-    num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.1, 0.5])
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
-    parser.add_argument('--rew_shift', type=float, default=0.)
+    parser.add_argument('--rew_scale', type=float, default=1.)
+    parser.add_argument('--rew_shift', type=float, default=0.0)
 
-    # Optimizer (PABAL)
+    # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=2)
@@ -764,7 +758,7 @@ def built_SAC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/SAC/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/SAC/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
