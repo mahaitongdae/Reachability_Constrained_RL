@@ -485,6 +485,7 @@ def built_NDPG_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
+    parser.add_argument('--value_out_activation', type=str, default='tanh')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
