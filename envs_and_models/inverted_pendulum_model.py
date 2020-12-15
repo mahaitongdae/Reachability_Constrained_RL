@@ -81,7 +81,7 @@ class InvertedPendulumModel(object):  # all tensors
         self.dynamics = Dynamics(if_model=True)
         self.obses = None
         self.actions = None
-        self.tau = 0.02
+        self.tau = 0.04
         plt.ion()
 
     def reset(self, obses):
@@ -90,8 +90,8 @@ class InvertedPendulumModel(object):  # all tensors
     def rollout_out(self, actions):  # action [-3,3]
         with tf.name_scope('model_step') as scope:
             self.actions = self.action_trans(actions)
-            for i in range(2):
-                self.obses = self.dynamics.f_xu(self.obses, self.actions, self.tau)
+            #for i in range(2):
+            self.obses = self.dynamics.f_xu(self.obses, self.actions, self.tau)
             rewards = self.dynamics.compute_rewards(self.obses)
         return self.obses, rewards
 
