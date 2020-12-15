@@ -118,6 +118,7 @@ class PolicyWithQs(tf.Module):
             else:
                 self.target_models[i-len(self.models)].set_weights(weight)
 
+    @tf.function
     def apply_gradients(self, iteration, grads):
         if self.policy_only:
             policy_grad = grads
@@ -154,30 +155,36 @@ class PolicyWithQs(tf.Module):
 
     def update_Q1_target(self):
         tau = self.tau
-        source_params = self.Q1.get_weights()
-        target_params = self.Q1_target.get_weights()
-        self.Q1_target.set_weights([
-            tau * source + (1.0 - tau) * target
-            for source, target in zip(source_params, target_params)
-        ])
+        for source, target in zip(self.Q1.trainable_weights, self.Q1_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
+        # source_params = self.Q1.get_weights()
+        # target_params = self.Q1_target.get_weights()
+        # self.Q1_target.set_weights([
+        #     tau * source + (1.0 - tau) * target
+        #     for source, target in zip(source_params, target_params)
+        # ])
 
     def update_Q2_target(self):
         tau = self.tau
-        source_params = self.Q2.get_weights()
-        target_params = self.Q2_target.get_weights()
-        self.Q2_target.set_weights([
-            tau * source + (1.0 - tau) * target
-            for source, target in zip(source_params, target_params)
-        ])
+        for source, target in zip(self.Q2.trainable_weights, self.Q2_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
+        # source_params = self.Q2.get_weights()
+        # target_params = self.Q2_target.get_weights()
+        # self.Q2_target.set_weights([
+        #     tau * source + (1.0 - tau) * target
+        #     for source, target in zip(source_params, target_params)
+        # ])
 
     def update_policy_target(self):
         tau = self.tau
-        source_params = self.policy.get_weights()
-        target_params = self.policy_target.get_weights()
-        self.policy_target.set_weights([
-            tau * source + (1.0 - tau) * target
-            for source, target in zip(source_params, target_params)
-        ])
+        for source, target in zip(self.policy.trainable_weights, self.policy_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
+        # source_params = self.policy.get_weights()
+        # target_params = self.policy_target.get_weights()
+        # self.policy_target.set_weights([
+        #     tau * source + (1.0 - tau) * target
+        #     for source, target in zip(self.policy.trainable_weights, self.policy_target.trainable_weights)
+        # ])
 
     def compute_mode(self, obs):
         logits = self.policy(obs)
