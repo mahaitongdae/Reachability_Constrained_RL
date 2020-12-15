@@ -132,6 +132,8 @@ class NDPGLearner(object):
                 processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
                 act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
 
+        if self.args.env_id == 'InvertedPendulumConti-v0':  # todo
+            all_values_tp1 = self.tf.clip_by_value(all_values_tp1, -0.5, 0.)
         n_step_target = np.zeros((self.batch_size,), dtype=np.float32)
         for t in range(self.sample_num_in_learner):
             n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t]
@@ -153,7 +155,7 @@ class NDPGLearner(object):
         with self.tf.GradientTape() as tape:
             with self.tf.name_scope('q_loss') as scope:
                 q_pred = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
-                q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))/(3*self.tf.math.reduce_std(mb_targets))
+                q_loss = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred - mb_targets))
 
         with self.tf.name_scope('q_gradient') as scope:
             q_gradient = tape.gradient(q_loss, self.policy_with_value.Q1.trainable_weights)
