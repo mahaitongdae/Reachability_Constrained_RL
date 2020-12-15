@@ -485,7 +485,6 @@ def built_NDPG_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_out_activation', type=str, default='tanh')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
@@ -505,9 +504,9 @@ def built_NDPG_parser():
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
-    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.1, 0.5])
+    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.2, 0.5])
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=0.1)
     parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # Optimizer (PABAL)

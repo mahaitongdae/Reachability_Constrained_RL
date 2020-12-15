@@ -25,7 +25,7 @@ class PolicyWithQs(tf.Module):
 
     def __init__(self, obs_dim, act_dim,
                  value_model_cls, value_num_hidden_layers, value_num_hidden_units,
-                 value_hidden_activation, value_out_activation, value_lr_schedule,
+                 value_hidden_activation, value_lr_schedule,
                  policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
                  policy_out_activation, policy_lr_schedule,
                  alpha, alpha_lr_schedule,
@@ -53,17 +53,17 @@ class PolicyWithQs(tf.Module):
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr, name='policy_adam_opt')
 
         self.Q1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='Q1', output_activation=value_out_activation)
+                                  value_hidden_activation, 1, name='Q1')
         self.Q1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='Q1_target', output_activation=value_out_activation)
+                                         value_hidden_activation, 1, name='Q1_target')
         self.Q1_target.set_weights(self.Q1.get_weights())
         value_lr = PolynomialDecay(*value_lr_schedule)
         self.Q1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q1_adam_opt')
 
         self.Q2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='Q2', output_activation=value_out_activation)
+                                  value_hidden_activation, 1, name='Q2')
         self.Q2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='Q2_target', output_activation=value_out_activation)
+                                         value_hidden_activation, 1, name='Q2_target')
         self.Q2_target.set_weights(self.Q2.get_weights())
         self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
 

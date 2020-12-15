@@ -14,9 +14,9 @@ class InvertedPendulumContiEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         tip_x = p + 0.6 * np.sin(theta1)
         tip_y = 0.6 * np.cos(theta1)
         dist_penalty = np.power(theta1, 2)#0.04*np.power(tip_y - 1.5, 2)
-        vel_penalty = np.power(pdot, 2) + np.power(theta1dot, 2)
+        vel_penalty = 0.1*np.power(pdot, 2) + 0.1*np.power(theta1dot, 2)
         reward = -dist_penalty - vel_penalty
-        notdone = (np.abs(p) < 50.) and (np.abs(pdot) < 3.) and (np.abs(theta1) <= .4)
+        notdone = (np.abs(p) < 50.) and (np.abs(pdot) < 5.) and (np.abs(theta1) <= .4)
         done = not notdone
         return ob, reward, done, {}
 
