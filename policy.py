@@ -157,35 +157,18 @@ class PolicyWithQs(tf.Module):
         tau = self.tau
         for source, target in zip(self.Q1.trainable_weights, self.Q1_target.trainable_weights):
             target.assign(tau * source + (1.0 - tau) * target)
-        # source_params = self.Q1.get_weights()
-        # target_params = self.Q1_target.get_weights()
-        # self.Q1_target.set_weights([
-        #     tau * source + (1.0 - tau) * target
-        #     for source, target in zip(source_params, target_params)
-        # ])
 
     def update_Q2_target(self):
         tau = self.tau
         for source, target in zip(self.Q2.trainable_weights, self.Q2_target.trainable_weights):
             target.assign(tau * source + (1.0 - tau) * target)
-        # source_params = self.Q2.get_weights()
-        # target_params = self.Q2_target.get_weights()
-        # self.Q2_target.set_weights([
-        #     tau * source + (1.0 - tau) * target
-        #     for source, target in zip(source_params, target_params)
-        # ])
 
     def update_policy_target(self):
         tau = self.tau
         for source, target in zip(self.policy.trainable_weights, self.policy_target.trainable_weights):
             target.assign(tau * source + (1.0 - tau) * target)
-        # source_params = self.policy.get_weights()
-        # target_params = self.policy_target.get_weights()
-        # self.policy_target.set_weights([
-        #     tau * source + (1.0 - tau) * target
-        #     for source, target in zip(self.policy.trainable_weights, self.policy_target.trainable_weights)
-        # ])
 
+    @tf.function
     def compute_mode(self, obs):
         logits = self.policy(obs)
         mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
