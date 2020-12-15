@@ -150,6 +150,8 @@ class MPGLearner(object):
             self.policy_with_value.compute_Q1_target(
                 processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
                 act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
+        if self.args.env_id == 'InvertedPendulumConti-v0':  # todo
+            all_values_tp1 = self.tf.clip_by_value(all_values_tp1, -0.5, 0.)
         n_step_target = np.zeros((self.batch_size,), dtype=np.float32)
         for t in range(self.sample_num_in_learner):
             n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t]
@@ -169,6 +171,7 @@ class MPGLearner(object):
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
         actions_tile = self.tf.tile(start_actions, [self.M, 1])
 
+        batch_size = obses_tile.shape[0]
         processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
         processed_obses_tile_list = [processed_obses_tile]
         actions_tile_list = [actions_tile]
@@ -193,6 +196,10 @@ class MPGLearner(object):
         with self.tf.name_scope('compute_all_model_returns') as scope:
             all_Qs = self.policy_with_value.compute_Q1_target(
                 self.tf.concat(processed_obses_tile_list, 0), self.tf.concat(actions_tile_list, 0))
+            if self.args.env_id == 'InvertedPendulumConti-v0':  # todo
+                all_Qs = self.tf.concat([all_Qs[:batch_size],
+                                         self.tf.clip_by_value(all_Qs[batch_size:], -0.5, 0.)],
+                                        axis=0)
             all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
             all_gammas = self.tf.concat(gammas_list, 0)
             all_targets = all_rewards_sums+all_gammas*all_Qs
