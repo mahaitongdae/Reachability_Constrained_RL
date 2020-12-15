@@ -474,7 +474,7 @@ def built_NDPG_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=100)
     parser.add_argument('--eval_render', type=bool, default=True)
     parser.add_argument('--num_eval_agent', type=int, default=1)
 
@@ -504,9 +504,9 @@ def built_NDPG_parser():
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
-    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.2, 0.5])
+    parser.add_argument('--obs_scale', type=list, default=[0.001, 1/3, 0.1, 0.5])
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.1)
+    parser.add_argument('--rew_scale', type=float, default=1.)
     parser.add_argument('--rew_shift', type=float, default=0.0)
 
     # Optimizer (PABAL)
