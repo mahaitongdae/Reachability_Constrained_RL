@@ -214,7 +214,7 @@ def built_MPG_parser(version):
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 25] if version == 'MPG-v1' else [])
     if version == 'MPG-v2' or version == 'MPG-v3':
         parser.add_argument('--eta', type=float, default=0.1)
-        parser.add_argument('--rule_based_bias_total_ite', type=int, default=9000)
+        parser.add_argument('--rule_based_bias_total_ite', type=int, default=4000)
     else:
         assert version == 'MPG-v1'
         parser.add_argument('--thres', type=float, default=0.98)
