@@ -453,7 +453,7 @@ def built_NDPG_parser():
 
     # learner
     parser.add_argument('--alg_name', default='NDPG')
-    parser.add_argument('--sample_num_in_learner', type=int, default=25)
+    parser.add_argument('--sample_num_in_learner', type=int, default=None)
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
     parser.add_argument('--num_batch_reuse', type=int, default=10)

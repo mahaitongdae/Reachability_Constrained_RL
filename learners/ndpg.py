@@ -122,23 +122,30 @@ class NDPGLearner(object):
         return td_error
 
     def compute_n_step_target(self):
-        rollouts = self.sample(self.batch_data['batch_obs'], self.batch_data['batch_actions'])
-        processed_all_obs_tp1 = self.preprocessor.tf_process_obses(rollouts['all_obs_tp1']).numpy()
-        processed_all_rewards = self.preprocessor.tf_process_rewards(rollouts['all_rewards']).numpy()
-        act_tp1, _ = self.policy_with_value.compute_target_action(
-            processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
-        all_values_tp1 = \
-            self.policy_with_value.compute_Q1_target(
-                processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
-                act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
+        if self.sample_num_in_learner is None:
+            processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
+            processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+            target_act_tp1, _ = self.policy_with_value.compute_target_action(processed_obs_tp1)
+            target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, target_act_tp1).numpy()
+            return processed_rewards + self.args.gamma * target_Q1_of_tp1
+        else:
+            rollouts = self.sample(self.batch_data['batch_obs'], self.batch_data['batch_actions'])
+            processed_all_obs_tp1 = self.preprocessor.tf_process_obses(rollouts['all_obs_tp1']).numpy()
+            processed_all_rewards = self.preprocessor.tf_process_rewards(rollouts['all_rewards']).numpy()
+            act_tp1, _ = self.policy_with_value.compute_target_action(
+                processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1))
+            all_values_tp1 = \
+                self.policy_with_value.compute_Q1_target(
+                    processed_all_obs_tp1.reshape(self.sample_num_in_learner * self.batch_size, -1),
+                    act_tp1.numpy()).numpy().reshape(self.sample_num_in_learner, self.batch_size)
 
-        if self.args.env_id == 'InvertedPendulumConti-v0':  # todo
-            all_values_tp1 = self.tf.clip_by_value(all_values_tp1, -0.5, 0.)
-        n_step_target = np.zeros((self.batch_size,), dtype=np.float32)
-        for t in range(self.sample_num_in_learner):
-            n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t]
-        n_step_target += np.power(self.args.gamma, self.sample_num_in_learner) * all_values_tp1[-1, :]
-        return n_step_target
+            if self.args.env_id == 'InvertedPendulumConti-v0':  # todo
+                all_values_tp1 = self.tf.clip_by_value(all_values_tp1, -0.5, 0.)
+            n_step_target = np.zeros((self.batch_size,), dtype=np.float32)
+            for t in range(self.sample_num_in_learner):
+                n_step_target += np.power(self.args.gamma, t) * processed_all_rewards[t]
+            n_step_target += np.power(self.args.gamma, self.sample_num_in_learner) * all_values_tp1[-1, :]
+            return n_step_target
 
     def get_weights(self):
         return self.policy_with_value.get_weights()
