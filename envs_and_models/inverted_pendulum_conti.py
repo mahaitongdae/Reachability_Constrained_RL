@@ -12,7 +12,7 @@ class InvertedPendulumContiEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         ob = self._get_obs()
         p, theta1, pdot, theta1dot = ob[0], ob[1], ob[2], ob[3]
         dist_penalty = 0.01*np.power(p, 2) + np.power(theta1, 2)#0.04*np.power(tip_y - 1.5, 2)
-        vel_penalty = 1e-3*np.power(pdot, 2) + 1e-3*np.power(theta1dot, 2)
+        vel_penalty = 0.1*np.power(pdot, 2) + 0.1*np.power(theta1dot, 2)
         reward = -dist_penalty - vel_penalty
         notdone = (np.abs(p) < 2.) and (np.abs(theta1) <= .2)
         done = not notdone
