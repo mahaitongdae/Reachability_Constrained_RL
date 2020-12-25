@@ -124,7 +124,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         sns.lineplot(x="iteration", y="steer_mse", hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette,
                      )
-        ax5.set_ylabel('Front wheel angle [rad]', fontsize=15)
+        ax5.set_ylabel('Front Wheel Angle [rad]', fontsize=15)
         ax5.set_xlabel("Iteration [x10000]", fontsize=15)
         handles, labels = ax5.get_legend_handles_labels()
         labels = lbs
@@ -147,7 +147,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         sns.lineplot(x="iteration", y="x_mse", hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette,
                      )
-        ax2.set_ylabel('Position Error [m]', fontsize=15)
+        ax2.set_ylabel('Cart Position [m]', fontsize=15)
         ax2.set_xlabel("Iteration [x10000]", fontsize=15)
         handles, labels = ax2.get_legend_handles_labels()
         labels = lbs
@@ -160,7 +160,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         sns.lineplot(x="iteration", y="theta_mse", hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette,
                      legend=False)
-        ax3.set_ylabel('Angle Error [rad]', fontsize=15)
+        ax3.set_ylabel('Pole Angle [rad]', fontsize=15)
         ax3.set_xlabel("Iteration [x10000]", fontsize=15)
         plt.yticks(fontsize=15)
         plt.xticks(fontsize=15)
@@ -170,7 +170,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         sns.lineplot(x="iteration", y="xdot_mse", hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette,
                      legend=False)
-        ax4.set_ylabel('Velocity [m/s]', fontsize=15)
+        ax4.set_ylabel('Cart Velocity [m/s]', fontsize=15)
         ax4.set_xlabel("Iteration [x10000]", fontsize=15)
         plt.yticks(fontsize=15)
         plt.xticks(fontsize=15)
@@ -180,7 +180,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         sns.lineplot(x="iteration", y="thetadot_mse", hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette,
                      legend=False)
-        ax5.set_ylabel('Angular velocity [rad/s]', fontsize=15)
+        ax5.set_ylabel('Pole Angular Velocity [rad/s]', fontsize=15)
         ax5.set_xlabel("Iteration [x10000]", fontsize=15)
         plt.yticks(fontsize=15)
         plt.xticks(fontsize=15)
@@ -270,7 +270,7 @@ def plot_convergence_speed_for_different_goal_perf(env):
 
 def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
     _, alg_list, lbs, palette, _, dir_str = help_func(env)
-    tag2plot = ['pg_time']  # 'update_time' , 'steer_mse', 'acc_mse']
+    tag2plot = ['update_time']  # 'update_time' 'pg_time']
     df_list = []
     for alg in alg_list:
         data2plot_dir = dir_str.format(alg)
@@ -305,7 +305,9 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
     ax1 = f1.add_axes([0.20, 0.15, 0.78, 0.84])
     sns.boxplot(x="algorithm", y=tag2plot[0], data=total_dataframe, palette=palette)
     sns.despine(offset=10, trim=True)
-    ax1.set_ylabel('Wall-clock Time per Gradient [s]', fontsize=15)
+    TAG2LBS = {'pg_time': 'Wall-clock Time per Gradient [s]',
+               'update_time': 'Wall-clock Time per Update [s]'}
+    ax1.set_ylabel(TAG2LBS[tag2plot[0]], fontsize=15)
     labels = lbs
     ax1.set_xticklabels(labels, fontsize=15)
     ax1.set_xlabel("", fontsize=15)
@@ -315,7 +317,7 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
 
 
 if __name__ == "__main__":
-    env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
+    env = 'path_tracking_env'  # inverted_pendulum_env path_tracking_env
     # plot_eval_results_of_all_alg_n_runs(env)
     # plot_opt_results_of_all_alg_n_runs(env)
     # print(compute_convergence_speed(-100.))
