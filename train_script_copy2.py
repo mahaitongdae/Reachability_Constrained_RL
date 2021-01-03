@@ -42,7 +42,7 @@ NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='testing') # training testing
+    parser.add_argument('--mode', type=str, default='training') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -71,7 +71,7 @@ def built_AMPC_parser():
     # env
     parser.add_argument('--env_id', default='CrossroadEnd2end-v2')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
-    parser.add_argument('--env_kwargs_training_task', type=str, default='left')
+    parser.add_argument('--env_kwargs_training_task', type=str, default='right')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
 
@@ -125,7 +125,7 @@ def built_AMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=50000)
+    parser.add_argument('--max_iter', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=6)
     parser.add_argument('--num_buffers', type=int, default=1)
@@ -141,8 +141,8 @@ def built_AMPC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/toyota3lane/experiment-2021-01-02-23-30-25-4_others/models')
-    parser.add_argument('--model_load_ite', type=int, default=50000)
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
     parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
