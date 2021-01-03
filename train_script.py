@@ -42,23 +42,25 @@ NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='testing') # training testing
+    parser.add_argument('--mode', type=str, default='training') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-01-02-23-30-25-4_others'
+        test_dir = 'results/toyota3lane/experiment-2021-01-03-12-38-00'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[50000],
+                           test_iter_list=[100000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=150))
+                           fixed_steps=100))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
+
+    parser.add_argument('--memo', type=str, default='abs_other_vehicle')
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
@@ -69,7 +71,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v2')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v4')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
@@ -125,9 +127,9 @@ def built_AMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=50000)
+    parser.add_argument('--max_iter', type=int, default=100100)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=6)
+    parser.add_argument('--num_learners', type=int, default=7)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
@@ -141,8 +143,8 @@ def built_AMPC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/toyota3lane/experiment-2021-01-02-23-30-25-4_others/models')
-    parser.add_argument('--model_load_ite', type=int, default=50000)
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
     parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
