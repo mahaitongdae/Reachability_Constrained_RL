@@ -138,6 +138,16 @@ def test_trained_model(model_dir, ppc_params_dir, iteration):
     evaluator.load_ppc_params(ppc_params_dir)
     return evaluator.metrics(1000, render=False, reset=False)
 
+def atest_trained_model(model_dir, ppc_params_dir, iteration):
+    from train_script import built_AMPC_parser
+    from policy import Policy4Toyota
+    args = built_AMPC_parser('left')
+    evaluator = Evaluator(Policy4Toyota, args.env_id, args)
+    evaluator.load_weights(model_dir, iteration)
+    # evaluator.load_ppc_params(ppc_params_dir)
+    path = model_dir + '/all_obs.npy'
+    evaluator.compute_action_from_batch_obses(path)
+
 def test_evaluator():
     import ray
     ray.init()
@@ -153,4 +163,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    test_evaluator()
+    atest_trained_model('./results/toyota3lane/experiment-2021-01-03-12-38-00/models','./results/toyota3lane/experiment-2021-01-03-12-38-00/models', 100000)
