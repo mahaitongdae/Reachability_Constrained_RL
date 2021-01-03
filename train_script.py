@@ -51,9 +51,9 @@ def built_AMPC_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[90000],
+                           test_iter_list=[100000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=5,
+                           num_eval_episode=1,
                            eval_log_interval=1,
                            fixed_steps=100))
         for key, val in params.items():
