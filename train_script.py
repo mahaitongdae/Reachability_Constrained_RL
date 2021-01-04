@@ -60,7 +60,7 @@ def built_AMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='abs_other_vehicle')
+    parser.add_argument('--memo', type=str, default='straight 0104')
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
