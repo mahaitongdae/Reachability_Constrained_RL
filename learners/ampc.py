@@ -22,6 +22,12 @@ logging.basicConfig(level=logging.INFO)
 
 class AMPCLearner(object):
     import tensorflow as tf
+    tf.config.optimizer.set_experimental_options({'constant_folding': True,
+                                                  'arithmetic_optimization': True,
+                                                  'dependency_optimization': True,
+                                                  'loop_optimization': True,
+                                                  'function_optimization': True,
+                                                  })
 
     def __init__(self, policy_cls, args):
         self.args = args
