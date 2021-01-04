@@ -46,7 +46,7 @@ def built_AMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-01-03-12-38-00'
+        test_dir = 'results/toyota3lane/experiment-2021-01-04-01-15-35'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -55,12 +55,12 @@ def built_AMPC_parser():
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=100))
+                           fixed_steps=150))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='modify_punish_for_delta_phi')
+    parser.add_argument('--memo', type=str, default='abs_other_vehicle')
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
@@ -71,9 +71,9 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v2')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v4')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
-    parser.add_argument('--env_kwargs_training_task', type=str, default='left')
+    parser.add_argument('--env_kwargs_training_task', type=str, default='right')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
 
