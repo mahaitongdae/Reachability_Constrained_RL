@@ -60,7 +60,11 @@ def built_AMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='straight 0104')
+    parser.add_argument('--memo', type=str, default='left for increase pf and decrease density')
+
+    parser.add_argument('--env_version', type=str, default='1d2b82d2')
+    parser.add_argument('--train_version', type=str, default='59536748')
+
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
@@ -71,7 +75,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v4')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v5')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
     parser.add_argument('--env_kwargs_training_task', type=str, default='straight')
     parser.add_argument('--obs_dim', default=None)
