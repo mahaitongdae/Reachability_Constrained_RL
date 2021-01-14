@@ -11,7 +11,7 @@ import logging
 
 import gym
 import numpy as np
-from gym.envs.user_defined.toyota_exp_abs_change_phi.dynamics_and_models import EnvironmentModel
+from utils.dynamics_and_models import EnvironmentModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
@@ -44,6 +44,7 @@ class AMPCLearner(object):
         self.grad_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
+        self.constraint_total_dim = args.num_rollout_list_for_policy_update[0] * self.model.constraints_dim
 
     def get_stats(self):
         return self.stats
@@ -86,35 +87,44 @@ class AMPCLearner(object):
         veh2road4real_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses
         mu = self.policy_with_value.compute_mu(obses)
-
-        for _ in range(self.num_rollout_list_for_policy_update[0]):
+        constraints_all = self.tf.zeros((start_obses.shape[0],self.constraint_total_dim ))
+        con_dim = self.model.constraints_num
+        for step in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            obses, rewards, punish_terms_for_training, real_punish_term, veh2veh4real, veh2road4real = self.model.rollout_out(actions)
+            obses, rewards, constraints, real_punish_term, veh2veh4real, veh2road4real = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-            punish_terms_for_training_sum += punish_terms_for_training
+            # punish_terms_for_training_sum += punish_terms_for_training
+            if step == 0:
+                temp_1 = constraints[:,con_dim :]
+                constraints_all = self.tf.concat([constraints, temp_1], 1)
+            elif step <= self.num_rollout_list_for_policy_update[0] - 2:
+                temp_1 = constraints[:, 0: con_dim * step]
+                temp_2 = constraints[:, con_dim * (step + 1):]
+                constraints_all = self.tf.concat([temp_1, constraints, temp_2], 1)
+            else:
+                temp_1 = constraints[:, 0: con_dim * step]
+                constraints_all = self.tf.concat([temp_1, constraints], 1)
             real_punish_terms_sum += real_punish_term
             veh2veh4real_sum += veh2veh4real
             veh2road4real_sum += veh2road4real
 
         # pg loss
-        pg_loss_sum = -rewards_sum + self.tf.multiply(mu, punish_terms_for_training_sum)
         obj_loss = -self.tf.reduce_mean(rewards_sum)
-        punish_term_for_training = self.tf.reduce_mean(punish_terms_for_training_sum)
-        punish_loss = self.tf.reduce_mean(self.tf.multiply(mu, punish_terms_for_training_sum))
-        pg_loss = self.tf.reduce_mean(pg_loss_sum)
+        punish_loss = self.tf.reduce_mean(self.tf.multiply(mu, constraints_all))
+        pg_loss = obj_loss + punish_loss
 
         real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         veh2road4real = self.tf.reduce_mean(veh2road4real_sum)
 
-        return obj_loss, punish_term_for_training, punish_loss, pg_loss,\
+        return obj_loss, punish_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
     @tf.function
     def forward_and_backward(self, mb_obs, ite, mb_ref_index):
         with self.tf.GradientTape(persistent=True) as tape:
-            obj_loss, punish_term_for_training, punish_loss, pg_loss, \
+            obj_loss, punish_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real\
                 = self.model_rollout_for_update(mb_obs, ite, mb_ref_index)
 
@@ -123,7 +133,7 @@ class AMPCLearner(object):
             mu_grad = tape.gradient(-pg_loss, self.policy_with_value.mu.trainable_weights)
 
         return pg_grad,mu_grad, obj_loss, \
-               punish_term_for_training, punish_loss, pg_loss,\
+                punish_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
     def export_graph(self, writer):
@@ -141,12 +151,12 @@ class AMPCLearner(object):
         mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
         with self.grad_timer:
-            pg_grad, mu_grad, obj_loss, \
+            obj_grad, mu_grad, obj_loss, \
             punish_term_for_training, punish_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real =\
                 self.forward_and_backward(mb_obs, iteration, mb_ref_index)
 
-            pg_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
+            obj_grad, pg_grad_norm = self.tf.clip_by_global_norm(obj_grad, self.args.gradient_clip_norm)
             mu_grad, mu_grad_norm = self.tf.clip_by_global_norm(mu_grad, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
@@ -160,9 +170,10 @@ class AMPCLearner(object):
             punish_loss=punish_loss.numpy(),
             pg_loss=pg_loss.numpy(),
             pg_grads_norm=pg_grad_norm.numpy(),
+            mu_grad_norm=mu_grad_norm.numpy()
         ))
 
-        grads = pg_grad
+        grads = obj_grad + mu_grad
 
         return list(map(lambda x: x.numpy(), grads))
 

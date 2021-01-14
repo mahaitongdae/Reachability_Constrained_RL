@@ -80,6 +80,7 @@ def built_AMPC_parser():
     parser.add_argument('--env_kwargs_training_task', type=str, default='straight')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
+    parser.add_argument('--con_dim', type=int, default=800)
 
     # learner
     parser.add_argument('--alg_name', default='AMPC')

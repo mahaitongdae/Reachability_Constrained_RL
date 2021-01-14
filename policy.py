@@ -86,6 +86,7 @@ class Policy4Lagrange(tf.Module):
         super().__init__()
         self.args = args
         obs_dim, act_dim = self.args.obs_dim, self.args.act_dim
+        mu_dim = self.args.con_dim
         n_hiddens, n_units, hidden_activation = self.args.num_hidden_layers, self.args.num_hidden_units, self.args.hidden_activation
         value_model_cls, policy_model_cls = NAME2MODELCLS[self.args.value_model_cls], \
                                             NAME2MODELCLS[self.args.policy_model_cls]
@@ -98,7 +99,7 @@ class Policy4Lagrange(tf.Module):
         self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v')
         self.con_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='con_v')
 
-        self.mu = mu_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='mu', output_activation=
+        self.mu = mu_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, mu_dim, name='mu', output_activation=
                                self.args.mu_out_activation)
 
         mu_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
@@ -188,7 +189,7 @@ class Policy4Lagrange(tf.Module):
     @tf.function
     def compute_mu(self, obs):
         with self.tf.name_scope('compute_mu') as scope:
-            return tf.squeeze(self.mu(obs), axis=1)
+            return self.mu(obs)
 
 def test_policy():
     import gym
@@ -271,7 +272,7 @@ def test_policy_for_Lag():
 
     with tf.GradientTape() as tape:
         acts, _ = policy_with_value.compute_action(obses)
-        mu = policy_with_value.compute_mu(obses)[0]
+        mu = policy_with_value.compute_mu(obses)
         print(mu)
         loss = tf.reduce_mean(mu)
 
