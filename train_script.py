@@ -122,7 +122,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--hidden_activation', type=str, default='elu')
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
-    parser.add_argument('--mu_out_activation', type=str, default='relu')
+    parser.add_argument('--mu_out_activation', type=str, default='elu')
     parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor

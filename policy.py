@@ -135,12 +135,8 @@ class Policy4Lagrange(tf.Module):
 
     @tf.function
     def apply_gradients(self, iteration, grads):
-        obj_v_len = len(self.obj_v.trainable_weights)
-        con_v_len = len(self.con_v.trainable_weights)
         policy_len = len(self.policy.trainable_weights)
         policy_grad, mu_grad = grads[:policy_len], grads[policy_len:]
-        # self.obj_value_optimizer.apply_gradients(zip(obj_v_grad, self.obj_v.trainable_weights))
-        # self.con_value_optimizer.apply_gradients(zip(con_v_grad, self.con_v.trainable_weights))
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
         self.mu_optimizer.apply_gradients(zip(mu_grad, self.mu.trainable_weights))
 
