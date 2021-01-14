@@ -11,7 +11,7 @@ import logging
 
 import gym
 import numpy as np
-from utils.dynamics_and_models import EnvironmentModel
+from gym.envs.user_defined.toyota_lag.dynamics_and_models import EnvironmentModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
