@@ -113,6 +113,7 @@ def built_AMPC_parser():
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--mu_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
@@ -120,6 +121,7 @@ def built_AMPC_parser():
     parser.add_argument('--hidden_activation', type=str, default='elu')
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
