@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-class AMPCLearner(object):
+class LMAMPCLearner(object):
     import tensorflow as tf
     tf.config.optimizer.set_experimental_options({'constant_folding': True,
                                                   'arithmetic_optimization': True,
@@ -44,7 +44,7 @@ class AMPCLearner(object):
         self.grad_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
-        self.constraint_total_dim = args.num_rollout_list_for_policy_update[0] * self.model.constraints_dim
+        self.constraint_total_dim = args.num_rollout_list_for_policy_update[0] * self.model.constraints_num
 
     def get_stats(self):
         return self.stats

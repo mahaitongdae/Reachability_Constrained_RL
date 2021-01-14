@@ -18,9 +18,9 @@ import ray
 
 from buffer import ReplayBuffer
 from evaluator import Evaluator
-from learners.ampc import AMPCLearner
+from learners.ampc_lag import LMAMPCLearner
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
-from policy import Policy4Toyota
+from policy import Policy4Toyota, Policy4Lagrange
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker
@@ -32,14 +32,14 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
-NAME2LEARNERCLS = dict([('AMPC', AMPCLearner)])
+NAME2LEARNERCLS = dict([('LMAMPC', LMAMPCLearner)])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICIES = dict([('Policy4Toyota', Policy4Toyota)])
+NAME2POLICIES = dict([('Policy4Toyota', Policy4Toyota),('Policy4Lagrange', Policy4Lagrange)])
 NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 
-def built_AMPC_parser():
+def built_LMAMPC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
@@ -67,7 +67,7 @@ def built_AMPC_parser():
 
 
     # trainer
-    parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
+    parser.add_argument('--policy_type', type=str, default='Policy4Lagrange')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
@@ -75,15 +75,15 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v5')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v10')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
-    parser.add_argument('--env_kwargs_training_task', type=str, default='straight')
+    parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
     parser.add_argument('--con_dim', type=int, default=800)
 
     # learner
-    parser.add_argument('--alg_name', default='AMPC')
+    parser.add_argument('--alg_name', default='LMAMPC')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument('--gamma', type=float, default=1.)
@@ -135,9 +135,9 @@ def built_AMPC_parser():
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100100)
-    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--num_workers', type=int, default=5)
     parser.add_argument('--num_learners', type=int, default=1)
-    parser.add_argument('--num_buffers', type=int, default=1)
+    parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=5000)
@@ -157,15 +157,15 @@ def built_AMPC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'AMPC':
-        args = built_AMPC_parser()
+    if alg_name == 'LMAMPC':
+        args = built_LMAMPC_parser()
         env = gym.make(args.env_id, **args2envkwargs(args))
         obs_space, act_space = env.observation_space, env.action_space
         args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
-        args.obs_scale = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
+        args.obs_scale = [0.2, 1., 2., 1 / 50., 1 / 50, 1 / 180.] + \
                          [1., 1 / 15., 0.2] + \
                          [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
-                         [1 / 30., 1 / 30., 0.2, 1 / 180.] * env.veh_num
+                         [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
         return args
 
 def main(alg_name):
@@ -202,4 +202,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('AMPC')
+    main('LMAMPC')
