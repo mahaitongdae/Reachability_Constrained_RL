@@ -87,6 +87,7 @@ class LMAMPCLearner(object):
         veh2road4real_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses
         mu = self.policy_with_value.compute_mu(obses)
+        mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
         constraints_all = self.tf.zeros((start_obses.shape[0],self.constraint_total_dim ))
         con_dim = self.model.constraints_num
         for step in range(self.num_rollout_list_for_policy_update[0]):
@@ -112,7 +113,7 @@ class LMAMPCLearner(object):
         # pg loss
         obj_loss = -self.tf.reduce_mean(rewards_sum)
         pg_loss = obj_loss + self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all))
-        cs_loss = -self.tf.reduce_mean(self.tf.multiply(mu, self.tf.stop_gradient(constraints_all))) # complementary slackness loss
+        cs_loss = -self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all))) # complementary slackness loss
 
         real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
