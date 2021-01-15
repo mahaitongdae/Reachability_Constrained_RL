@@ -60,7 +60,7 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='left for increase pf and decrease density')
+    parser.add_argument('--memo', type=str, default='left decrease mu lr')
 
     parser.add_argument('--env_version', type=str, default='1d2b82d2')
     parser.add_argument('--train_version', type=str, default='59536748')
@@ -91,6 +91,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--init_punish_factor', type=float, default=10.)
     parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
     parser.add_argument('--pf_amplifier', type=float, default=1.)
+    parser.add_argument('--mu_clip_value', type=float, default=1000.)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -117,12 +118,13 @@ def built_LMAMPC_parser():
     parser.add_argument('--mu_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
+    parser.add_argument('--mu_lr_schedule', type=list, default=[8e-6, 100000, 1e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
-    parser.add_argument('--mu_out_activation', type=str, default='elu')
+    parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
@@ -134,10 +136,10 @@ def built_LMAMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=100100)
+    parser.add_argument('--max_iter', type=int, default=200100)
     parser.add_argument('--num_workers', type=int, default=5)
-    parser.add_argument('--num_learners', type=int, default=1)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=15)
+    parser.add_argument('--num_buffers', type=int, default=4)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=5000)
