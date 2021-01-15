@@ -112,9 +112,8 @@ class LMAMPCLearner(object):
 
         # pg loss
         obj_loss = -self.tf.reduce_mean(rewards_sum)
-        pg_loss = obj_loss + self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all))
-        cs_loss = -self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all))) # complementary slackness loss
-
+        pg_loss = obj_loss + self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all),0))
+        cs_loss = -self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all)), 0)) # complementary slackness loss
         real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         veh2road4real = self.tf.reduce_mean(veh2road4real_sum)

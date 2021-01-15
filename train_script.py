@@ -91,7 +91,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--init_punish_factor', type=float, default=10.)
     parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
     parser.add_argument('--pf_amplifier', type=float, default=1.)
-    parser.add_argument('--mu_clip_value', type=float, default=1000.)
+    parser.add_argument('--mu_clip_value', type=float, default=300.)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -118,7 +118,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--mu_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
-    parser.add_argument('--mu_lr_schedule', type=list, default=[8e-6, 100000, 1e-6])
+    parser.add_argument('--mu_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
