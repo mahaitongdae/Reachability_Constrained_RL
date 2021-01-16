@@ -129,13 +129,13 @@ class LMAMPCLearner(object):
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         veh2road4real = self.tf.reduce_mean(veh2road4real_sum)
 
-        return obj_loss, cs_loss, pg_loss,\
+        return obj_loss, punish_terms, cs_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
     @tf.function
     def forward_and_backward(self, mb_obs, ite, mb_ref_index):
         with self.tf.GradientTape(persistent=True) as tape:
-            obj_loss, cs_loss, pg_loss, \
+            obj_loss, punish_terms, cs_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real\
                 = self.model_rollout_for_update(mb_obs, ite, mb_ref_index)
 
@@ -143,8 +143,7 @@ class LMAMPCLearner(object):
             pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
             mu_grad = tape.gradient(cs_loss, self.policy_with_value.mu.trainable_weights) #TODO: why use -pg_loss here lead to no grad?
 
-        return pg_grad, mu_grad, obj_loss, \
-                cs_loss, pg_loss,\
+        return pg_grad, mu_grad, obj_loss, punish_terms, cs_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
     def export_graph(self, writer):
@@ -162,8 +161,7 @@ class LMAMPCLearner(object):
         mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
         with self.grad_timer:
-            pg_grad, mu_grad, obj_loss, \
-            cs_loss, pg_loss, \
+            pg_grad, mu_grad, obj_loss, punish_terms, cs_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real =\
                 self.forward_and_backward(mb_obs, iteration, mb_ref_index)
 
@@ -174,6 +172,7 @@ class LMAMPCLearner(object):
             iteration=iteration,
             grad_time=self.grad_timer.mean,
             obj_loss=obj_loss.numpy(),
+            punish_terms=punish_terms.numpy(),
             real_punish_term=real_punish_term.numpy(),
             veh2veh4real=veh2veh4real.numpy(),
             veh2road4real=veh2road4real.numpy(),

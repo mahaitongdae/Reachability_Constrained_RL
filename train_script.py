@@ -60,7 +60,7 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='left decrease mu lr')
+    parser.add_argument('--memo', type=str, default='mu dim 25')
 
     parser.add_argument('--env_version', type=str, default='1d2b82d2')
     parser.add_argument('--train_version', type=str, default='59536748')
