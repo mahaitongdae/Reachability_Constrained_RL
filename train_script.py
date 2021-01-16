@@ -80,7 +80,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--con_dim', type=int, default=800)
+    parser.add_argument('--con_dim', type=int, default=32)
 
     # learner
     parser.add_argument('--alg_name', default='LMAMPC')
