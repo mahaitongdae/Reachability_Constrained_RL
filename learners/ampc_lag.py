@@ -110,10 +110,11 @@ class LMAMPCLearner(object):
             veh2veh4real_sum += veh2veh4real
             veh2road4real_sum += veh2road4real
 
+        constraints_all_clip = self.tf.clip_by_value(constraints_all, -1, 100)
         # pg loss
         obj_loss = -self.tf.reduce_mean(rewards_sum)
-        pg_loss = obj_loss + self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all),0))
-        cs_loss = -self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all)), 0)) # complementary slackness loss
+        pg_loss = obj_loss + self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all_clip),0))
+        cs_loss = -self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all_clip)), 0)) # complementary slackness loss
         real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         veh2road4real = self.tf.reduce_mean(veh2road4real_sum)
@@ -151,12 +152,12 @@ class LMAMPCLearner(object):
         mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
         with self.grad_timer:
-            obj_grad, mu_grad, obj_loss, \
-            punish_loss, pg_loss, \
+            pg_grad, mu_grad, obj_loss, \
+            cs_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real =\
                 self.forward_and_backward(mb_obs, iteration, mb_ref_index)
 
-            obj_grad, pg_grad_norm = self.tf.clip_by_global_norm(obj_grad, self.args.gradient_clip_norm)
+            obj_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
             mu_grad, mu_grad_norm = self.tf.clip_by_global_norm(mu_grad, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
@@ -166,7 +167,7 @@ class LMAMPCLearner(object):
             real_punish_term=real_punish_term.numpy(),
             veh2veh4real=veh2veh4real.numpy(),
             veh2road4real=veh2road4real.numpy(),
-            punish_loss=punish_loss.numpy(),
+            cs_loss=cs_loss.numpy(),
             pg_loss=pg_loss.numpy(),
             pg_grads_norm=pg_grad_norm.numpy(),
             mu_grad_norm=mu_grad_norm.numpy()

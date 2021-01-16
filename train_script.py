@@ -131,7 +131,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=1.)
+    parser.add_argument('--reward_scale', type=float, default=0.2)
     parser.add_argument('--reward_shift', type=float, default=0.)
 
     # optimizer (PABAL)
