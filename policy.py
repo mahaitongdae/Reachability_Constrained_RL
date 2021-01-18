@@ -103,7 +103,7 @@ class Policy4Lagrange(tf.Module):
                                self.args.mu_out_activation)
 
         mu_value_lr_schedule = PolynomialDecay(*self.args.mu_lr_schedule)
-        self.mu_optimizer = self.tf.optimizers.RMSprop(mu_value_lr_schedule, name='mu_adam_opt')
+        self.mu_optimizer = self.tf.optimizers.Adam(mu_value_lr_schedule, name='mu_adam_opt')
 
         # obj_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
         # self.obj_value_optimizer = self.tf.keras.optimizers.Adam(obj_value_lr_schedule, name='objv_adam_opt')
@@ -138,7 +138,8 @@ class Policy4Lagrange(tf.Module):
         policy_len = len(self.policy.trainable_weights)
         policy_grad, mu_grad = grads[:policy_len], grads[policy_len:]
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-        self.mu_optimizer.apply_gradients(zip(mu_grad, self.mu.trainable_weights))
+        if iteration % self.args.mu_update_interval == 0:
+            self.mu_optimizer.apply_gradients(zip(mu_grad, self.mu.trainable_weights))
 
     @tf.function
     def compute_mode(self, obs):

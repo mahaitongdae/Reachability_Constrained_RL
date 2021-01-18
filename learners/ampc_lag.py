@@ -19,7 +19,7 @@ from utils.misc import TimerStat, args2envkwargs
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MINUS = -1
+CONSTRAINTS_CLIP_MINUS = 0.0
 
 
 class LMAMPCLearner(object):
@@ -102,7 +102,8 @@ class LMAMPCLearner(object):
             mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
             cs_sum += self.tf.reduce_sum(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_clip)), 1)
-            punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu), constraints_clip),1)
+            punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_clip), constraints_clip),1)
+            # punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu), constraints_clip), 1)
             # if step == 0:
             #     temp_1 = constraints_all[:,con_dim :]
             #     constraints_all = self.tf.concat([constraints, temp_1], 1)
@@ -132,7 +133,7 @@ class LMAMPCLearner(object):
         return obj_loss, punish_terms, cs_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
-    @tf.function
+    # @tf.function
     def forward_and_backward(self, mb_obs, ite, mb_ref_index):
         with self.tf.GradientTape(persistent=True) as tape:
             obj_loss, punish_terms, cs_loss, pg_loss, \
@@ -182,7 +183,7 @@ class LMAMPCLearner(object):
             mu_grad_norm=mu_grad_norm.numpy()
         ))
 
-        grads = obj_grad + mu_grad
+        grads = obj_grad  + mu_grad
 
         return list(map(lambda x: x.numpy(), grads))
 

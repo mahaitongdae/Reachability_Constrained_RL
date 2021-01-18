@@ -46,12 +46,12 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-01-04-01-15-35'
+        test_dir = 'results/toyota3lane/experiment-2021-01-17-00-28-59'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[100000],
+                           test_iter_list=[200000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
@@ -60,10 +60,10 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='mu dim 25')
+    parser.add_argument('--memo', type=str, default='fixed pf test') # mu dim 32, back to adam, add mu update interval
 
     parser.add_argument('--env_version', type=str, default='1d2b82d2')
-    parser.add_argument('--train_version', type=str, default='59536748')
+    parser.add_argument('--train_version', type=str, default='76f7d2b4')
 
 
     # trainer
@@ -91,7 +91,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--init_punish_factor', type=float, default=10.)
     parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
     parser.add_argument('--pf_amplifier', type=float, default=1.)
-    parser.add_argument('--mu_clip_value', type=float, default=300.)
+    parser.add_argument('--mu_clip_value', type=float, default=1e5)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -118,7 +118,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--mu_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
-    parser.add_argument('--mu_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
+    parser.add_argument('--mu_lr_schedule', type=list, default=[3e-6, 100000, 1e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
@@ -126,12 +126,13 @@ def built_LMAMPC_parser():
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--mu_update_interval', type=int, default=10)
 
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.2)
+    parser.add_argument('--reward_scale', type=float, default=0.1)
     parser.add_argument('--reward_shift', type=float, default=0.)
 
     # optimizer (PABAL)
