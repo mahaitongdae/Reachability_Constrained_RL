@@ -17,6 +17,7 @@ import tensorflow as tf
 from tensorflow.core.util import event_pb2
 
 sns.set(style="darkgrid")
+SMOOTHFACTOR = 0.8
 
 
 def help_func(env):
@@ -60,7 +61,8 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                     t = tf.make_ndarray(v.tensor)
                     for tag in tag2plot:
                         if tag == v.tag[11:]:
-                            data_in_one_run_of_one_alg[tag].append(float(t))
+                            data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
+                                                                   if data_in_one_run_of_one_alg[tag] else float(t))
                             data_in_one_run_of_one_alg['iteration'].append(int(event.step))
             len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
             period = int(len1/len2)
@@ -70,8 +72,8 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
             df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
             df_list.append(df_in_one_run_of_one_alg)
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
-    f1 = plt.figure(1)
-    ax1 = f1.add_axes([0.20, 0.12, 0.78, 0.86])
+    f1 = plt.figure(1, figsize=(20, 8))
+    ax1 = f1.add_axes([0.08, 0.12, 0.9, 0.86])
     sns.lineplot(x="iteration", y="episode_return", hue="algorithm",
                  data=total_dataframe, linewidth=2, palette=palette,
                  )
@@ -317,8 +319,8 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
 
 
 if __name__ == "__main__":
-    env = 'path_tracking_env'  # inverted_pendulum_env path_tracking_env
-    # plot_eval_results_of_all_alg_n_runs(env)
+    env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
+    plot_eval_results_of_all_alg_n_runs(env)
     # plot_opt_results_of_all_alg_n_runs(env)
     # print(compute_convergence_speed(-100.))
-    plot_convergence_speed_for_different_goal_perf(env)
+    # plot_convergence_speed_for_different_goal_perf(env)
