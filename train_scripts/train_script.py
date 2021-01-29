@@ -48,6 +48,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
+NUM_WORKER = 2
+NUM_LEARNER = 15
+NUM_BUFFER = 2
 
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
@@ -56,7 +59,7 @@ def built_AMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/toyota/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -179,7 +182,7 @@ def built_MPG_parser(version):
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/toyota/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -283,9 +286,9 @@ def built_MPG_parser(version):
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=12)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
+    parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
+    parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=3000)
@@ -294,7 +297,7 @@ def built_MPG_parser(version):
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/{}/experiment-{time}'.format(version, time=time_now)
+    results_dir = '../results/{}/experiment-{time}'.format(version, time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -311,7 +314,7 @@ def built_NADP_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/NADP/experiment-2020-09-23-20-52-24'
+        test_dir = '../results/NADP/experiment-2020-09-23-20-52-24'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -405,9 +408,9 @@ def built_NADP_parser():
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=8)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
+    parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
+    parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=3000)
@@ -416,7 +419,7 @@ def built_NADP_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/NADP/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/NADP/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -433,7 +436,7 @@ def built_NDPG_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/NDPG/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/NDPG/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -524,9 +527,9 @@ def built_NDPG_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=8)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
+    parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
+    parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=3000)
@@ -535,7 +538,7 @@ def built_NDPG_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/NDPG/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/NDPG/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -552,7 +555,7 @@ def built_TD3_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/TD3/experiment-2020-09-03-17-04-11'
+        test_dir = '../results/TD3/experiment-2020-09-03-17-04-11'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -644,9 +647,9 @@ def built_TD3_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=2)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
+    parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
+    parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=3000)
@@ -655,7 +658,7 @@ def built_TD3_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/TD3/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/TD3/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -672,7 +675,7 @@ def built_SAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = './results/SAC/experiment-2020-09-22-14-46-31'
+        test_dir = '../results/SAC/experiment-2020-09-22-14-46-31'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -765,9 +768,9 @@ def built_SAC_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--num_learners', type=int, default=2)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
+    parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
+    parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument('--eval_interval', type=int, default=3000)
@@ -776,7 +779,7 @@ def built_SAC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/SAC/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/SAC/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
