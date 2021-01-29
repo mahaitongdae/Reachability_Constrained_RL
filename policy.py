@@ -176,6 +176,7 @@ class PolicyWithQs(tf.Module):
 
     def _logits2dist(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+        log_std = tf.clip_by_value(log_std, -5., 1.)
         act_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
         if self.action_range is not None:
             act_dist = (
@@ -192,7 +193,7 @@ class PolicyWithQs(tf.Module):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
             if self.deterministic_policy:
-                mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+                mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
                 return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
             else:
                 act_dist = self._logits2dist(logits)
@@ -205,7 +206,7 @@ class PolicyWithQs(tf.Module):
         with self.tf.name_scope('compute_target_action') as scope:
             logits = self.policy_target(obs)
             if self.deterministic_policy:
-                mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+                mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
                 return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
             else:
                 act_dist = self._logits2dist(logits)
