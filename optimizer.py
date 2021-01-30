@@ -72,7 +72,8 @@ class UpdateThread(threading.Thread):
         # fetch grad
         with self.grad_queue_get_timer:
             try:
-                grads, learner_stats = self.inqueue.get()
+                block = True if self.iteration == 0 else False
+                grads, learner_stats = self.inqueue.get(block=block)
                 self.grad_reuse = 0
             except Empty:
                 if self.grad_reuse < self.args.grads_queue_size:
