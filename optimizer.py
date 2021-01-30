@@ -78,7 +78,7 @@ class UpdateThread(threading.Thread):
                 self.grad, self.learner_stats = self.inqueue.get(block=block)
                 self.grad_reuse = 0
             except Empty:
-                if self.grad_reuse < self.args.grads_queue_size:
+                if self.grad_reuse < self.args.grads_max_reuse:
                     self.grad_reuse += 1
                 else:
                     self.grad, self.learner_stats = self.inqueue.get(timeout=30)

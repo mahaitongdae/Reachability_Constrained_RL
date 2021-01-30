@@ -49,8 +49,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
 NUM_WORKER = 2
-NUM_LEARNER = 2
+NUM_LEARNER = 12
 NUM_BUFFER = 2
+
 
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
@@ -155,6 +156,7 @@ def built_AMPC_parser():
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -291,6 +293,7 @@ def built_MPG_parser(version):
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -413,6 +416,7 @@ def built_NADP_parser():
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -532,6 +536,7 @@ def built_NDPG_parser():
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -652,6 +657,7 @@ def built_TD3_parser():
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -773,6 +779,7 @@ def built_SAC_parser():
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=3000)
     parser.add_argument('--log_interval', type=int, default=100)
