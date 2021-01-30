@@ -52,6 +52,7 @@ class UpdateThread(threading.Thread):
         self.update_timer = TimerStat()
         self.grad_queue_get_timer = TimerStat()
         self.grad_apply_timer = TimerStat()
+        self.grad_reuse = 0
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
 
     def run(self):
@@ -65,15 +66,20 @@ class UpdateThread(threading.Thread):
                                          update_time=self.update_timer.mean,
                                          update_throughput=self.update_timer.mean_throughput,
                                          grad_queue_get_time=self.grad_queue_get_timer.mean,
-                                         grad_apply_timer=self.grad_apply_timer.mean
+                                         grad_apply_timer=self.grad_apply_timer.mean,
+                                         grad_reuse=self.grad_reuse
                                     ))
         # fetch grad
         with self.grad_queue_get_timer:
             try:
-                grads, learner_stats = self.inqueue.get(timeout=30)
+                grads, learner_stats = self.inqueue.get()
+                self.grad_reuse = 0
             except Empty:
-                return
-
+                if self.grad_reuse < self.args.grads_queue_size:
+                    self.grad_reuse += 1
+                else:
+                    grads, learner_stats = self.inqueue.get(timeout=30)
+                    self.grad_reuse = 0
         # apply grad
         with self.grad_apply_timer:
             try:
