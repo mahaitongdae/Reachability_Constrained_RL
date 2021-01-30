@@ -220,7 +220,7 @@ class MPGLearner(object):
         selected_model_returns_flatten = self.tf.concat(selected_model_returns, 0)
         return self.tf.stop_gradient(selected_model_returns_flatten)
 
-    def model_rollout_for_policy_update_orig(self, start_obses):
+    def model_rollout_for_policy_update(self, start_obses):
         max_num_rollout = max(self.num_rollout_list_for_policy_update)
 
         obses_tile = self.tf.tile(start_obses, [self.M, 1])
@@ -282,43 +282,43 @@ class MPGLearner(object):
         value_mean = self.tf.reduce_mean(all_model_returns[0])
         return selected_model_returns_var, minus_selected_reduced_model_returns, value_mean
 
-    def model_rollout_for_policy_update(self, start_obses):
-        max_num_rollout = max(self.num_rollout_list_for_policy_update)
-        processed_obses = self.preprocessor.tf_process_obses(start_obses)
-        actions, _ = self.policy_with_value.compute_action(processed_obses)
-        firstQs = self.policy_with_value.compute_Q1(processed_obses, actions)
-        rewards_sum = self.tf.zeros((start_obses.shape[0],))
-        self.model.reset(start_obses)
-        if max_num_rollout > 0:
-            for ri in range(max_num_rollout):
-                obses, rewards = self.model.rollout_out(actions)
-                processed_obses = self.preprocessor.tf_process_obses(obses)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                rewards_sum += self.tf.pow(self.args.gamma, ri) * processed_rewards
-                actions, _ = self.policy_for_rollout.compute_action(processed_obses) if not \
-                    self.args.deriv_interval_policy else self.policy_with_value.compute_action(processed_obses)
-
-        with self.tf.name_scope('compute_all_model_returns') as scope:
-            if self.args.learner_version == 'MPG-v2':
-                all_Q1s = self.policy_with_value.compute_Q1(processed_obses, actions)
-                all_Q2s = self.policy_with_value.compute_Q2(processed_obses, actions)
-                all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
-                lastQs = rewards_sum + self.tf.pow(self.args.gamma, max_num_rollout) * all_min_Qs
-            else:
-                all_Qs = self.policy_with_value.compute_Q1(processed_obses, actions)
-                lastQs = rewards_sum + self.tf.pow(self.args.gamma, max_num_rollout) * all_Qs
-            all_model_returns = self.tf.stack([firstQs, lastQs], axis=0)
-        all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=1)
-        all_model_returns_var = self.tf.math.reduce_variance(all_model_returns, axis=1)
-
-        selected_model_returns, selected_model_returns_var, minus_selected_reduced_model_returns = [], [], []
-        for num_rollout in [0, 1]:
-            selected_model_returns_var.append(all_model_returns_var[num_rollout])
-            minus_selected_reduced_model_returns.append(-all_reduced_model_returns[num_rollout])
-        selected_model_returns_var = self.tf.stack(selected_model_returns_var, 0)
-        minus_selected_reduced_model_returns = self.tf.stack(minus_selected_reduced_model_returns, 0)
-        value_mean = self.tf.reduce_mean(all_model_returns[0])
-        return selected_model_returns_var, minus_selected_reduced_model_returns, value_mean
+    # def model_rollout_for_policy_update(self, start_obses):
+    #     max_num_rollout = max(self.num_rollout_list_for_policy_update)
+    #     processed_obses = self.preprocessor.tf_process_obses(start_obses)
+    #     actions, _ = self.policy_with_value.compute_action(processed_obses)
+    #     firstQs = self.policy_with_value.compute_Q1(processed_obses, actions)
+    #     rewards_sum = self.tf.zeros((start_obses.shape[0],))
+    #     self.model.reset(start_obses)
+    #     if max_num_rollout > 0:
+    #         for ri in range(max_num_rollout):
+    #             obses, rewards = self.model.rollout_out(actions)
+    #             processed_obses = self.preprocessor.tf_process_obses(obses)
+    #             processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+    #             rewards_sum += self.tf.pow(self.args.gamma, ri) * processed_rewards
+    #             actions, _ = self.policy_for_rollout.compute_action(processed_obses) if not \
+    #                 self.args.deriv_interval_policy else self.policy_with_value.compute_action(processed_obses)
+    #
+    #     with self.tf.name_scope('compute_all_model_returns') as scope:
+    #         if self.args.learner_version == 'MPG-v2':
+    #             all_Q1s = self.policy_with_value.compute_Q1(processed_obses, actions)
+    #             all_Q2s = self.policy_with_value.compute_Q2(processed_obses, actions)
+    #             all_min_Qs = self.tf.reduce_min((all_Q1s, all_Q2s), axis=0)
+    #             lastQs = rewards_sum + self.tf.pow(self.args.gamma, max_num_rollout) * all_min_Qs
+    #         else:
+    #             all_Qs = self.policy_with_value.compute_Q1(processed_obses, actions)
+    #             lastQs = rewards_sum + self.tf.pow(self.args.gamma, max_num_rollout) * all_Qs
+    #         all_model_returns = self.tf.stack([firstQs, lastQs], axis=0)
+    #     all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=1)
+    #     all_model_returns_var = self.tf.math.reduce_variance(all_model_returns, axis=1)
+    #
+    #     selected_model_returns, selected_model_returns_var, minus_selected_reduced_model_returns = [], [], []
+    #     for num_rollout in [0, 1]:
+    #         selected_model_returns_var.append(all_model_returns_var[num_rollout])
+    #         minus_selected_reduced_model_returns.append(-all_reduced_model_returns[num_rollout])
+    #     selected_model_returns_var = self.tf.stack(selected_model_returns_var, 0)
+    #     minus_selected_reduced_model_returns = self.tf.stack(minus_selected_reduced_model_returns, 0)
+    #     value_mean = self.tf.reduce_mean(all_model_returns[0])
+    #     return selected_model_returns_var, minus_selected_reduced_model_returns, value_mean
 
     @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
