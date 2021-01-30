@@ -49,7 +49,7 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
 NUM_WORKER = 2
-NUM_LEARNER = 15
+NUM_LEARNER = 2
 NUM_BUFFER = 2
 
 def built_AMPC_parser():
@@ -844,4 +844,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v1')
+    main('MPG-v2')

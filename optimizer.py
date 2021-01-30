@@ -53,6 +53,8 @@ class UpdateThread(threading.Thread):
         self.grad_queue_get_timer = TimerStat()
         self.grad_apply_timer = TimerStat()
         self.grad_reuse = 0
+        self.grad = None
+        self.learner_stats = None
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
 
     def run(self):
@@ -72,31 +74,31 @@ class UpdateThread(threading.Thread):
         # fetch grad
         with self.grad_queue_get_timer:
             try:
-                block = True if self.iteration == 0 else False
-                grads, learner_stats = self.inqueue.get(block=block)
+                block = True if self.grad is None else False
+                self.grad, self.learner_stats = self.inqueue.get(block=block)
                 self.grad_reuse = 0
             except Empty:
                 if self.grad_reuse < self.args.grads_queue_size:
                     self.grad_reuse += 1
                 else:
-                    grads, learner_stats = self.inqueue.get(timeout=30)
+                    self.grad, self.learner_stats = self.inqueue.get(timeout=30)
                     self.grad_reuse = 0
         # apply grad
         with self.grad_apply_timer:
             try:
-                judge_is_nan(grads)
+                judge_is_nan(self.grad)
             except ValueError:
-                grads = [tf.zeros_like(grad) for grad in grads]
+                self.grad = [tf.zeros_like(grad) for grad in self.grad]
                 logger.info('Grad is nan!, zero it')
 
-            self.local_worker.apply_gradients(self.iteration, grads)
+            self.local_worker.apply_gradients(self.iteration, self.grad)
 
         # log
         if self.iteration % self.args.log_interval == 0:
             logger.info('updating {} in total'.format(self.iteration))
             logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
             with self.writer.as_default():
-                for key, val in learner_stats.items():
+                for key, val in self.learner_stats.items():
                     if not isinstance(val, list):
                         tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val, step=self.iteration)
                     else:
