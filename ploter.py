@@ -73,26 +73,25 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
             data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
             df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
             df_list.append(df_in_one_run_of_one_alg)
-    # add base score
-    df_base_score = copy.deepcopy(df_in_one_run_of_one_alg)
-    df_base_score['episode_return'] = list(-30.*np.ones_like(df_base_score['episode_return']))
-    df_base_score['algorithm'] = 'base'
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
     figsize = (20, 8)
-    axes_size = [0.1, 0.1, 0.9, 0.9]
-    fontsize = 20
+    axes_size = [0.11, 0.11, 0.89, 0.89] if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+    fontsize = 25
     f1 = plt.figure(1, figsize=figsize)
     ax1 = f1.add_axes(axes_size)
     sns.lineplot(x="iteration", y="episode_return", hue="algorithm",
                  data=total_dataframe, linewidth=2, palette=palette,
                  )
+    base = -30. if env == 'path_tracking_env' else -2
+    basescore = sns.lineplot(x=[0., 10.], y=[base, base], linewidth=2, color='black', linestyle='--')
     print(ax1.lines[0].get_data())
     ax1.set_ylabel('Episode Return', fontsize=fontsize)
     ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
     handles, labels = ax1.get_legend_handles_labels()
     labels = lbs
-    ax1.legend(handles=handles, labels=labels, loc='lower right', frameon=False, fontsize=fontsize)
-    lim = (-800, 50) if env == 'path_tracking_env' else (-100, 5)
+    ax1.legend(handles=handles+[basescore.lines[-1]], labels=labels+['Base score'], loc='lower right', frameon=False, fontsize=fontsize)
+    lim = (-800, 50) if env == 'path_tracking_env' else (-60, 5)
+    plt.xlim(0., 10.2)
     plt.ylim(*lim)
     plt.yticks(fontsize=fontsize)
     plt.xticks(fontsize=fontsize)
@@ -107,6 +106,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         handles, labels = ax2.get_legend_handles_labels()
         labels = lbs
         ax2.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -117,6 +117,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax3.set_ylabel('Heading Angle Error [rad]', fontsize=fontsize)
         ax3.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -127,6 +128,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax4.set_ylabel('Velocity Error [m/s]', fontsize=fontsize)
         ax4.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -140,6 +142,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         handles, labels = ax5.get_legend_handles_labels()
         labels = lbs
         ax5.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -150,6 +153,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax6.set_ylabel('Acceleration [$m^2$/s]', fontsize=fontsize)
         ax6.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
     else:
@@ -163,6 +167,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
         handles, labels = ax2.get_legend_handles_labels()
         labels = lbs
         ax2.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -173,6 +178,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax3.set_ylabel('Pole Angle [rad]', fontsize=fontsize)
         ax3.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -183,6 +189,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax4.set_ylabel('Cart Velocity [m/s]', fontsize=fontsize)
         ax4.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
 
@@ -193,6 +200,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                      legend=False)
         ax5.set_ylabel('Pole Angular Velocity [rad/s]', fontsize=fontsize)
         ax5.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        plt.xlim(0., 10.2)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
     plt.show()
@@ -259,29 +267,33 @@ def plot_convergence_speed_for_different_goal_perf(env):
             first_arrive_steps_list = result_dict_for_this_goal_perf[alg]
             df_for_this_alg_this_goal = pd.DataFrame(dict(algorithm=alg,
                                                           goal_perf=str(goal_perf),
-                                                          first_arrive_steps=min_n(first_arrive_steps_list, 3)))
+                                                          first_arrive_steps=list(map(lambda x: x/10000., min_n(first_arrive_steps_list, 3)))))
             result2print[goal_perf].update({alg: [np.mean(min_n(first_arrive_steps_list, 3)), 2*np.std(min_n(first_arrive_steps_list, 3))]})
             df_list.append(df_for_this_alg_this_goal)
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
-    f1 = plt.figure(1)
-    ax1 = f1.add_axes([0.20, 0.12, 0.78, 0.86])
+    figsize = (20, 8)
+    axes_size = [0.06, 0.12, 0.94, 0.88]
+    fontsize = 25
+    f1 = plt.figure(1, figsize=figsize)
+    ax1 = f1.add_axes(axes_size)
     sns.lineplot(x="goal_perf", y="first_arrive_steps", hue="algorithm", data=total_dataframe, linewidth=2,
                  palette=palette, legend=False)
-    ax1.set_ylabel('Convergence speed', fontsize=15)
-    ax1.set_xlabel("Goal performance", fontsize=15)
+    ax1.set_ylabel('Iterations required [x10000]', fontsize=fontsize)
+    ax1.set_xlabel("Goal performance", fontsize=fontsize)
     handles, labels = ax1.get_legend_handles_labels()
     labels = lbs
     ax1.legend(handles=handles, labels=labels, loc='upper left', frameon=False, fontsize=11)
     ax1.set_xticklabels([str(goal) for goal in goal_perf_list])
-    plt.yticks(fontsize=15)
-    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
     print(result2print)
     plt.show()
 
 
 def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
-    _, alg_list, lbs, palette, _, dir_str = help_func(env)
-    tag2plot = ['update_time']  # 'update_time' 'pg_time']
+    _, alg_list, lbs, palette, _, _ = help_func(env)
+    dir_str = './results/{}/time'
+    tag2plot = ['pg_time']  # 'update_time' 'pg_time']
     df_list = []
     for alg in alg_list:
         data2plot_dir = dir_str.format(alg)
@@ -300,30 +312,33 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                     t = tf.make_ndarray(v.tensor)
                     for tag in tag2plot:
                         if tag in v.tag:
-                            data_in_one_run_of_one_alg[tag].append(float(t) if float(t)<0.3 else 0.2)
+                            data_in_one_run_of_one_alg[tag].append(float(t))# if float(t)<0.004 else 0.0015)
                             data_in_one_run_of_one_alg['iteration'].append(int(event.step))
             len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
             period = int(len1 / len2)
             data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i * period] / 10000. for
                                                        i in range(len2)]
 
-            data_in_one_run_of_one_alg = {key: val[1:] for key, val in data_in_one_run_of_one_alg.items()}
+            data_in_one_run_of_one_alg = {key: val[200:] for key, val in data_in_one_run_of_one_alg.items()}
             data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
             df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
             df_list.append(df_in_one_run_of_one_alg)
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
-    f1 = plt.figure(1)
-    ax1 = f1.add_axes([0.20, 0.15, 0.78, 0.84])
+    figsize = (20, 8)
+    axes_size = [0.06, 0.12, 0.94, 0.88]
+    fontsize = 25
+    f1 = plt.figure(1, figsize=figsize)
+    ax1 = f1.add_axes(axes_size)
     sns.boxplot(x="algorithm", y=tag2plot[0], data=total_dataframe, palette=palette)
     sns.despine(offset=10, trim=True)
     TAG2LBS = {'pg_time': 'Wall-clock Time per Gradient [s]',
                'update_time': 'Wall-clock Time per Update [s]'}
-    ax1.set_ylabel(TAG2LBS[tag2plot[0]], fontsize=15)
+    ax1.set_ylabel(TAG2LBS[tag2plot[0]], fontsize=fontsize)
     labels = lbs
-    ax1.set_xticklabels(labels, fontsize=15)
-    ax1.set_xlabel("", fontsize=15)
-    plt.yticks(fontsize=15)
-    plt.xticks(fontsize=15, rotation=10)
+    ax1.set_xticklabels(labels, fontsize=fontsize)
+    ax1.set_xlabel("", fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    plt.xticks(fontsize=fontsize, rotation=10)
     plt.show()
 
 
@@ -340,10 +355,10 @@ def calculate_fair_case_inverted():
 
 
 if __name__ == "__main__":
-    env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
+    env = 'path_tracking_env'  # inverted_pendulum_env path_tracking_env
     # plot_eval_results_of_all_alg_n_runs(env)
-    # plot_opt_results_of_all_alg_n_runs(env)
+    plot_opt_results_of_all_alg_n_runs(env)
     # print(compute_convergence_speed(-100.))
     # plot_convergence_speed_for_different_goal_perf(env)
-    calculate_fair_case_path_tracking()
-    calculate_fair_case_inverted()
+    # calculate_fair_case_path_tracking()
+    # calculate_fair_case_inverted()
