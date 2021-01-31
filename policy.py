@@ -200,7 +200,7 @@ class PolicyWithQs(tf.Module):
             else:
                 act_dist = self._logits2dist(logits)
                 actions = act_dist.sample()
-                logps = act_dist.log_prob(actions)
+                logps = act_dist.log_prob(self.tf.clip_by_value(actions, -self.action_range+0.01, self.action_range-0.01))
                 return actions, logps
 
     @tf.function
@@ -213,7 +213,7 @@ class PolicyWithQs(tf.Module):
             else:
                 act_dist = self._logits2dist(logits)
                 actions = act_dist.sample()
-                logps = act_dist.log_prob(actions)
+                logps = act_dist.log_prob(self.tf.clip_by_value(actions, -self.action_range+0.01, self.action_range-0.01))
                 return actions, logps
 
     @tf.function
