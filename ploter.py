@@ -82,7 +82,7 @@ def plot_eval_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
     sns.lineplot(x="iteration", y="episode_return", hue="algorithm",
                  data=total_dataframe, linewidth=2, palette=palette,
                  )
-    base = -30. if env == 'path_tracking_env' else -2
+    base = -30 if env == 'path_tracking_env' else -2
     basescore = sns.lineplot(x=[0., 10.], y=[base, base], linewidth=2, color='black', linestyle='--')
     print(ax1.lines[0].get_data())
     ax1.set_ylabel('Episode Return', fontsize=fontsize)
@@ -312,7 +312,7 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
                     t = tf.make_ndarray(v.tensor)
                     for tag in tag2plot:
                         if tag in v.tag:
-                            data_in_one_run_of_one_alg[tag].append(float(t))# if float(t)<0.004 else 0.0015)
+                            data_in_one_run_of_one_alg[tag].append(1000*float(t))# if float(t)<0.004 else 1.5)
                             data_in_one_run_of_one_alg['iteration'].append(int(event.step))
             len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
             period = int(len1 / len2)
@@ -325,14 +325,14 @@ def plot_opt_results_of_all_alg_n_runs(env, dirs_dict_for_plot=None):
             df_list.append(df_in_one_run_of_one_alg)
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
     figsize = (20, 8)
-    axes_size = [0.06, 0.12, 0.94, 0.88]
+    axes_size = [0.11, 0.12, 0.89, 0.88]
     fontsize = 25
     f1 = plt.figure(1, figsize=figsize)
     ax1 = f1.add_axes(axes_size)
     sns.boxplot(x="algorithm", y=tag2plot[0], data=total_dataframe, palette=palette)
     sns.despine(offset=10, trim=True)
-    TAG2LBS = {'pg_time': 'Wall-clock Time per Gradient [s]',
-               'update_time': 'Wall-clock Time per Update [s]'}
+    TAG2LBS = {'pg_time': 'Wall-clock Time per Gradient [ms]',
+               'update_time': 'Wall-clock Time per Update [ms]'}
     ax1.set_ylabel(TAG2LBS[tag2plot[0]], fontsize=fontsize)
     labels = lbs
     ax1.set_xticklabels(labels, fontsize=fontsize)
@@ -355,9 +355,9 @@ def calculate_fair_case_inverted():
 
 
 if __name__ == "__main__":
-    env = 'path_tracking_env'  # inverted_pendulum_env path_tracking_env
-    # plot_eval_results_of_all_alg_n_runs(env)
-    plot_opt_results_of_all_alg_n_runs(env)
+    env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
+    plot_eval_results_of_all_alg_n_runs(env)
+    # plot_opt_results_of_all_alg_n_runs(env)
     # print(compute_convergence_speed(-100.))
     # plot_convergence_speed_for_different_goal_perf(env)
     # calculate_fair_case_path_tracking()
