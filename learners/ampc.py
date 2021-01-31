@@ -21,6 +21,9 @@ logging.basicConfig(level=logging.INFO)
 
 class AMPCLearner(object):
     import tensorflow as tf
+    tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
     def __init__(self, policy_cls, args):
         self.args = args

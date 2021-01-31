@@ -22,6 +22,8 @@ class PolicyWithQs(tf.Module):
     tfd = tfp.distributions
     tfb = tfp.bijectors
     tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
     def __init__(self, obs_dim, act_dim,
                  value_model_cls, value_num_hidden_layers, value_num_hidden_units,

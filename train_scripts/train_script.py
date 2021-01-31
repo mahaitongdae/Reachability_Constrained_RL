@@ -35,6 +35,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['OMP_NUM_THREADS'] = '1'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
 NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ('AMPC', AMPCLearner),

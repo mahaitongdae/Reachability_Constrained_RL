@@ -235,7 +235,7 @@ class OffPolicyAsyncOptimizer(object):
                 self.steps_since_update[worker] += count
                 ppc_params = worker.get_ppc_params.remote()
                 if self.steps_since_update[worker] >= self.max_weight_sync_delay:
-                    judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
+                    # judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
                     if weights is None:
                         weights = ray.put(self.local_worker.get_weights())
                     worker.set_weights.remote(weights)
