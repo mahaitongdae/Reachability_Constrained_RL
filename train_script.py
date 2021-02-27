@@ -46,7 +46,7 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-01-17-00-28-59'
+        test_dir = 'results/toyota3lane/experiment-2021-01-20-22-01-03'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -60,7 +60,7 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='fixed pf test') # mu dim 32, back to adam, add mu update interval
+    parser.add_argument('--memo', type=str, default='all init reset states') # mu dim 32, back to adam, add mu update interval
 
     parser.add_argument('--env_version', type=str, default='1d2b82d2')
     parser.add_argument('--train_version', type=str, default='76f7d2b4')
@@ -91,7 +91,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--init_punish_factor', type=float, default=10.)
     parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
     parser.add_argument('--pf_amplifier', type=float, default=1.)
-    parser.add_argument('--mu_clip_value', type=float, default=1e5)
+    parser.add_argument('--mu_clip_value', type=float, default=100)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -126,7 +126,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--action_range', type=float, default=None)
-    parser.add_argument('--mu_update_interval', type=int, default=10)
+    parser.add_argument('--mu_update_interval', type=int, default=50)
 
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')

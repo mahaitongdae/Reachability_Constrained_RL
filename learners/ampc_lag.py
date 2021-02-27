@@ -133,7 +133,7 @@ class LMAMPCLearner(object):
         return obj_loss, punish_terms, cs_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real
 
-    # @tf.function
+    @tf.function
     def forward_and_backward(self, mb_obs, ite, mb_ref_index):
         with self.tf.GradientTape(persistent=True) as tape:
             obj_loss, punish_terms, cs_loss, pg_loss, \

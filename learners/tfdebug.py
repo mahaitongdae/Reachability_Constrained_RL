@@ -53,7 +53,7 @@ while count < 100:
 # getFlat = U.GetFlat(tf.convert_to_tensor(weights))
 # flat_weights = getFlat()
 del local_worker
-
+print('learner start')
 local_learner = LMAMPCLearner(Policy4Lagrange, args)
 # ppc_params = virtual_worker.get_ppc_params()
 # weights = np.load('weights.npy',allow_pickle=True).tolist()
