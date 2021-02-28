@@ -71,7 +71,7 @@ class MPGLearner(object):
                            'batch_dones': batch_data[4].astype(np.float32),
                            }
         with self.target_timer:
-            if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+            if self.args.learner_version == 'MPG-v1':
                 target = self.compute_n_step_target()
             elif self.args.learner_version == 'MPG-v2':
                 target = self.compute_clipped_double_q_target()
@@ -328,13 +328,6 @@ class MPGLearner(object):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         model_mse_list = []
         if self.args.learner_version == 'MPG-v1':
-            model_targets = self.model_rollout_for_q_estimation(mb_obs, mb_actions)
-            for i, num_rollout in enumerate(self.num_rollout_list_for_q_estimation):
-                model_target_i = model_targets[i * self.batch_size:
-                                               (i + 1) * self.batch_size]
-                model_mse_list.append(self.tf.reduce_mean(self.tf.square(model_target_i - mb_targets)))
-
-        if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
             with self.tf.GradientTape() as tape:
                 with self.tf.name_scope('q_loss') as scope:
                     q_pred1 = self.policy_with_value.compute_Q1(processed_mb_obs, mb_actions)
@@ -364,10 +357,7 @@ class MPGLearner(object):
     def policy_forward_and_backward(self, mb_obs, ite, model_mse_tensor, ws_old):
         with self.tf.GradientTape() as tape:
             model_returns_var, minus_reduced_model_returns, value_mean = self.model_rollout_for_policy_update(mb_obs)
-            if self.args.learner_version == 'MPG-v2' or self.args.learner_version == 'MPG-v3':
-                ws = ws_new = self.rule_based_weights(ite, self.args.rule_based_bias_total_ite, self.args.eta)
-            else:
-                ws, ws_new = self.heuristic_weights(ws_old, model_mse_tensor)
+            ws = ws_new = self.rule_based_weights(ite, self.args.rule_based_bias_total_ite, self.args.eta)
             total_loss = self.tf.reduce_sum(self.tf.stop_gradient(ws)*minus_reduced_model_returns)
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(total_loss,
@@ -408,18 +398,6 @@ class MPGLearner(object):
         ws = self.tf.nn.softmax(bias_inverses)
         return ws
 
-    def heuristic_weights(self, ws_old, model_mse_tensor):
-        epsilon = 1e-8
-        mse_inverse = 1. / (model_mse_tensor + epsilon)
-        if ws_old[0] < self.args.thres:
-            ws_new = (1. / (model_mse_tensor + epsilon)) / self.tf.reduce_sum(mse_inverse)
-
-            ws = ws_old + self.args.w_moving_rate * (ws_new - ws_old)
-            return ws, ws_new
-        else:
-            ws = ws_new = self.tf.convert_to_tensor([1., 0])
-            return ws, ws_new
-
     def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
         if self.counter % self.num_batch_reuse == 0:
             self.get_batch_data(batch_data, rb, indexes)
@@ -432,7 +410,7 @@ class MPGLearner(object):
         rewards_mean = np.abs(np.mean(self.preprocessor.np_process_rewards(self.batch_data['batch_rewards'])))
 
         with self.q_gradient_timer:
-            if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+            if self.args.learner_version == 'MPG-v1':
                 q_loss1, q_gradient1, model_mse_tensor = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets)
                 q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             else:
@@ -467,7 +445,7 @@ class MPGLearner(object):
             w_list=list(ws.numpy()),
             all_losses=list(all_losses.numpy())
         ))
-        if self.args.learner_version == 'MPG-v1' or self.args.learner_version == 'MPG-v3':
+        if self.args.learner_version == 'MPG-v1':
             gradient_tensor = q_gradient1 + policy_gradient
         else:
             self.stats.update(dict(q_loss2=q_loss2.numpy(),

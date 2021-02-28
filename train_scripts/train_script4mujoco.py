@@ -167,10 +167,9 @@ def built_AMPC_parser():
     return parser.parse_args()
 
 def built_MPG_parser(version):
-    #          Target                Weighting method
-    # MPG-v1   n-step                Heuristic
-    # MPG-v2   clipped double-Q      Rule-based
-    # MPG-v3   n-step                Rule-based
+    #          Target
+    # MPG-v1   n-step
+    # MPG-v2   clipped double-Q
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
@@ -211,18 +210,13 @@ def built_MPG_parser(version):
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--deriv_interval_policy', default=False, action='store_true')
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[0, 25])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[0, 25] if version == 'MPG-v1' else [])
-    if version == 'MPG-v2' or version == 'MPG-v3':
-        parser.add_argument('--eta', type=float, default=0.1)
-        parser.add_argument('--rule_based_bias_total_ite', type=int, default=4000)
-    else:
-        assert version == 'MPG-v1'
-        parser.add_argument('--thres', type=float, default=0.98)
-        parser.add_argument('--w_moving_rate', type=float, default=0.01)
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[])
+    parser.add_argument('--eta', type=float, default=0.1)
+    parser.add_argument('--rule_based_bias_total_ite', type=int, default=4000)
 
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
-    parser.add_argument('--num_batch_reuse', type=int, default=10 if version == 'MPG-v1' or version == 'MPG-v3' else 1)
+    parser.add_argument('--num_batch_reuse', type=int, default=10 if version == 'MPG-v1' else 1)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -778,8 +772,6 @@ def built_parser(alg_name):
         args = built_MPG_parser('MPG-v1')
     elif alg_name == 'MPG-v2':
         args = built_MPG_parser('MPG-v2')
-    elif alg_name == 'MPG-v3':
-        args = built_MPG_parser('MPG-v3')
     elif alg_name == 'NDPG':
         args = built_NDPG_parser()
     elif alg_name == 'NADP':
