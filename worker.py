@@ -1,11 +1,20 @@
-import numpy as np
-import gym
-import ray
-import os
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: worker.py
+# =====================================
+
 import logging
+
+import gym
+import numpy as np
+
 from preprocessor import Preprocessor
-from utils.monitor import Monitor
-from mixed_pg_learner import judge_is_nan
+from utils.dummy_vec_env import DummyVecEnv
+from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -13,47 +22,42 @@ logging.basicConfig(level=logging.INFO)
 # logger.setLevel(logging.INFO)
 
 
-class OnPolicyWorker(object):
-    """
-    Act as both actor and learner
-    """
+class OffPolicyWorker(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
+    """just for sample"""
 
-    # gpus = tf.config.experimental.list_physical_devices('GPU')
-    # tf.config.experimental.set_virtual_device_configuration(
-    #     gpus[0],
-    #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
-
-    def __init__(self, policy_cls, learner_cls, env_id, args, worker_id):
+    def __init__(self, policy_cls, env_id, args, worker_id):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        env = gym.make(env_id)
-        self.env = Monitor(env)
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.learner = learner_cls(policy_cls, self.args)
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        self.sample_batch_size = self.args.sample_batch_size
+        self.num_agent = self.args.num_agent
+        if self.args.env_id == 'PathTracking-v0':
+            self.env = gym.make(self.args.env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
+        else:
+            env = gym.make(self.args.env_id)
+            self.env = DummyVecEnv(env)
+        self.policy_with_value = policy_cls(**vars(self.args))
+        self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
-        # judge_is_nan([self.obs])
         self.done = False
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_normalize, self.args.reward_preprocess_type,
-                                         self.args.reward_scale_factor, gamma=self.args.gamma)
-        self.log_dir = self.args.log_dir
+        self.preprocessor = Preprocessor(**vars(self.args))
 
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-
-        if self.worker_id == 1:
-            self.writer = self.tf.summary.create_file_writer(self.log_dir + '/worker')
-            self.put_data_into_learner(*(self.sample()))
-            self.learner.export_graph(self.writer)
-
+        self.explore_sigma = self.args.explore_sigma
+        self.iteration = 0
+        self.num_sample = 0
+        self.sample_times = 0
         self.stats = {}
         logger.info('Worker initialized')
 
     def get_stats(self):
+        self.stats.update(dict(worker_id=self.worker_id,
+                               num_sample=self.num_sample,
+                               # ppc_params=self.get_ppc_params()
+                               )
+                          )
         return self.stats
 
     def save_weights(self, save_dir, iteration):
@@ -69,7 +73,8 @@ class OnPolicyWorker(object):
         return self.policy_with_value.set_weights(weights)
 
     def apply_gradients(self, iteration, grads):
-        self.policy_with_value.apply_gradients(iteration, grads)
+        self.iteration = iteration
+        self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -85,38 +90,34 @@ class OnPolicyWorker(object):
 
     def sample(self):
         batch_data = []
-        epinfos = []
-        for _ in range(self.sample_batch_size):
+        for _ in range(int(self.batch_size/self.num_agent)):
             processed_obs = self.preprocessor.process_obs(self.obs)
-            # judge_is_nan([processed_obs])
-
-            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])  # TODO
-            # judge_is_nan([action])
-            # judge_is_nan([neglogp])
-            # print(action[0].numpy())
-            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+            judge_is_nan([processed_obs])
+            action, logp = self.policy_with_value.compute_action(self.tf.constant(processed_obs))
+            if self.explore_sigma is not None:
+                action += np.random.normal(0, self.explore_sigma, np.shape(action))
+            try:
+                judge_is_nan([action])
+            except ValueError:
+                print('processed_obs', processed_obs)
+                print('preprocessor_params', self.preprocessor.get_params())
+                print('policy_weights', self.policy_with_value.policy.trainable_weights)
+                action, logp = self.policy_with_value.compute_action(processed_obs)
+                judge_is_nan([action])
+                raise ValueError
+            obs_tp1, reward, self.done, info = self.env.step(action.numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            # judge_is_nan([obs_tp1])
+            for i in range(self.num_agent):
+                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i]))
+            self.obs = self.env.reset()
 
-            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
-            self.obs = self.env.reset() if self.done else obs_tp1.copy()
-            maybeepinfo = info.get('episode')
-            if maybeepinfo: epinfos.append(maybeepinfo)
-            # judge_is_nan([self.obs])
+        if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
+            logger.info('Worker_info: {}'.format(self.get_stats()))
 
-        return batch_data, epinfos
+        self.num_sample += len(batch_data)
+        self.sample_times += 1
+        return batch_data
 
-    def put_data_into_learner(self, batch_data, epinfos):
-        self.learner.set_ppc_params(self.get_ppc_params())
-        self.learner.get_batch_data(batch_data, epinfos)
-
-    def compute_gradient_over_ith_minibatch(self, i):
-        self.learner.set_weights(self.get_weights())
-        grad = self.learner.compute_gradient_over_ith_minibatch(i)
-        learner_stats = self.learner.get_stats()
-        self.stats.update(dict(learner_stats=learner_stats))
-        return grad
-
-
-if __name__ == '__main__':
-    pass
+    def sample_with_count(self):
+        batch_data = self.sample()
+        return batch_data, len(batch_data)

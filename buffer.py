@@ -1,15 +1,25 @@
-import numpy as np
-import random
-import ray
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: buffer.py
+# =====================================
+
 import logging
+import random
+
+import numpy as np
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 from utils.segment_tree import SumSegmentTree, MinSegmentTree
 
 
 class ReplayBuffer(object):
-    def __init__(self, args):
+    def __init__(self, args, buffer_id):
         """Create Prioritized Replay buffer.
 
         Parameters
@@ -19,12 +29,19 @@ class ReplayBuffer(object):
           overflows the old memories are dropped.
         """
         self.args = args
+        self.buffer_id = buffer_id
         self._storage = []
         self._maxsize = self.args.max_buffer_size
         self._next_idx = 0
         self.replay_starts = self.args.replay_starts
         self.replay_batch_size = self.args.replay_batch_size
+        self.stats = {}
+        self.replay_times = 0
         logger.info('Buffer initialized')
+
+    def get_stats(self):
+        self.stats.update(dict(storage=len(self._storage)))
+        return self.stats
 
     def __len__(self):
         return len(self._storage)
@@ -51,38 +68,14 @@ class ReplayBuffer(object):
                np.array(obses_tp1), np.array(dones)
 
     def sample_idxes(self, batch_size):
-
-        return [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
+        return np.array([random.randint(0, len(self._storage) - 1) for _ in range(batch_size)], dtype=np.int32)
 
     def sample_with_idxes(self, idxes):
-        return self._encode_sample(idxes)
+        return list(self._encode_sample(idxes)) + [idxes,]
 
     def sample(self, batch_size):
-
-        """Sample a batch of experiences.
-
-        Parameters
-        ----------
-        batch_size: int
-            How many transitions to sample.
-
-        Returns
-        -------
-        obs_batch: np.array
-          batch of observations
-        act_batch: np.array
-          batch of actions executed given obs_batch
-        rew_batch: np.array
-          rewards received as results of executing act_batch
-        next_obs_batch: np.array
-          next set of observations seen after executing act_batch
-        done_mask: np.array
-          done_mask[i] = 1 if executing act_batch[i] resulted in
-          the end of an episode and 0 otherwise.
-        """
-
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
-        return self._encode_sample(idxes)
+        idxes = self.sample_idxes(batch_size)
+        return self.sample_with_idxes(idxes)
 
     def add_batch(self, batch):
         for trans in batch:
@@ -91,11 +84,15 @@ class ReplayBuffer(object):
     def replay(self):
         if len(self._storage) < self.replay_starts:
             return None
+        if self.buffer_id == 1 and self.replay_times % self.args.buffer_log_interval == 0:
+            logger.info('Buffer info: {}'.format(self.get_stats()))
+
+        self.replay_times += 1
         return self.sample(self.replay_batch_size)
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    def __init__(self, args):
+    def __init__(self, args, buffer_id):
         """Create Prioritized Replay buffer.
 
         Parameters
@@ -114,7 +111,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         --------
         ReplayBuffer.__init__
         """
-        super(PrioritizedReplayBuffer, self).__init__(args)
+        super(PrioritizedReplayBuffer, self).__init__(args, buffer_id)
         assert self.args.alpha > 0
         self._alpha = args.replay_alpha
         self._beta = args.replay_beta
@@ -144,12 +141,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             mass = random.random() * self._it_sum.sum(0, len(self._storage))
             idx = self._it_sum.find_prefixsum_idx(mass)
             res.append(idx)
-        return res
+        return np.array(res, dtype=np.int32)
 
     def sample_idxes(self, batch_size):
         return self._sample_proportional(batch_size)
 
-    def sample_with_idxes(self, idxes):
+    def sample_with_weights_and_idxes(self, idxes):
         weights = []
         p_min = self._it_min.min() / self._it_sum.sum()
         max_weight = (p_min * len(self._storage)) ** (-self._beta)
@@ -160,44 +157,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weights.append(weight / max_weight)
         weights = np.array(weights)
         encoded_sample = self._encode_sample(idxes)
-        return tuple(list(encoded_sample) + [weights, idxes])
+        return list(encoded_sample) + [weights, idxes]
 
     def sample(self, batch_size):
-        """Sample a batch of experiences.
-
-        compared to ReplayBuffer.sample
-        it also returns importance weights and idxes
-        of sampled experiences.
-
-
-        Parameters
-        ----------
-        batch_size: int
-          How many transitions to sample.
-
-        Returns
-        -------
-        obs_batch: np.array
-          batch of observations
-        act_batch: np.array
-          batch of actions executed given obs_batch
-        rew_batch: np.array
-          rewards received as results of executing act_batch
-        next_obs_batch: np.array
-          next set of observations seen after executing act_batch
-        done_mask: np.array
-          done_mask[i] = 1 if executing act_batch[i] resulted in
-          the end of an episode and 0 otherwise.
-        weights: np.array
-          Array of shape (batch_size,) and dtype np.float32
-          denoting importance weight of each sampled transition
-        idxes: np.array
-          Array of shape (batch_size,) and dtype np.int32
-          idexes in buffer of sampled experiences
-        """
-
-        idxes = self._sample_proportional(batch_size)
-        return self.sample_with_idxes(idxes)
+        idxes = self.sample_idxes(batch_size)
+        return self.sample_with_weights_and_idxes(idxes)
 
     def update_priorities(self, idxes, priorities):
         """Update priorities of sampled transitions.

@@ -1,286 +1,248 @@
-from model import MLPNet
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/8/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: policy.py
+# =====================================
+
+import tensorflow as tf
 import numpy as np
-from gym import spaces
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 
+from model import MLPNet, AlphaModel
 
-class PolicyWithValue(object):
+NAME2MODELCLS = dict([('MLP', MLPNet),])
+
+
+class PolicyWithQs(tf.Module):
     import tensorflow as tf
+    import tensorflow_probability as tfp
+    tfd = tfp.distributions
+    tfb = tfp.bijectors
+    tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
-    def __init__(self, obs_space, act_space, args):
-        self.args = args
-        assert isinstance(obs_space, spaces.Box)
-        assert isinstance(act_space, spaces.Box) or isinstance(act_space, spaces.Discrete)
-        obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
-        if isinstance(act_space, spaces.Discrete):
-            self.act_dist_cls = DiscreteDistribution
-            act_dim = act_space.n if args.act_dim is None else self.args.act_dim
+    def __init__(self, obs_dim, act_dim,
+                 value_model_cls, value_num_hidden_layers, value_num_hidden_units,
+                 value_hidden_activation, value_lr_schedule,
+                 policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
+                 policy_out_activation, policy_lr_schedule,
+                 alpha, alpha_lr_schedule,
+                 policy_only, double_Q, target, tau, delay_update,
+                 deterministic_policy, action_range, **kwargs):
+        super().__init__()
+        self.policy_only = policy_only
+        self.double_Q = double_Q
+        self.target = target
+        self.tau = tau
+        self.delay_update = delay_update
+        self.deterministic_policy = deterministic_policy
+        self.action_range = action_range
+        self.alpha = alpha
+
+        value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
+                                            NAME2MODELCLS[policy_model_cls]
+        self.policy = policy_model_cls(obs_dim, policy_num_hidden_layers, policy_num_hidden_units,
+                                       policy_hidden_activation, act_dim * 2, name='policy',
+                                       output_activation=policy_out_activation)
+        self.policy_target = policy_model_cls(obs_dim, policy_num_hidden_layers, policy_num_hidden_units,
+                                              policy_hidden_activation, act_dim * 2, name='policy_target',
+                                              output_activation=policy_out_activation)
+        policy_lr = PolynomialDecay(*policy_lr_schedule)
+        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr, name='policy_adam_opt')
+
+        self.Q1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                  value_hidden_activation, 1, name='Q1')
+        self.Q1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                         value_hidden_activation, 1, name='Q1_target')
+        self.Q1_target.set_weights(self.Q1.get_weights())
+        value_lr = PolynomialDecay(*value_lr_schedule)
+        self.Q1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q1_adam_opt')
+
+        self.Q2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                  value_hidden_activation, 1, name='Q2')
+        self.Q2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                         value_hidden_activation, 1, name='Q2_target')
+        self.Q2_target.set_weights(self.Q2.get_weights())
+        self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
+
+        if self.policy_only:
+            self.target_models = ()
+            self.models = (self.policy,)
+            self.optimizers = (self.policy_optimizer,)
         else:
-            self.act_dist_cls = GuassianDistribution
-            act_dim = act_space.shape[0] * 2 if args.act_dim is None else self.args.act_dim * 2
-        self.policy = MLPNet(obs_dim, 2, 128, act_dim)
-        self.value = MLPNet(obs_dim, 2, 128, 1)
-        self.models = [self.policy, self.value]
-        policy_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.policy_lr_schedule)
-        value_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.value_lr_schedule)
-        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule)
-        self.value_optimizer = self.tf.keras.optimizers.Adam(value_lr_schedule)
-        self.optimizers = [self.policy_optimizer, self.value_optimizer]
+            if self.double_Q:
+                assert self.target
+                self.target_models = (self.Q1_target, self.Q2_target, self.policy_target,)
+                self.models = (self.Q1, self.Q2, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.policy_optimizer,)
+            elif self.target:
+                self.target_models = (self.Q1_target, self.policy_target,)
+                self.models = (self.Q1, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
+            else:
+                self.target_models = ()
+                self.models = (self.Q1, self.policy,)
+                self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
 
-    def save_weights(self, save_dir, iteration):
-        for model in self.models:
-            model.save_weights(save_dir + '/' + model.name + 'ite' + str(iteration))
-
-    def load_weights(self, load_dir, iteration):
-        for model in self.models:
-            model.load_weights(load_dir + '/' + model.name + 'ite' + str(iteration))
-
-    def get_weights(self):
-        return [model.get_weights() for model in self.models]
-
-    @property
-    def trainable_weights(self):
-        return self.tf.nest.flatten([model.trainable_weights for model in self.models])
-
-    def set_weights(self, weights):
-        for i, weight in enumerate(weights):
-            self.models[i].set_weights(weight)
-
-    def apply_gradients(self, iteration, grads):
-        gradi_start = 0
-        for i in range(len(self.models)):
-            len_weights = len(self.models[i].trainable_weights)
-            gradi_end = gradi_start + len_weights
-            self.optimizers[i].apply_gradients(zip(grads[gradi_start: gradi_end], self.models[i].trainable_weights))
-            gradi_start = gradi_end
-
-    def compute_action(self, obs):
-        logits = self.policy(obs)
-        act_dist = self.act_dist_cls(logits)
-        action = act_dist.sample()
-        neglogp = act_dist.neglogp(action)
-
-        return action, neglogp
-
-    def compute_neglogp(self, obs, action):
-        # print(action)
-        logits = self.policy(obs)
-        assert not np.isnan(logits[0][0])
-
-        act_dist = self.act_dist_cls(logits)
-        # assert not np.isnan(neglogp[0][0])
-
-        return act_dist.neglogp(action)
-
-    def compute_vf(self, obs):
-        return self.value(obs)
-
-
-class PolicyWithQs(object):
-    import tensorflow as tf
-
-    def __init__(self, obs_space, act_space, args):
-        self.args = args
-        assert isinstance(obs_space, spaces.Box)
-        assert isinstance(act_space, spaces.Box)
-        obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
-        self.act_dist_cls = GuassianDistribution
-        act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
-        self.policy = MLPNet(obs_dim, 2, 128, act_dim * 2, name='policy')
-        self.policy_target = MLPNet(obs_dim, 2, 128, act_dim * 2, name='policy_target')
-        policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
-        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
-
-        self.Qs = tuple(MLPNet(obs_dim + act_dim, 2, 128, 1, name='Q' + str(i)) for i in range(self.args.Q_num))
-        self.Q_targets = tuple(
-            MLPNet(obs_dim + act_dim, 2, 128, 1, name='Q_target' + str(i)) for i in range(self.args.Q_num))
-        for Q, Q_target in zip(self.Qs, self.Q_targets):
-            source_params = Q.get_weights()
-            Q_target.set_weights(source_params)
-
-        self.target_models = self.Q_targets + (self.policy_target,)
-
-        self.Q_optimizers = tuple(self.tf.keras.optimizers.Adam(self.tf.keras.optimizers.schedules.PolynomialDecay(
-            *self.args.value_lr_schedule)) for _ in range(len(self.Qs)))
-
-        if self.args.log_alpha == 'auto':
-            self.log_alpha = self.tf.Variable(self.args.init_log_alpha, dtype=self.tf.float32, name='log_alpha')
-            log_alpha_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.log_alpha_lr_schedule)
-            self.log_alpha_optimizer = self.tf.keras.optimizers.Adam(log_alpha_lr_schedule, name='log_alpha_adam_opt')
-            self.models = self.Qs + (self.policy, self.log_alpha,)
-            self.optimizers = self.Q_optimizers + (self.policy_optimizer, self.log_alpha_optimizer)
-
-        else:
-            self.log_alpha = self.args.log_alpha
-            self.models = self.Qs + (self.policy,)
-            self.optimizers = self.Q_optimizers + (self.policy_optimizer,)
+        if self.alpha == 'auto':
+            self.alpha_model = AlphaModel(name='alpha')
+            alpha_lr = self.tf.keras.optimizers.schedules.PolynomialDecay(*alpha_lr_schedule)
+            self.alpha_optimizer = self.tf.keras.optimizers.Adam(alpha_lr, name='alpha_adam_opt')
+            self.models += (self.alpha_model,)
+            self.optimizers += (self.alpha_optimizer,)
 
     def save_weights(self, save_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
+        target_model_pairs = [(target_model.name, target_model) for target_model in self.target_models]
         optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
-        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + optimizer_pairs))
+        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + target_model_pairs + optimizer_pairs))
         ckpt.save(save_dir + '/ckpt_ite' + str(iteration))
 
     def load_weights(self, load_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
+        target_model_pairs = [(target_model.name, target_model) for target_model in self.target_models]
         optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
-        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + optimizer_pairs))
-        ckpt.restore(load_dir + '/ckpt_ite' + str(iteration))
+        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + target_model_pairs + optimizer_pairs))
+        ckpt.restore(load_dir + '/ckpt_ite' + str(iteration) + '-1')
 
     def get_weights(self):
-        return [model.get_weights() if hasattr(model, 'get_weights') else model for model in self.models] + \
+        return [model.get_weights() for model in self.models] + \
                [model.get_weights() for model in self.target_models]
-
-    @property
-    def trainable_weights(self):
-        return self.tf.nest.flatten(
-            [model.trainable_weights if hasattr(model, 'trainable_weights') else [model] for model in self.models])
 
     def set_weights(self, weights):
         for i, weight in enumerate(weights):
             if i < len(self.models):
-                if hasattr(self.models[i], 'set_weights'):
-                    self.models[i].set_weights(weight)
-                else:
-                    self.models[i].assign(weight)
+                self.models[i].set_weights(weight)
             else:
                 self.target_models[i-len(self.models)].set_weights(weight)
 
+    @tf.function
     def apply_gradients(self, iteration, grads):
-        for i in range(self.args.Q_num):
-            weights = self.models[i].trainable_weights
-            len_weights = len(weights)
-            self.optimizers[i].apply_gradients(zip(grads[i*len_weights:(i+1)*len_weights], weights))
-        if iteration % self.args.delay_update == 0:
-            gradi_start = len(self.models[0].trainable_weights) * self.args.Q_num
-            for i in range(self.args.Q_num, len(self.models)):
-                weights = self.models[i].trainable_weights if hasattr(self.models[i], 'trainable_weights') \
-                    else [self.models[i]]
-                gradi_end = gradi_start + len(weights)
-                self.optimizers[i].apply_gradients(zip(grads[gradi_start:gradi_end], weights))
-                gradi_start = gradi_end
-            self.update_policy_target()
-            self.update_Q_targets()
+        if self.policy_only:
+            policy_grad = grads
+            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+        else:
+            if self.double_Q:
+                q_weights_len = len(self.Q1.trainable_weights)
+                policy_weights_len = len(self.policy.trainable_weights)
+                q1_grad, q2_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:2*q_weights_len], \
+                                                grads[2*q_weights_len:2*q_weights_len+policy_weights_len]
+                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+                self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
+                if iteration % self.delay_update == 0:
+                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+                    self.update_policy_target()
+                    self.update_Q1_target()
+                    self.update_Q2_target()
+                    if self.alpha == 'auto':
+                        alpha_grad = grads[-1:]
+                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
+            else:
+                q_weights_len = len(self.Q1.trainable_weights)
+                policy_weights_len = len(self.policy.trainable_weights)
+                q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:q_weights_len+policy_weights_len]
+                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+                if iteration % self.delay_update == 0:
+                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+                    if self.alpha == 'auto':
+                        alpha_grad = grads[-1:]
+                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
+                    if self.target:
+                        self.update_policy_target()
+                        self.update_Q1_target()
 
-    def update_Q_targets(self):
-        tau = self.args.tau
-        for Q, Q_target in zip(self.Qs, self.Q_targets):
-            source_params = Q.get_weights()
-            target_params = Q_target.get_weights()
-            Q_target.set_weights([
-                tau * source + (1.0 - tau) * target
-                for source, target in zip(source_params, target_params)
-            ])
+    def update_Q1_target(self):
+        tau = self.tau
+        for source, target in zip(self.Q1.trainable_weights, self.Q1_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
+
+    def update_Q2_target(self):
+        tau = self.tau
+        for source, target in zip(self.Q2.trainable_weights, self.Q2_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
 
     def update_policy_target(self):
-        tau = self.args.tau
-        source_params = self.policy.get_weights()
-        target_params = self.policy_target.get_weights()
-        self.policy.set_weights([
-            tau * source + (1.0 - tau) * target
-            for source, target in zip(source_params, target_params)
-        ])
+        tau = self.tau
+        for source, target in zip(self.policy.trainable_weights, self.policy_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
 
+    @tf.function
+    def compute_mode(self, obs):
+        logits = self.policy(obs)
+        mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+        return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean
+
+    def _logits2dist(self, logits):
+        mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+        log_std = tf.clip_by_value(log_std, -5., 1.)
+        act_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
+        if self.action_range is not None:
+            act_dist = (
+                self.tfp.distributions.TransformedDistribution(
+                    distribution=act_dist,
+                    bijector=self.tfb.Chain(
+                        [self.tfb.Affine(scale_identity_multiplier=self.action_range),
+                         self.tfb.Tanh()])
+                ))
+        return act_dist
+
+    @tf.function
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
+            if self.deterministic_policy:
+                mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+                return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
+            else:
+                act_dist = self._logits2dist(logits)
+                actions = act_dist.sample()
+                logps = act_dist.log_prob(actions)
+                return actions, logps
 
-            act_dist = self.act_dist_cls(logits)
-            action = act_dist.sample()
-            neglogp = act_dist.neglogp(action)
-            return action, neglogp
+    @tf.function
+    def compute_target_action(self, obs):
+        with self.tf.name_scope('compute_target_action') as scope:
+            logits = self.policy_target(obs)
+            if self.deterministic_policy:
+                mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
+                return self.action_range * self.tf.tanh(mean) if self.action_range is not None else mean, 0.
+            else:
+                act_dist = self._logits2dist(logits)
+                actions = act_dist.sample()
+                logps = act_dist.log_prob(actions)
+                return actions, logps
 
-    def compute_logits(self, obs):
-
-        return self.policy(obs)
-
-    def compute_neglogp(self, obs, act):
-        logits = self.policy(obs)
-        act_dist = self.act_dist_cls(logits)
-        return act_dist.neglogp(act)
-
-    def compute_Qs(self, obs, act):
-        with self.tf.name_scope('compute_Qs') as scope:
+    @tf.function
+    def compute_Q1(self, obs, act):
+        with self.tf.name_scope('compute_Q1') as scope:
             Q_inputs = self.tf.concat([obs, act], axis=-1)
-            return [Q(Q_inputs) for Q in self.Qs]
+            return tf.squeeze(self.Q1(Q_inputs), axis=1)
 
-    def compute_Q_targets(self, obs, act):
-        with self.tf.name_scope('compute_Q_targets') as scope:
+    @tf.function
+    def compute_Q2(self, obs, act):
+        with self.tf.name_scope('compute_Q2') as scope:
             Q_inputs = self.tf.concat([obs, act], axis=-1)
-            return [Q_target(Q_inputs) for Q_target in self.Q_targets]
+            return tf.squeeze(self.Q2(Q_inputs), axis=1)
 
-    def get_log_alpha(self):
-        return self.log_alpha
+    @tf.function
+    def compute_Q1_target(self, obs, act):
+        with self.tf.name_scope('compute_Q1_target') as scope:
+            Q_inputs = self.tf.concat([obs, act], axis=-1)
+            return tf.squeeze(self.Q1_target(Q_inputs), axis=1)
 
-
-class GuassianDistribution(object):
-    import tensorflow as tf
-
-    def __init__(self, logits):
-        self.mean, self.logstd = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        self.std = self.tf.exp(self.logstd)
-
-    def mode(self):
-        return self.mean
-
-    def sample(self):
-        return self.mean + self.std * self.tf.random.normal(self.tf.shape(self.mean))
-
-    def neglogp(self, sample):
-        return 0.5 * self.tf.reduce_sum(self.tf.square((sample - self.mean) / self.std), axis=-1) \
-               + 0.5 * self.tf.math.log(2.0 * np.pi) * self.tf.cast(self.tf.shape(sample)[-1], self.tf.float32) \
-               + self.tf.reduce_sum(self.logstd, axis=-1)
-
-    def entropy(self):
-        return self.tf.reduce_sum(self.logstd + 0.5 * self.tf.math.log(2.0 * np.pi * np.e), axis=-1)
-
-    def kl_divergence(self, other_gauss):  # KL(this_dist, other_dist)
-        assert isinstance(other_gauss, GuassianDistribution)
-        return self.tf.reduce_sum(other_gauss.logstd - self.logstd + (
-                self.tf.square(self.std) + self.tf.square(self.mean - other_gauss.mean)) / (
-                                          2.0 * self.tf.square(other_gauss.std)) - 0.5, axis=-1)
-
-
-class DiscreteDistribution(object):
-    import tensorflow as tf
-
-    def __init__(self, logits):
-        self.logits = logits
-
-    def mode(self):
-        return self.tf.argmax(self.logits, axis=-1)
+    @tf.function
+    def compute_Q2_target(self, obs, act):
+        with self.tf.name_scope('compute_Q2_target') as scope:
+            Q_inputs = self.tf.concat([obs, act], axis=-1)
+            return tf.squeeze(self.Q2_target(Q_inputs), axis=1)
 
     @property
-    def mean(self):
-        return self.tf.nn.softmax(self.logits)
-
-    def neglogp(self, x):
-        x = self.tf.one_hot(x, self.logits.get_shape().as_list()[-1])
-        return self.tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(
-            logits=self.logits,
-            labels=x)
-
-    def kl(self, other):
-        a0 = self.logits - self.tf.reduce_max(self.logits, axis=-1, keepdims=True)
-        a1 = other.logits - self.tf.reduce_max(other.logits, axis=-1, keepdims=True)
-        ea0 = self.tf.exp(a0)
-        ea1 = self.tf.exp(a1)
-        z0 = self.tf.reduce_sum(ea0, axis=-1, keepdims=True)
-        z1 = self.tf.reduce_sum(ea1, axis=-1, keepdims=True)
-        p0 = ea0 / z0
-        return self.tf.reduce_sum(p0 * (a0 - self.tf.math.log(z0) - a1 + self.tf.math.log(z1)), axis=-1)
-
-    def entropy(self):
-        a0 = self.logits - self.tf.reduce_max(self.logits, axis=-1, keepdims=True)
-        ea0 = self.tf.exp(a0)
-        z0 = self.tf.reduce_sum(ea0, axis=-1, keepdims=True)
-        p0 = ea0 / z0
-        return self.tf.reduce_sum(p0 * (self.tf.math.log(z0) - a0), axis=-1)
-
-    def sample(self):
-        u = self.tf.random.uniform(self.tf.shape(self.logits), dtype=self.logits.dtype)
-        return self.tf.argmax(self.logits - self.tf.math.log(-self.tf.math.log(u)), axis=-1)
+    def log_alpha(self):
+        return self.alpha_model.log_alpha
 
 
 def test_policy():
@@ -327,7 +289,6 @@ def test_policy_with_Qs():
 def test_mlp():
     import tensorflow as tf
     import numpy as np
-    from model import MLPNet
     policy = tf.keras.Sequential([tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
                                   tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
                                   tf.keras.layers.Dense(1, activation='elu')])
@@ -350,5 +311,18 @@ def test_mlp():
     print(gradient)
 
 
+def test_decay(decay_rate, steps):
+    import matplotlib.pyplot as plt
+    exp_lr = [8e-4 * pow(decay_rate, (step / steps)) for step in range(100000)]
+    linear_lr = [8e-4 - 8e-4/100000 * step for step in range(100000)]
+    linear_lr2 = [8e-4 - 8e-4/90000 * step for step in range(100000)]
+
+    plt.plot(exp_lr, 'r')
+    plt.plot(linear_lr, 'g')
+    plt.plot(linear_lr2, 'b')
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    test_policy_with_Qs()
+    test_decay(0.9, 6000)
