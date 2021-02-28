@@ -12,6 +12,8 @@ evaluating and testing with clear interfaces, organizes each of them in parallel
 scale to hundreds of cpu cores to largely enhance the sampling and update throughput. Besides, with the general design, 
 most of the gradient-based reinforcement learning algorithms can be incorporated.
 
+![images](utils/architecture.png)
+
 # Get started
 Run the script files under the train_scripts folder, in which you can choose an algorithm and modify its related 
 parameters. Then, enjoy it. :)
