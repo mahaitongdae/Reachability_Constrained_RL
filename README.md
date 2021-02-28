@@ -4,7 +4,7 @@ for details), which contains a cluster of high-quality implementations of deep r
 including the proposed MPG and other baseline algorithms, namely n-step Approximate Dynamic Programming (n-step ADP), 
 n-step Deterministic Policy Gradient (n-step DPG), Twin Delayed Deep Deterministic policy gradient (TD3), 
 and Soft Actor-Critic (SAC). In addition, we also implemented the widely used on-policy algorithms such as
- Trust Region Policy Optimization (TRPO) and Proximal Policy Optimization (PPO) (see branch ```MPG_on_policy```).
+ Trust Region Policy Optimization (TRPO) and Proximal Policy Optimization (PPO) (see branch ```mpg_on_policy```).
 
 The implementation is fairly thin and primarily optimized for our own development purposes. It is designed with TensorFlow 2 and Ray
 to realize a high-throughput asynchronous learning architecture, which modularizes the process of sampling, storing, learning, 
