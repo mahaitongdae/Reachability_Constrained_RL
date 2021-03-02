@@ -145,6 +145,29 @@ class Evaluator(object):
         plt.show()
         a = 1
 
+    def static_region(self):
+        d = np.linspace(-10,10,100)
+        v = np.linspace(-10,10,100)
+
+        D, V = np.meshgrid(d, v)
+        flattenD = np.reshape(D, [-1,])
+        flattenV = np.reshape(V, [-1,])
+        obses = np.stack([flattenD, flattenV], 1)
+        preprocess_obs = self.preprocessor.np_process_obses(obses)
+        flattenMU = self.policy_with_value.compute_mu(preprocess_obs).numpy()
+        mu = flattenMU.reshape(D.shape)
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        plt.figure()
+        plt.contourf(D,V,mu,50,cmap='rainbow')
+        plt.grid()
+        # plt.plot(d, np.sqrt(2*5*d),lw=2)
+
+        figure = plt.figure()
+        ax = Axes3D(figure)
+        ax.plot_surface(D, V, mu, rstride=1, cstride=1, cmap='rainbow')
+        plt.show()
+
 
 def test_trained_model(model_dir, ppc_params_dir, iteration):
     from train_script import built_mixedpg_parser
@@ -165,6 +188,19 @@ def atest_trained_model(model_dir, ppc_params_dir, iteration):
     path = model_dir + '/all_obs.npy'
     evaluator.compute_action_from_batch_obses(path)
 
+def static_region(model_dir, iteration):
+    from train_script import built_LMAMPC_parser
+    from policy import Policy4Lagrange
+    args = built_LMAMPC_parser()
+    args.obs_dim = 2
+    args.act_dim = 1
+    args.obs_scale = [0.1, 0.1]
+    evaluator = Evaluator(Policy4Lagrange, args.env_id, args)
+    evaluator.load_weights(model_dir, iteration)
+    # evaluator.load_ppc_params(ppc_params_dir)
+    # path = model_dir + '/all_obs.npy'
+    evaluator.static_region()
+
 def test_evaluator():
     import ray
     ray.init()
@@ -172,6 +208,7 @@ def test_evaluator():
     from train_script import built_parser
     from policy import Policy4Toyota
     args = built_parser('AMPC')
+
     # evaluator = Evaluator(Policy4Toyota, args.env_id, args)
     # evaluator.run_evaluation(3)
     evaluator = ray.remote(num_cpus=1)(Evaluator).remote(Policy4Toyota, args.env_id, args)
@@ -180,4 +217,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    atest_trained_model('./results/toyota3lane/experiment-2021-01-03-12-38-00/models','./results/toyota3lane/experiment-2021-01-03-12-38-00/models', 100000)
+    static_region('./results/toyota3lane/experiment-2021-03-01-14-52-21/models', 100000)

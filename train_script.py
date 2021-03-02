@@ -46,24 +46,24 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-01-20-22-01-03'
+        test_dir = 'results/toyota3lane/experiment-2021-02-28-15-27-38'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[200000],
+                           test_iter_list=[20000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=150))
+                           fixed_steps=50))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='all init reset states') # mu dim 32, back to adam, add mu update interval
+    parser.add_argument('--memo', type=str, default='change envs') # mu dim 32, back to adam, add mu update interval
 
-    parser.add_argument('--env_version', type=str, default='1d2b82d2')
-    parser.add_argument('--train_version', type=str, default='76f7d2b4')
+    # parser.add_argument('--env_version', type=str, default='1d2b82d2')
+    # parser.add_argument('--train_version', type=str, default='76f7d2b4')
 
 
     # trainer
@@ -75,12 +75,12 @@ def built_LMAMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v10')
+    parser.add_argument('--env_id', default='EmergencyBrake-v0')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--con_dim', type=int, default=32)
+    parser.add_argument('--con_dim', type=int, default=1)
 
     # learner
     parser.add_argument('--alg_name', default='LMAMPC')
@@ -116,8 +116,8 @@ def built_LMAMPC_parser():
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--mu_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 100000, 1e-5])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-4, 100000, 1e-5])
     parser.add_argument('--mu_lr_schedule', type=list, default=[3e-6, 100000, 1e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
@@ -126,24 +126,24 @@ def built_LMAMPC_parser():
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--action_range', type=float, default=None)
-    parser.add_argument('--mu_update_interval', type=int, default=50)
+    parser.add_argument('--mu_update_interval', type=int, default=20)
 
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--reward_preprocess_type', type=str, default='scale')
-    parser.add_argument('--reward_scale', type=float, default=0.1)
+    parser.add_argument('--reward_scale', type=float, default=1)
     parser.add_argument('--reward_shift', type=float, default=0.)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=200100)
-    parser.add_argument('--num_workers', type=int, default=5)
-    parser.add_argument('--num_learners', type=int, default=15)
-    parser.add_argument('--num_buffers', type=int, default=4)
+    parser.add_argument('--max_iter', type=int, default=100100)
+    parser.add_argument('--num_workers', type=int, default=6)
+    parser.add_argument('--num_learners', type=int, default=30)
+    parser.add_argument('--num_buffers', type=int, default=8)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
-    parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument('--eval_interval', type=int, default=5000)
+    parser.add_argument('--grads_queue_size', type=int, default=30)
+    parser.add_argument('--eval_interval', type=int, default=1000)
     parser.add_argument('--save_interval', type=int, default=5000)
     parser.add_argument('--log_interval', type=int, default=100)
 
@@ -165,10 +165,11 @@ def built_parser(alg_name):
         env = gym.make(args.env_id, **args2envkwargs(args))
         obs_space, act_space = env.observation_space, env.action_space
         args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
-        args.obs_scale = [0.2, 1., 2., 1 / 50., 1 / 50, 1 / 180.] + \
-                         [1., 1 / 15., 0.2] + \
-                         [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
-                         [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
+        # args.obs_scale = [0.2, 1., 2., 1 / 50., 1 / 50, 1 / 180.] + \
+        #                  [1., 1 / 15., 0.2] + \
+        #                  [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
+        #                  [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
+        args.obs_scale = [0.1, 0.1]
         return args
 
 def main(alg_name):
