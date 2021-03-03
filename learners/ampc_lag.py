@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 CONSTRAINTS_CLIP_MINUS = -0.1
 
 
-class LMAMPCLearner(object):
+class LMAMPCLearner2(object):
     import tensorflow as tf
     tf.config.optimizer.set_experimental_options({'constant_folding': True,
                                                   'arithmetic_optimization': True,
@@ -83,44 +83,38 @@ class LMAMPCLearner(object):
         start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
-        punish_terms_sum = self.tf.zeros((start_obses.shape[0],))
+        # punish_terms_sum = self.tf.zeros((start_obses.shape[0],))
         # real_punish_terms_sum = self.tf.zeros((start_obses.shape[0],))
         # veh2veh4real_sum = self.tf.zeros((start_obses.shape[0],))
-        constraints_sum = self.tf.zeros((start_obses.shape[0],))
+        # constraints_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses
-        cs_sum = self.tf.zeros((start_obses.shape[0]))
+        # cs_sum = self.tf.zeros((start_obses.shape[0]))
+        # constraints_list = self.tf.TensorArray(self.tf.float32, size=self.num_rollout_list_for_policy_update[0])
+        constraints_list = []
         # mu = self.policy_with_value.compute_mu(obses)
         # mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
         # constraints_all = self.tf.zeros((start_obses.shape[0],self.constraint_total_dim ))
-        con_dim = self.model.constraints_num
+        # con_dim = self.model.constraints_num
         for step in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
             obses, rewards, constraints = self.model.rollout_out(actions)
             constraints_clip = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
-            mu = self.policy_with_value.compute_mu(self.tf.stop_gradient(obses))
-            mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
-            rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-            cs_sum += self.tf.reduce_sum(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_clip)), 1)
-            punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_clip), constraints_clip),1)
-            constraints_sum += constraints
-            # punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu), constraints_clip), 1)
-            # if step == 0:
-            #     temp_1 = constraints_all[:,con_dim :]
-            #     constraints_all = self.tf.concat([constraints, temp_1], 1)
-            # elif step <= self.num_rollout_list_for_policy_update[0] - 2:
-            #     temp_1 = constraints_all[:, 0: con_dim * step]
-            #     temp_2 = constraints_all[:, con_dim * (step + 1):]
-            #     constraints_all = self.tf.concat([temp_1, constraints, temp_2], 1)
-            # else:
-            #     temp_1 = constraints_all[:, 0: con_dim * step]
-            #     constraints_all = self.tf.concat([temp_1, constraints], 1)
-            # real_punish_terms_sum += real_punish_term
-            # veh2veh4real_sum += veh2veh4real
-            # veh2road4real_sum += veh2road4real
+            constraints_list.append(self.tf.expand_dims(constraints_clip, axis=1))
 
-        # constraints_all_clip = self.tf.clip_by_value(constraints_all, -1, 100)
-        # pg loss
+            # mu = self.policy_with_value.compute_mu(self.tf.stop_gradient(obses))
+            # mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
+            # rewards_sum += self.preprocessor.tf_process_rewards(rewards)
+            # cs_sum += self.tf.reduce_sum(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_clip)), 1)
+            # punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_clip), constraints_clip),1)
+            # constraints_sum += constraints
+        # constraints_all = self.tf.transpose(constraints_list.stack())
+        constraints_all =self.tf.concat(constraints_list, 1)
+        processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
+        mu_all = self.policy_with_value.compute_mu(processed_start_obses)
+        cs_sum = self.tf.reduce_sum(self.tf.multiply(mu_all, self.tf.stop_gradient(constraints_all)), 1)
+        punish_terms_sum = self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_all), constraints_all),1)
+
         obj_loss = -self.tf.reduce_mean(rewards_sum)
         # pg_loss = obj_loss + self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), constraints_all_clip),0))
         # cs_loss = -self.tf.reduce_sum(self.tf.reduce_mean(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_all_clip)), 0)) # complementary slackness loss
@@ -130,7 +124,7 @@ class LMAMPCLearner(object):
         # real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         # veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         # veh2road4real = self.tf.reduce_mean(veh2road4real_sum)
-        constraints = self.tf.reduce_mean(constraints_sum)
+        constraints = self.tf.reduce_mean(constraints_all)
 
         return obj_loss, punish_terms, cs_loss, pg_loss, constraints
 

@@ -18,7 +18,7 @@ import ray
 
 from buffer import ReplayBuffer
 from evaluator import Evaluator
-from learners.ampc_lag import LMAMPCLearner
+from learners.ampc_lag import LMAMPCLearner2
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
 from policy import Policy4Toyota, Policy4Lagrange
 from tester import Tester
@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
-NAME2LEARNERCLS = dict([('LMAMPC', LMAMPCLearner)])
+NAME2LEARNERCLS = dict([('LMAMPC-v2', LMAMPCLearner2)])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
@@ -80,12 +80,12 @@ def built_LMAMPC_parser():
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--con_dim', type=int, default=1)
+    parser.add_argument('--con_dim', type=int, default=10)
 
     # learner
-    parser.add_argument('--alg_name', default='LMAMPC')
+    parser.add_argument('--alg_name', default='LMAMPC-v2')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[10])
     parser.add_argument('--gamma', type=float, default=1.)
     parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--init_punish_factor', type=float, default=10.)
@@ -137,7 +137,7 @@ def built_LMAMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=100100)
+    parser.add_argument('--max_iter', type=int, default=500100)
     parser.add_argument('--num_workers', type=int, default=6)
     parser.add_argument('--num_learners', type=int, default=30)
     parser.add_argument('--num_buffers', type=int, default=8)
@@ -160,7 +160,7 @@ def built_LMAMPC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'LMAMPC':
+    if alg_name == 'LMAMPC' or 'LMAMPC-v2':
         args = built_LMAMPC_parser()
         env = gym.make(args.env_id, **args2envkwargs(args))
         obs_space, act_space = env.observation_space, env.action_space
@@ -206,4 +206,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('LMAMPC')
+    main('LMAMPC-v2')

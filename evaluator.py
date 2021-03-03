@@ -155,18 +155,27 @@ class Evaluator(object):
         obses = np.stack([flattenD, flattenV], 1)
         preprocess_obs = self.preprocessor.np_process_obses(obses)
         flattenMU = self.policy_with_value.compute_mu(preprocess_obs).numpy()
-        mu = flattenMU.reshape(D.shape)
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-        plt.figure()
-        plt.contourf(D,V,mu,50,cmap='rainbow')
-        plt.grid()
-        # plt.plot(d, np.sqrt(2*5*d),lw=2)
+        # flattenMU_max = np.max(flattenMU,axis=1)
+        for k in range(flattenMU.shape[1]):
+            flattenMU_k = flattenMU[:, k]
+            mu = flattenMU_k.reshape(D.shape)
+            def plot_region(z, name):
+                import matplotlib.pyplot as plt
+                from mpl_toolkits.mplot3d import Axes3D
+                plt.figure()
+                plt.contourf(D,V,z,50,cmap='rainbow')
+                plt.grid()
+                # plt.plot(d, np.sqrt(2*5*d),lw=2)
+                name_2d=name + '_2d.jpg'
+                plt.savefig(os.path.join(self.log_dir, name_2d))
 
-        figure = plt.figure()
-        ax = Axes3D(figure)
-        ax.plot_surface(D, V, mu, rstride=1, cstride=1, cmap='rainbow')
-        plt.show()
+                figure = plt.figure()
+                ax = Axes3D(figure)
+                ax.plot_surface(D, V, z, rstride=1, cstride=1, cmap='rainbow')
+                # plt.show()
+                name_3d = name + '_3d.jpg'
+                plt.savefig(os.path.join(self.log_dir,name_3d))
+            plot_region(mu, str(k))
 
 
 def test_trained_model(model_dir, ppc_params_dir, iteration):
@@ -217,4 +226,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/experiment-2021-03-01-14-52-21/models', 100000)
+    static_region('./results/toyota3lane/experiment-2021-03-03-12-31-33/models', 100000)
