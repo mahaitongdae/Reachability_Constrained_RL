@@ -137,7 +137,7 @@ def built_LMAMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=500100)
+    parser.add_argument('--max_iter', type=int, default=1000100)
     parser.add_argument('--num_workers', type=int, default=6)
     parser.add_argument('--num_learners', type=int, default=30)
     parser.add_argument('--num_buffers', type=int, default=8)
