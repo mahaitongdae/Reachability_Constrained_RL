@@ -125,6 +125,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--mu_out_activation', type=str, default='relu')
+    parser.add_argument('--mu_out_bias', type=float, default=0.5)
     parser.add_argument('--action_range', type=float, default=None)
     parser.add_argument('--mu_update_interval', type=int, default=20)
 

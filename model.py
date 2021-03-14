@@ -28,11 +28,18 @@ class MLPNet(Model):
                                         kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                                         dtype=tf.float32) for _ in range(num_hidden_layers-1)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
-        self.outputs = Dense(output_dim,
-                             activation=output_activation,
-                             kernel_initializer=tf.keras.initializers.Orthogonal(1.),
-                             bias_initializer=tf.keras.initializers.Constant(0.),
-                             dtype=tf.float32)
+        if 'output_bias' in kwargs.keys():
+            self.outputs = Dense(output_dim,
+                                 activation=output_activation,
+                                 kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                                 bias_initializer=tf.keras.initializers.Constant(kwargs.get('output_bias')),
+                                 dtype=tf.float32)
+        else:
+            self.outputs = Dense(output_dim,
+                                 activation=output_activation,
+                                 kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                                 bias_initializer=tf.keras.initializers.Constant(0.),
+                                 dtype=tf.float32)
         self.build(input_shape=(None, input_dim))
 
     def call(self, x, **kwargs):
@@ -88,7 +95,12 @@ def test_memory2():
                                  tf.keras.layers.Dense(10, activation='relu')])
     time.sleep(10000)
 
+def test_bias():
+    import numpy as np
+    mu = MLPNet(8,2,64,'elu',1,output_bias=0.5, name='bias', output_activation='relu')
+    input = np.random.random([8,8])
+    print(mu(input))
 
 
 if __name__ == '__main__':
-    test_memory2()
+    test_bias()

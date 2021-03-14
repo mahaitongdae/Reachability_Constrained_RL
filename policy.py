@@ -100,7 +100,7 @@ class Policy4Lagrange(tf.Module):
         self.con_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='con_v')
 
         self.mu = mu_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, mu_dim, name='mu', output_activation=
-                               self.args.mu_out_activation)
+                               self.args.mu_out_activation, output_bias=self.args.mu_out_bias)
 
         mu_value_lr_schedule = PolynomialDecay(*self.args.mu_lr_schedule)
         self.mu_optimizer = self.tf.optimizers.Adam(mu_value_lr_schedule, name='mu_adam_opt')
