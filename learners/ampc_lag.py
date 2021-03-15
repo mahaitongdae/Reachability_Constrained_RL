@@ -107,7 +107,7 @@ class LMAMPCLearner2(object):
 
             # mu = self.policy_with_value.compute_mu(self.tf.stop_gradient(obses))
             # mu_clip = self.tf.clip_by_value(mu, 0, self.args.mu_clip_value)
-            # rewards_sum += self.preprocessor.tf_process_rewards(rewards)
+            rewards_sum += self.preprocessor.tf_process_rewards(rewards)
             # cs_sum += self.tf.reduce_sum(self.tf.multiply(mu_clip, self.tf.stop_gradient(constraints_clip)), 1)
             # punish_terms_sum += self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_clip), constraints_clip),1)
             # constraints_sum += constraints

@@ -46,7 +46,7 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-03-14-22-48-46'
+        test_dir = 'results/toyota3lane/experiment-2021-03-15-08-44-37'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
@@ -80,12 +80,12 @@ def built_LMAMPC_parser():
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--con_dim', type=int, default=25)
+    parser.add_argument('--con_dim', type=int, default=10)
 
     # learner
     parser.add_argument('--alg_name', default='LMAMPC-v2')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[10])
     parser.add_argument('--gamma', type=float, default=1.)
     parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--init_punish_factor', type=float, default=10.)

@@ -148,8 +148,8 @@ class Evaluator(object):
         a = 1
 
     def static_region(self):
-        d = np.linspace(-10,10,100)
-        v = np.linspace(-10,10,100)
+        d = np.linspace(0,10,100)
+        v = np.linspace(0,10,100)
 
         D, V = np.meshgrid(d, v)
         flattenD = np.reshape(D, [-1,])
@@ -228,4 +228,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/experiment-2021-03-15-08-44-37/models', 1000000)
+    static_region('./results/toyota3lane/experiment-2021-03-15-17-59-08/models', 1000000)
