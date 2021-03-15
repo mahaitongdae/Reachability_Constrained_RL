@@ -23,6 +23,8 @@ logging.basicConfig(level=logging.INFO)
 class Evaluator(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
@@ -226,4 +228,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/experiment-2021-03-01-14-52-21/models', 0)
+    static_region('./results/toyota3lane/experiment-2021-03-15-08-44-37/models', 1000000)

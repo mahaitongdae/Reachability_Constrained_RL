@@ -19,7 +19,7 @@ from utils.misc import TimerStat, args2envkwargs
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MINUS = -0.1
+CONSTRAINTS_CLIP_MINUS = -100
 
 
 class LMAMPCLearner2(object):
@@ -30,6 +30,9 @@ class LMAMPCLearner2(object):
                                                   'loop_optimization': True,
                                                   'function_optimization': True,
                                                   })
+    tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
     def __init__(self, policy_cls, args):
         self.args = args
@@ -128,7 +131,7 @@ class LMAMPCLearner2(object):
 
         return obj_loss, punish_terms, cs_loss, pg_loss, constraints
 
-    # @tf.function
+    @tf.function
     def forward_and_backward(self, mb_obs, ite):
         with self.tf.GradientTape(persistent=True) as tape:
             obj_loss, punish_terms, cs_loss, pg_loss, constraints = self.model_rollout_for_update(mb_obs, ite)

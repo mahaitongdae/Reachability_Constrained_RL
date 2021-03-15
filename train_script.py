@@ -46,12 +46,12 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-02-28-15-27-38'
+        test_dir = 'results/toyota3lane/experiment-2021-03-14-22-48-46'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[20000],
+                           test_iter_list=[1000000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
@@ -60,7 +60,7 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='change envs') # mu dim 32, back to adam, add mu update interval
+    parser.add_argument('--memo', type=str, default='add mu bias') # mu dim 32, back to adam, add mu update interval
 
     # parser.add_argument('--env_version', type=str, default='1d2b82d2')
     # parser.add_argument('--train_version', type=str, default='76f7d2b4')
@@ -80,12 +80,12 @@ def built_LMAMPC_parser():
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument('--con_dim', type=int, default=10)
+    parser.add_argument('--con_dim', type=int, default=25)
 
     # learner
     parser.add_argument('--alg_name', default='LMAMPC-v2')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[10])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument('--gamma', type=float, default=1.)
     parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--init_punish_factor', type=float, default=10.)
@@ -144,8 +144,8 @@ def built_LMAMPC_parser():
     parser.add_argument('--num_buffers', type=int, default=8)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
-    parser.add_argument('--eval_interval', type=int, default=1000)
-    parser.add_argument('--save_interval', type=int, default=5000)
+    parser.add_argument('--eval_interval', type=int, default=10000)
+    parser.add_argument('--save_interval', type=int, default=50000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
