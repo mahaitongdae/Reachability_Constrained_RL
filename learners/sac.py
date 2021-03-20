@@ -236,6 +236,7 @@ class SACLearnerWithCost(object):
         self.q_gradient_timer = TimerStat()
         self.alpha_timer = TimerStat()
         self.target_timer = TimerStat()
+        self.mu_gradient_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
         self.counter = 0
@@ -341,15 +342,25 @@ class SACLearnerWithCost(object):
             all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
+            mus = self.policy_with_value.compute_mu(processed_obses, actions)
+            Qs_cost = self.policy_with_value.compute_Q_cost(processed_obses, actions)
+            violation = Qs_cost - self.args.cost_lim
+            penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mus), violation))
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
+            lagrangian = policy_loss-penalty_terms
 
             policy_entropy = -self.tf.reduce_mean(logps)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = self.tf.reduce_mean(all_Qs_min)
+            cost_value_var = self.tf.math.reduce_variance(Qs_cost)
+            cost_value_mean = self.tf.math.reduce_mean(Qs_cost)
+            violation_var = self.tf.math.reduce_variance(violation)
+            violation_mean = self.tf.math.reduce_mean(violation)
+
 
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights,)
-            return policy_loss, policy_gradient, policy_entropy, value_mean, value_var
+            return policy_loss, policy_gradient, policy_entropy, value_mean, value_var, lagrangian
 
     @tf.function
     def alpha_forward_and_backward(self, mb_obs):
@@ -394,9 +405,10 @@ class SACLearnerWithCost(object):
         mb_cost_targets = self.batch_data['batch_costs']
 
         with self.q_gradient_timer:
-            q_loss1, q_loss2, q_gradient1, q_gradient2 = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
+            q_loss1, q_loss2, q_loss_cost, q_gradient1, q_gradient2, q_gradient_cost = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
             q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
+            q_gradient_cost, q_gradient_norm_cost = self.tf.clip_by_global_norm(q_gradient_cost, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
             policy_loss, policy_gradient, policy_entropy, value_mean, value_var = self.policy_forward_and_backward(mb_obs)
