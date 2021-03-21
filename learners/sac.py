@@ -356,11 +356,29 @@ class SACLearnerWithCost(object):
             cost_value_mean = self.tf.math.reduce_mean(Qs_cost)
             violation_var = self.tf.math.reduce_variance(violation)
             violation_mean = self.tf.math.reduce_mean(violation)
+            statistic_dict = dict(policy_entropy=policy_entropy,value_var=value_var,value_mean=value_mean,
+                               cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
+                               violation_var=violation_var, violation_mean=violation_mean)
 
 
         with self.tf.name_scope('policy_gradient') as scope:
-            policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights,)
-            return policy_loss, policy_gradient, policy_entropy, value_mean, value_var, lagrangian
+            policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights,)
+            return policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict
+
+    @tf.function
+    def mu_forward_and_backward(self, mb_obs, mb_actions):
+
+        with self.tf.GradientTape() as tape:
+            processed_obses = self.preprocessor.tf_process_obses(mb_obs)
+            Qs_cost = self.policy_with_value.compute_Q_cost(processed_obses, mb_actions)
+            violation = Qs_cost - self.args.cost_lim
+            mus = self.policy_with_value.compute_mu(processed_obses, mb_actions)
+            complementary_slackness = self.tf.reduce_mean(self.tf.multiply(mus, self.tf.stop_gradient(violation)))
+            mu_loss = - complementary_slackness
+
+        with self.tf.name_scope('mu_gradient') as scope:
+            mu_gradient = tape.gradient(mu_loss, self.policy_with_value.mu.trainable_weights)
+            return mu_loss, complementary_slackness, mu_gradient
 
     @tf.function
     def alpha_forward_and_backward(self, mb_obs):
@@ -411,27 +429,34 @@ class SACLearnerWithCost(object):
             q_gradient_cost, q_gradient_norm_cost = self.tf.clip_by_global_norm(q_gradient_cost, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
-            policy_loss, policy_gradient, policy_entropy, value_mean, value_var = self.policy_forward_and_backward(mb_obs)
+            policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict = self.policy_forward_and_backward(mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
+        with self.mu_gradient_timer:
+            mu_loss, complementary_slackness, mu_gradient = self.mu_forward_and_backward(mb_obs, mb_actions)
+            mu_gradient, mu_gradient_norm = self.tf.clip_by_global_norm(mu_gradient, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,
             q_timer=self.q_gradient_timer.mean,
             pg_time=self.policy_gradient_timer.mean,
             target_time=self.target_timer.mean,
+            mu_time=self.mu_gradient_timer.mean,
             q_loss1=q_loss1.numpy(),
             q_loss2=q_loss2.numpy(),
             policy_loss=policy_loss.numpy(),
-            policy_entropy=policy_entropy.numpy(),
             mb_targets_mean=np.mean(mb_targets),
-            value_mean=value_mean.numpy(),
-            value_var=value_var.numpy(),
             q_gradient_norm1=q_gradient_norm1.numpy(),
             q_gradient_norm2=q_gradient_norm2.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
+            mu_gradient_norm=mu_gradient_norm.numpy(),
+            mu_loss=mu_loss.numpy(),
+            complementary_slackness=complementary_slackness.numpy()
         ))
+        for (k, v) in statistic_dict.items():
+            self.stats.update({k:v.numpy()})
+
         if self.args.alpha == 'auto':
             with self.alpha_timer:
                 alpha_loss, alpha, alpha_gradient = self.alpha_forward_and_backward(mb_obs)
@@ -442,9 +467,9 @@ class SACLearnerWithCost(object):
                                    alpha_gradient_norm=alpha_gradient_norm.numpy(),
                                    alpha_time=self.alpha_timer.mean))
 
-            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient + alpha_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient + mu_gradient + alpha_gradient
         else:
-            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient + mu_gradient
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
 
