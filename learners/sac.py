@@ -281,7 +281,7 @@ class SACLearnerWithCost(object):
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                   (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-        processed_cost = self.batch_data['batch_costs'].numpy() # todo
+        processed_cost = self.batch_data['batch_costs'] # todo
         target_Q_cost_of_tp1 = processed_cost + self.policy_with_value.compute_Q_cost(processed_obs_tp1, act_tp1).numpy()
         # no gamma for q cost
 
@@ -290,7 +290,7 @@ class SACLearnerWithCost(object):
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-        processed_cost = self.batch_data['batch_costs'].numpy()# todo
+        processed_cost = self.batch_data['batch_costs']# todo
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
         values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
@@ -449,6 +449,7 @@ class SACLearnerWithCost(object):
             mb_targets_mean=np.mean(mb_targets),
             q_gradient_norm1=q_gradient_norm1.numpy(),
             q_gradient_norm2=q_gradient_norm2.numpy(),
+            q_gradient_norm_cost=q_gradient_norm_cost.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
             mu_gradient_norm=mu_gradient_norm.numpy(),
             mu_loss=mu_loss.numpy(),
@@ -467,9 +468,10 @@ class SACLearnerWithCost(object):
                                    alpha_gradient_norm=alpha_gradient_norm.numpy(),
                                    alpha_time=self.alpha_timer.mean))
 
-            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient + mu_gradient + alpha_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + q_gradient_cost + policy_gradient + mu_gradient + alpha_gradient
         else:
-            gradient_tensor = q_gradient1 + q_gradient2 + policy_gradient + mu_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + q_gradient_cost + policy_gradient + mu_gradient
+            # q1_grad, q2_grad, q_cost_grad, policy_grad, mu_grad
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
 

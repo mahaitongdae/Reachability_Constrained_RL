@@ -122,7 +122,7 @@ class OffPolicyWorker(object):
         batch_data = self.sample()
         return batch_data, len(batch_data)
 
-class OffPolicyWorderWithCost(object):
+class OffPolicyWorkerWithCost(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
     tf.config.threading.set_inter_op_parallelism_threads(1)
@@ -149,6 +149,7 @@ class OffPolicyWorderWithCost(object):
         self.iteration = 0
         self.num_sample = 0
         self.sample_times = 0
+        self.num_costs = 0
         self.stats = {}
         logger.info('Worker initialized')
 
@@ -156,6 +157,8 @@ class OffPolicyWorderWithCost(object):
         self.stats.update(dict(worker_id=self.worker_id,
                                num_sample=self.num_sample,
                                # ppc_params=self.get_ppc_params()
+                               num_costs=self.num_costs,
+                               cost_rate=self.num_costs/self.num_costs
                                )
                           )
         return self.stats
@@ -190,6 +193,7 @@ class OffPolicyWorderWithCost(object):
 
     def sample(self):
         batch_data = []
+        self.sampled_costs = 0
         for _ in range(int(self.batch_size/self.num_agent)):
             processed_obs = self.preprocessor.process_obs(self.obs)
             judge_is_nan([processed_obs])
@@ -206,10 +210,11 @@ class OffPolicyWorderWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
-            cost = info.get('cost', 0)
+            cost = info[0].get('cost', 0)
+            self.sampled_costs += cost
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):
-                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost[i]))
+                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost))
             self.obs = self.env.reset()
 
         if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
@@ -217,8 +222,8 @@ class OffPolicyWorderWithCost(object):
 
         self.num_sample += len(batch_data)
         self.sample_times += 1
-        return batch_data
+        return batch_data, int(self.sampled_costs)
 
     def sample_with_count(self):
-        batch_data = self.sample()
-        return batch_data, len(batch_data)
+        batch_data, costs_count = self.sample()
+        return batch_data, len(batch_data), costs_count

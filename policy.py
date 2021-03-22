@@ -299,13 +299,13 @@ class PolicyWithMu(tf.Module):
         self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
 
         self.Q_cost = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='Qcost') # todo: if add Qc target
+                                  value_hidden_activation, 1, name='Qcost', output_bias=kwargs.get('cost_bias')) # todo: if add Qc target
         # todo: add Qc bias
         self.Qc_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Qc_adam_opt')
 
         self.mu = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, kwargs.get('mu_dim'),
-                                  name='Q_cost', output_activation='relu', ouput_bias=kwargs.get('mu_bias'))
+                                  value_hidden_activation, 1,
+                                  name='Q_cost', output_activation='relu', output_bias=kwargs.get('mu_bias'))
         mu_lr = 1e-6
         self.mu_optimizer = self.tf.keras.optimizers.Adagrad(mu_lr, name='mu_opt')
 

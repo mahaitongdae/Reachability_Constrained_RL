@@ -141,6 +141,7 @@ class OffPolicyAsyncOptimizer(object):
         self.replay_buffers = replay_buffers
         self.evaluator = evaluator
         self.num_sampled_steps = 0
+        self.num_sampled_costs = 0
         self.iteration = 0
         self.num_samples_dropped = 0
         self.num_grads_dropped = 0
@@ -181,7 +182,10 @@ class OffPolicyAsyncOptimizer(object):
         logger.info('Optimizer initialized')
 
     def get_stats(self):
+        cost_rate = self.num_sampled_costs/self.num_sampled_steps
         self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_sampled_costs=self.num_sampled_costs,
+                               cost_rate=cost_rate,
                                iteration=self.iteration,
                                optimizer_steps=self.optimizer_steps,
                                num_samples_dropped=self.num_samples_dropped,
@@ -229,9 +233,10 @@ class OffPolicyAsyncOptimizer(object):
         # sampling
         with self.timers['sampling_timer']:
             for worker, objID in self.sample_tasks.completed():
-                sample_batch, count = ray.get(objID)
+                sample_batch, count, count_costs = ray.get(objID)
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
+                self.num_sampled_costs += count_costs
                 self.steps_since_update[worker] += count
                 ppc_params = worker.get_ppc_params.remote()
                 if self.steps_since_update[worker] >= self.max_weight_sync_delay:
@@ -291,6 +296,7 @@ class SingleProcessOffPolicyOptimizer(object):
         self.replay_buffer = replay_buffer
         self.evaluator = evaluator
         self.num_sampled_steps = 0
+        self.num_sampled_costs = 0
         self.iteration = 0
         self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer", "learning_timer", "grad_apply_timer"]}
         self.stats = {}
@@ -308,8 +314,9 @@ class SingleProcessOffPolicyOptimizer(object):
         # fill buffer to replay starts
         logger.info('start filling the replay')
         while not len(self.replay_buffer) >= self.args.replay_starts:
-            sample_batch, count = self.worker.sample_with_count()
+            sample_batch, count, costs_count = self.worker.sample_with_count()
             self.num_sampled_steps += count
+            self.num_sampled_costs += costs_count
             self.replay_buffer.add_batch(sample_batch)
         logger.info('end filling the replay')
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
@@ -317,7 +324,10 @@ class SingleProcessOffPolicyOptimizer(object):
         self.get_stats()
 
     def get_stats(self):
+        cost_rate = self.num_sampled_costs/self.num_sampled_steps
         self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_sampled_costs=self.num_sampled_costs,
+                               cost_rate=cost_rate,
                                iteration=self.iteration,
                                sampling_time=self.timers['sampling_timer'].mean,
                                replay_time=self.timers["replay_timer"].mean,
@@ -332,8 +342,9 @@ class SingleProcessOffPolicyOptimizer(object):
         sampling_interval = 10
         if self.iteration % sampling_interval == 0:
             with self.timers['sampling_timer']:
-                sample_batch, count = self.worker.sample_with_count()
+                sample_batch, count, count_costs = self.worker.sample_with_count()
                 self.num_sampled_steps += count
+                self.num_sampled_costs += count_costs
                 self.replay_buffer.add_batch(sample_batch)
 
         # replay
@@ -346,7 +357,7 @@ class SingleProcessOffPolicyOptimizer(object):
             if self.args.obs_ptype == 'normalize' or \
                     self.args.rew_ptype == 'normalize':
                 self.learner.set_ppc_params(self.worker.get_ppc_params())
-            grads = self.learner.compute_gradient(samples[:5], self.replay_buffer, samples[-1], self.iteration)
+            grads = self.learner.compute_gradient(samples[:-1], self.replay_buffer, samples[-1], self.iteration)
             learner_stats = self.learner.get_stats()
             if self.args.buffer_type == 'priority':
                 info_for_buffer = self.learner.get_info_for_buffer()

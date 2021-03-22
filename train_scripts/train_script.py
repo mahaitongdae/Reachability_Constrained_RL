@@ -14,10 +14,11 @@ import logging
 import os
 
 import gym
+import safety_gym
 import ray
 
 from buffer import PrioritizedReplayBuffer, ReplayBuffer, ReplayBufferWithCost
-from evaluator import Evaluator
+from evaluator import Evaluator, EvaluatorWithCost
 from learners.ampc import AMPCLearner
 from learners.mpg_learner import MPGLearner
 from learners.nadp import NADPLearner
@@ -28,7 +29,7 @@ from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
 from policy import PolicyWithQs, PolicyWithMu
 from tester import Tester
 from trainer import Trainer
-from worker import OffPolicyWorker
+from worker import OffPolicyWorker, OffPolicyWorkerWithCost
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
-NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
+NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
 NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ('AMPC', AMPCLearner),
                         ('NADP', NADPLearner),
@@ -49,7 +50,7 @@ NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('priority', PrioritizedReplayB
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
-NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('None', None)])
+NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
 NUM_WORKER = 2
 NUM_LEARNER = 12
 NUM_BUFFER = 2
@@ -86,7 +87,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
+    parser.add_argument('--env_id', default='Safexp-PointGoal1-v0')
     parser.add_argument('--num_agent', type=int, default=8)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -98,7 +99,7 @@ def built_AMPC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
 
     # worker
-    parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument('--batch_size', type=int, default=512) #todo
     parser.add_argument('--worker_log_interval', type=int, default=5)
     parser.add_argument('--explore_sigma', type=float, default=None)
 
@@ -816,15 +817,15 @@ def built_FSAC_parser():
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
-    parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
-    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
+    parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
+    parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
-    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
+    parser.add_argument('--env_id', default='Safexp-PointGoal1-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
@@ -832,7 +833,7 @@ def built_FSAC_parser():
     parser.add_argument('--gamma', type=float, default=0.98)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=25)
+    parser.add_argument('--cost_lim', type=float, default=5)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -851,9 +852,9 @@ def built_FSAC_parser():
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
     parser.add_argument('--fixed_steps', type=int, default=200)
-    parser.add_argument('--eval_render', type=bool, default=True)
+    parser.add_argument('--eval_render', type=bool, default=False)
     num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -882,13 +883,16 @@ def built_FSAC_parser():
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--deterministic_policy', type=bool, default=False)
     parser.add_argument('--action_range', type=float, default=None)
+    parser.add_argument('--mu_bias', type=float, default=1.)
+    cost_lim = parser.parse_args().cost_lim
+    parser.add_argument('--cost_bias', type=float, default=cost_lim)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
+    parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=1.)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
@@ -907,7 +911,7 @@ def built_FSAC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = '../results/SAC/experiment-{time}'.format(time=time_now)
+    results_dir = '../results/FSAC/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -922,6 +926,8 @@ def built_parser(alg_name):
         args = built_TD3_parser()
     elif alg_name == 'SAC':
         args = built_SAC_parser()
+    elif alg_name == 'FSAC':
+        args = built_FSAC_parser()
     elif alg_name == 'MPG-v1':
         args = built_MPG_parser('MPG-v1')
     elif alg_name == 'MPG-v2':
@@ -932,8 +938,9 @@ def built_parser(alg_name):
         args = built_NADP_parser()
     elif alg_name == 'AMPC':
         args = built_AMPC_parser()
-    env = gym.make(args.env_id, **vars(args))
-    args.obs_dim, args.act_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    env = gym.make(args.env_id) #  **vars(args)
+    args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
+    args.obs_scale = [1.] * args.obs_dim
     return args
 
 def main(alg_name):
@@ -970,4 +977,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('MPG-v2')
+    main('FSAC')
