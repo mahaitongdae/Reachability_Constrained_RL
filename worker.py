@@ -10,6 +10,7 @@
 import logging
 
 import gym
+import safety_gym
 import numpy as np
 
 from preprocessor import Preprocessor
@@ -154,11 +155,12 @@ class OffPolicyWorkerWithCost(object):
         logger.info('Worker initialized')
 
     def get_stats(self):
+        cost_rate = self.num_costs / self.num_sample if self.num_sample!=0 else 0
         self.stats.update(dict(worker_id=self.worker_id,
                                num_sample=self.num_sample,
                                # ppc_params=self.get_ppc_params()
                                num_costs=self.num_costs,
-                               cost_rate=self.num_costs/self.num_costs
+                               cost_rate=cost_rate
                                )
                           )
         return self.stats
@@ -222,6 +224,7 @@ class OffPolicyWorkerWithCost(object):
 
         self.num_sample += len(batch_data)
         self.sample_times += 1
+        self.num_costs += int(self.sampled_costs)
         return batch_data, int(self.sampled_costs)
 
     def sample_with_count(self):

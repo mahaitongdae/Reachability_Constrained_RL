@@ -221,7 +221,171 @@ class OffPolicyAsyncOptimizer(object):
                 learner.set_ppc_params.remote(ppc_params)
             rb, _ = random_choice_with_index(self.replay_buffers)
             samples = ray.get(rb.replay.remote())
-            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                          self.local_worker.iteration))
+
+    def step(self):
+        assert self.update_thread.is_alive()
+        assert len(self.workers['remote_workers']) > 0
+        weights = None
+        ppc_params = None
+
+        # sampling
+        with self.timers['sampling_timer']:
+            for worker, objID in self.sample_tasks.completed():
+                sample_batch, count = ray.get(objID)
+                random.choice(self.replay_buffers).add_batch.remote(sample_batch)
+                self.num_sampled_steps += count
+                # self.num_sampled_costs += count_costs
+                self.steps_since_update[worker] += count
+                ppc_params = worker.get_ppc_params.remote()
+                if self.steps_since_update[worker] >= self.max_weight_sync_delay:
+                    # judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
+                    if weights is None:
+                        weights = ray.put(self.local_worker.get_weights())
+                    worker.set_weights.remote(weights)
+                    self.steps_since_update[worker] = 0
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+
+        # replay
+        with self.timers["replay_timer"]:
+            for rb, replay in self.replay_tasks.completed():
+                self.replay_tasks.add(rb, rb.replay.remote())
+                if self.learner_queue.full():
+                    self.num_samples_dropped += 1
+                else:
+                    samples = ray.get(replay)
+                    self.learner_queue.put((rb, samples))
+
+        # learning
+        with self.timers['learning_timer']:
+            for learner, objID in self.learn_tasks.completed():
+                grads = ray.get(objID)
+                learner_stats = ray.get(learner.get_stats.remote())
+                if self.args.buffer_type == 'priority':
+                    info_for_buffer = ray.get(learner.get_info_for_buffer.remote())
+                    info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
+                                                                   info_for_buffer['td_error'])
+                rb, samples = self.learner_queue.get(block=False)
+                if ppc_params and \
+                        (self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize'):
+                    learner.set_ppc_params.remote(ppc_params)
+                    self.local_worker.set_ppc_params(ppc_params)
+                if weights is None:
+                    weights = ray.put(self.local_worker.get_weights())
+                learner.set_weights.remote(weights)
+                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                              self.local_worker.iteration))
+                if self.update_thread.inqueue.full():
+                    self.num_grads_dropped += 1
+                self.update_thread.inqueue.put([grads, learner_stats])
+
+        self.iteration = self.update_thread.iteration
+        self.optimizer_steps += 1
+        self.get_stats()
+
+    def stop(self):
+        self.update_thread.stopped = True
+
+class OffPolicyAsyncOptimizerWithCost(object):
+    def __init__(self, workers, learners, replay_buffers, evaluator, args):
+        """Initialize an off-policy async optimizers.
+
+        Arguments:
+            workers (dict): {local worker, remote workers (list)>=0}
+            learners (list): list of remote learners, len >= 1
+            replay_buffers (list): list of replay buffers, len >= 1
+        """
+        self.args = args
+        self.workers = workers
+        self.local_worker = self.workers['local_worker']
+        self.learners = learners
+        self.learner_queue = queue.Queue(LEARNER_QUEUE_MAX_SIZE)
+        self.replay_buffers = replay_buffers
+        self.evaluator = evaluator
+        self.num_sampled_steps = 0
+        self.num_sampled_costs = 0
+        self.iteration = 0
+        self.num_samples_dropped = 0
+        self.num_grads_dropped = 0
+        self.optimizer_steps = 0
+        self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
+                                                "learning_timer"]}
+        self.stats = {}
+        self.update_thread = UpdateThread(self.workers, self.evaluator, self.args,
+                                          self.stats)
+        self.update_thread.start()
+        self.max_weight_sync_delay = self.args.max_weight_sync_delay
+        self.steps_since_update = {}
+        self.log_dir = self.args.log_dir
+        self.model_dir = self.args.model_dir
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+        self.sample_tasks = TaskPool()
+        self._set_workers()
+
+        # fill buffer to replay starts
+        logger.info('start filling the replay')
+        while not all([l >= self.args.replay_starts for l in
+                       ray.get([rb.__len__.remote() for rb in self.replay_buffers])]):
+            for worker, objID in list(self.sample_tasks.completed()):
+                sample_batch, count, count_costs = ray.get(objID)
+                random.choice(self.replay_buffers).add_batch.remote(sample_batch)
+                self.num_sampled_steps += count
+                self.num_sampled_costs += count_costs
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+        logger.info('end filling the replay')
+
+        self.replay_tasks = TaskPool()
+        self._set_buffers()
+
+        self.learn_tasks = TaskPool()
+        self._set_learners()
+        logger.info('Optimizer initialized')
+
+    def get_stats(self):
+        cost_rate = self.num_sampled_costs/self.num_sampled_steps
+        self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_sampled_costs=self.num_sampled_costs,
+                               cost_rate=cost_rate,
+                               iteration=self.iteration,
+                               optimizer_steps=self.optimizer_steps,
+                               num_samples_dropped=self.num_samples_dropped,
+                               num_grads_dropped=self.num_grads_dropped,
+                               learner_queue_size=self.learner_queue.qsize(),
+                               sampling_time=self.timers['sampling_timer'].mean,
+                               replay_time=self.timers["replay_timer"].mean,
+                               learning_time=self.timers['learning_timer'].mean
+                               )
+                          )
+        return self.stats
+
+    def _set_workers(self):
+        weights = self.local_worker.get_weights()
+        for worker in self.workers['remote_workers']:
+            worker.set_weights.remote(weights)
+            self.steps_since_update[worker] = 0
+            for _ in range(WORKER_DEPTH):
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+
+    def _set_buffers(self):
+        for rb in self.replay_buffers:
+            for _ in range(BUFFER_DEPTH):
+                self.replay_tasks.add(rb, rb.replay.remote())
+
+    def _set_learners(self):
+        weights = self.local_worker.get_weights()
+        ppc_params = self.workers['remote_workers'][0].get_ppc_params.remote()
+        for learner in self.learners:
+            learner.set_weights.remote(weights)
+            if self.args.obs_ptype == 'normalize' or \
+                    self.args.rew_ptype == 'normalize':
+                learner.set_ppc_params.remote(ppc_params)
+            rb, _ = random_choice_with_index(self.replay_buffers)
+            samples = ray.get(rb.replay.remote())
+            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
                                                                           self.local_worker.iteration))
 
     def step(self):
@@ -274,7 +438,7 @@ class OffPolicyAsyncOptimizer(object):
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
-                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
                                                                               self.local_worker.iteration))
                 if self.update_thread.inqueue.full():
                     self.num_grads_dropped += 1

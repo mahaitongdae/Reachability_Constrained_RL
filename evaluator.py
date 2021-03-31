@@ -12,6 +12,7 @@ import logging
 import os
 
 import gym
+import safety_gym
 import numpy as np
 
 from preprocessor import Preprocessor

@@ -25,7 +25,7 @@ from learners.nadp import NADPLearner
 from learners.ndpg import NDPGLearner
 from learners.sac import SACLearner, SACLearnerWithCost
 from learners.td3 import TD3Learner
-from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
+from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, OffPolicyAsyncOptimizerWithCost
 from policy import PolicyWithQs, PolicyWithMu
 from tester import Tester
 from trainer import Trainer
@@ -37,7 +37,8 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
-NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
+NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
+                       ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
 NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ('AMPC', AMPCLearner),
                         ('NADP', NADPLearner),
@@ -48,12 +49,13 @@ NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('priority', PrioritizedReplayBuffer), ('None', None),('cost', ReplayBufferWithCost)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
+                          ('OffPolicyAsyncWithCost', OffPolicyAsyncOptimizerWithCost),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 2
-NUM_LEARNER = 12
-NUM_BUFFER = 2
+NUM_WORKER = 20
+NUM_LEARNER = 5
+NUM_BUFFER = 4
 
 
 def built_AMPC_parser():
@@ -565,7 +567,7 @@ def built_TD3_parser():
                            test_iter_list=[0],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
-                           num_eval_agent=5,
+                           num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=70))
         for key, val in params.items():
@@ -581,14 +583,14 @@ def built_TD3_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
+    parser.add_argument('--env_id', default='Safexp-PointGoal0-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
     parser.add_argument('--alg_name', default='TD3')
     parser.add_argument('--gamma', type=float, default=0.98)
-    parser.add_argument('--gradient_clip_norm', type=float, default=3)
+    parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--policy_smoothing_sigma', type=float, default=0.2)
     parser.add_argument('--policy_smoothing_clip', type=float, default=0.5)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
@@ -612,7 +614,7 @@ def built_TD3_parser():
     parser.add_argument('--fixed_steps', type=int, default=200)
     parser.add_argument('--eval_render', type=bool, default=True)
     num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -643,7 +645,7 @@ def built_TD3_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=1.)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
@@ -655,8 +657,8 @@ def built_TD3_parser():
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=25)
-    parser.add_argument('--eval_interval', type=int, default=3000)
-    parser.add_argument('--save_interval', type=int, default=3000)
+    parser.add_argument('--eval_interval', type=int, default=5000)
+    parser.add_argument('--save_interval', type=int, default=5000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
@@ -678,17 +680,18 @@ def built_SAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/SAC/experiment-2020-09-22-14-46-31'
+        test_dir = '../results/SAC/experiment-2021-03-24-12-54-58'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[100000],
+                           test_iter_list=[200000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=50,
-                           num_eval_agent=50,
+                           num_eval_episode=5,
+                           num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=200))
+                           fixed_steps=1000,
+                           eval_render=True))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -702,8 +705,8 @@ def built_SAC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='PathTracking-v0')
-    parser.add_argument('--num_agent', type=int, default=8)
+    parser.add_argument('--env_id', default='Safexp-PointGoal0-v0')
+    parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
@@ -720,18 +723,18 @@ def built_SAC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_batch_size', type=int, default=1024)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=5)
+    parser.add_argument('--num_eval_episode', type=int, default=1)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=1000)
     parser.add_argument('--eval_render', type=bool, default=True)
     num_eval_episode = parser.parse_args().num_eval_episode
-    parser.add_argument('--num_eval_agent', type=int, default=num_eval_episode)
+    parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # policy and model
     parser.add_argument('--obs_dim', type=int, default=None)
@@ -745,9 +748,9 @@ def built_SAC_parser():
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
-    parser.add_argument('--policy_out_activation', type=str, default='linear')
+    parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument('--alpha', default=0.03)  # 'auto' 0.02
+    parser.add_argument('--alpha', default=0.08)  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)
@@ -765,12 +768,12 @@ def built_SAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=[1., 1., 2., 1., 2.4, 1 / 1200] + [1.] * num_future_data)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.01)
+    parser.add_argument('--rew_scale', type=float, default=1.)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=100000)
+    parser.add_argument('--max_iter', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
@@ -778,7 +781,7 @@ def built_SAC_parser():
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=25)
     parser.add_argument('--eval_interval', type=int, default=3000)
-    parser.add_argument('--save_interval', type=int, default=3000)
+    parser.add_argument('--save_interval', type=int, default=5000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
@@ -800,27 +803,30 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/SAC/experiment-2020-09-22-14-46-31'
+        test_dir = '../results/FSAC/experiment-2021-03-22-18-36-05-success'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[100000],
+                           test_iter_list=[200000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=50,
-                           num_eval_agent=50,
+                           num_eval_episode=3,
+                           num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=200))
+                           fixed_steps=1000,
+                           eval_render=True))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
+
+    parser.add_argument('--motivation', type=str, default='decrease alpha, increase gamma and cost')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
-    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy')
+    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
@@ -830,10 +836,10 @@ def built_FSAC_parser():
 
     # learner
     parser.add_argument('--alg_name', default='FSAC')
-    parser.add_argument('--gamma', type=float, default=0.98)
+    parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=3)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=5)
+    parser.add_argument('--cost_lim', type=float, default=3)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -843,7 +849,7 @@ def built_FSAC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_batch_size', type=int, default=1024)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -851,7 +857,7 @@ def built_FSAC_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=200)
+    parser.add_argument('--fixed_steps', type=int, default=1000)
     parser.add_argument('--eval_render', type=bool, default=False)
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
@@ -871,7 +877,7 @@ def built_FSAC_parser():
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
     parser.add_argument('--mu_lr_schedule', type=list, default=[1e-5, 100000, 1e-6])
-    parser.add_argument('--alpha', default=0.03)  # 'auto' 0.02
+    parser.add_argument('--alpha', default=0.01)  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)
@@ -883,9 +889,9 @@ def built_FSAC_parser():
     parser.add_argument('--delay_update', type=int, default=1)
     parser.add_argument('--deterministic_policy', type=bool, default=False)
     parser.add_argument('--action_range', type=float, default=None)
-    parser.add_argument('--mu_bias', type=float, default=1.)
+    parser.add_argument('--mu_bias', type=float, default=0.1)
     cost_lim = parser.parse_args().cost_lim
-    parser.add_argument('--cost_bias', type=float, default=cost_lim)
+    parser.add_argument('--cost_bias', type=float, default=0.1)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
@@ -897,7 +903,7 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=100000)
+    parser.add_argument('--max_iter', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
@@ -905,7 +911,7 @@ def built_FSAC_parser():
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=25)
     parser.add_argument('--eval_interval', type=int, default=3000)
-    parser.add_argument('--save_interval', type=int, default=3000)
+    parser.add_argument('--save_interval', type=int, default=10000)
     parser.add_argument('--log_interval', type=int, default=100)
     parser.add_argument('--dual_ascent_interval', type=int, default=20)
 
@@ -977,4 +983,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('FSAC')
+    main('SAC')
