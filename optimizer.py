@@ -15,6 +15,7 @@ import threading
 
 import ray
 import tensorflow as tf
+import numpy as np
 
 from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
@@ -100,11 +101,17 @@ class UpdateThread(threading.Thread):
             with self.writer.as_default():
                 for key, val in self.learner_stats.items():
                     if not isinstance(val, list):
-                        tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val, step=self.iteration)
+                        if not isinstance(val, np.ndarray):
+                            tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val, step=self.iteration)
+                        else:
+                            tf.summary.histogram('optimizer/learner_stats/distribution/{}'.format(key), val, step=self.iteration)
                     else:
                         assert isinstance(val, list)
                         for i, v in enumerate(val):
-                            tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
+                            if not isinstance(val, np.ndarray):
+                                tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
+                            else:
+                                tf.summary.histogram('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
                 for key, val in self.optimizer_stats.items():
                     tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                 self.writer.flush()
@@ -335,7 +342,7 @@ class OffPolicyAsyncOptimizerWithCost(object):
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
                 self.num_sampled_costs += count_costs
-                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+                self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
         logger.info('end filling the replay')
 
         self.replay_tasks = TaskPool()
@@ -368,7 +375,7 @@ class OffPolicyAsyncOptimizerWithCost(object):
             worker.set_weights.remote(weights)
             self.steps_since_update[worker] = 0
             for _ in range(WORKER_DEPTH):
-                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+                self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
 
     def _set_buffers(self):
         for rb in self.replay_buffers:
@@ -430,6 +437,10 @@ class OffPolicyAsyncOptimizerWithCost(object):
                     info_for_buffer = ray.get(learner.get_info_for_buffer.remote())
                     info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
                                                                    info_for_buffer['td_error'])
+                if self.args.buffer_type == 'priority_cost':
+                    info_for_buffer = ray.get(learner.get_info_for_buffer.remote())
+                    info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
+                                                                   info_for_buffer['cost_td_error'])
                 rb, samples = self.learner_queue.get(block=False)
                 if ppc_params and \
                         (self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize'):
@@ -526,6 +537,11 @@ class SingleProcessOffPolicyOptimizer(object):
             if self.args.buffer_type == 'priority':
                 info_for_buffer = self.learner.get_info_for_buffer()
                 info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'], info_for_buffer['td_error'])
+            if self.args.buffer_type == 'priority_cost':
+                info_for_buffer = self.learner.get_info_for_buffer()
+                info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'],
+                                                               info_for_buffer[
+                                                                   'cost_td_error'])
 
         # apply grad
         with self.timers['grad_apply_timer']:

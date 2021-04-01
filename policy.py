@@ -299,15 +299,15 @@ class PolicyWithMu(tf.Module):
         self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
 
         self.QC1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                   value_hidden_activation, 1, name='QC', output_activation='softplus', output_bias=kwargs.get('cost_bias')) # todo: if add Qc target
+                                   value_hidden_activation, 1, name='QC1', output_activation='softplus')
         self.QC1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                          value_hidden_activation, 1, name='QC_target', output_activation='softplus')  # todo: if add Qc target
+                                          value_hidden_activation, 1, name='QC1_target', output_activation='softplus')
 
         self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='QC', output_activation='softplus',
-                                  output_bias=kwargs.get('cost_bias'))  # todo: if add Qc target
+                                  value_hidden_activation, 1, name='QC2', output_activation='softplus')
+        # output_bias=kwargs.get('cost_bias')
         self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='QC_target', output_activation='softplus')
+                                         value_hidden_activation, 1, name='QC2_target', output_activation='softplus')
 
 
         self.QC1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='QC1_adam_opt')
@@ -315,9 +315,9 @@ class PolicyWithMu(tf.Module):
 
         self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                    value_hidden_activation, 1,
-                                   name='Lam', output_activation='softplus', output_bias=kwargs.get('mu_bias')) #  todo: + act_dim
+                                   name='Lam', output_activation='softplus') #  todo: + act_dim , output_bias=kwargs.get('mu_bias')
         mu_lr = PolynomialDecay(*mu_lr_schedule)
-        self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(mu_lr, name='mu_opt')
+        self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(mu_lr, name='lam_opt')
 
         if self.policy_only:
             self.target_models = ()

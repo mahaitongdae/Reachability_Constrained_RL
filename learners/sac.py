@@ -266,6 +266,7 @@ class SACLearnerWithCost(object):
             self.info_for_buffer.update(dict(td_error=td_error, cost_td_error=cost_td_error,
                                              rb=rb,
                                              indexes=indexes))
+            self.stats.update(dict(qc_td_error=cost_td_error))
 
     def compute_clipped_double_q_target(self):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
@@ -287,7 +288,6 @@ class SACLearnerWithCost(object):
         processed_cost = self.batch_data['batch_costs']
         # target_QC_of_tp1 = processed_cost + self.args.cost_gamma * self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
         clipped_double_qc_target = processed_cost + self.args.gamma * (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
-        # no gamma for q cost
 
         return clipped_double_q_target, clipped_double_qc_target
 
@@ -304,7 +304,7 @@ class SACLearnerWithCost(object):
 
         cost_values_t = self.policy_with_value.compute_QC1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_Q_cost_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, target_act_tp1).numpy()
-        cost_td_error = processed_cost + self.args.gamma * target_Q_cost_of_tp1 - cost_values_t
+        cost_td_error = np.abs(processed_cost + self.args.gamma * target_Q_cost_of_tp1 - cost_values_t)
         return td_error, cost_td_error
 
     def get_weights(self):
@@ -336,9 +336,11 @@ class SACLearnerWithCost(object):
             q_gradient1 = tape.gradient(q_loss1, self.policy_with_value.Q1.trainable_weights)
             q_gradient2 = tape.gradient(q_loss2, self.policy_with_value.Q2.trainable_weights)
             qc_gradient1 = tape.gradient(qc_loss1, self.policy_with_value.QC1.trainable_weights)
-            qc_gradient2 = tape.gradient(qc_loss1, self.policy_with_value.QC2.trainable_weights)
+            qc_gradient2 = tape.gradient(qc_loss2, self.policy_with_value.QC2.trainable_weights)
 
-        return q_loss1, q_loss2, qc_loss1, qc_loss2, q_gradient1, q_gradient2, qc_gradient1, qc_gradient2
+        distributions_stats = dict(qc_vals=qc_pred1)
+
+        return q_loss1, q_loss2, qc_loss1, qc_loss2, q_gradient1, q_gradient2, qc_gradient1, qc_gradient2, distributions_stats
 
     @tf.function
     def policy_forward_and_backward(self, mb_obs):
@@ -385,12 +387,14 @@ class SACLearnerWithCost(object):
             all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
             violation = all_QCs_max - self.args.cost_lim
             lams = self.policy_with_value.compute_lam(processed_obses)
-            complementary_slackness = self.tf.reduce_sum(self.tf.multiply(lams, self.tf.stop_gradient(violation))) # todo: sum or mean
+            complementary_slackness = self.tf.reduce_mean(self.tf.multiply(lams, self.tf.stop_gradient(violation))) # todo: sum or mean
             lam_loss = - complementary_slackness
 
+        lam_stats = dict(lam=lams,)
         with self.tf.name_scope('mu_gradient') as scope:
             lam_gradient = tape.gradient(lam_loss, self.policy_with_value.Lam.trainable_weights)
-            return lam_loss, complementary_slackness, lam_gradient, lams
+
+            return lam_loss, complementary_slackness, lam_gradient, lams, lam_stats
 
     @tf.function
     def alpha_forward_and_backward(self, mb_obs):
@@ -432,22 +436,24 @@ class SACLearnerWithCost(object):
         mb_obs = self.batch_data['batch_obs']
         mb_actions = self.batch_data['batch_actions']
         mb_targets = self.batch_data['batch_targets']
-        mb_cost_targets = self.batch_data['batch_costs']
+        mb_cost_targets = self.batch_data['batch_cost_targets']
 
         with self.q_gradient_timer:
-            q_loss1, q_loss2, qc_loss1, qc_loss2, q_gradient1, q_gradient2, qc_gradient1, qc_gradient2 = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
+            q_loss1, q_loss2, qc_loss1, qc_loss2, \
+            q_gradient1, q_gradient2, qc_gradient1, qc_gradient2, \
+            dist_stats = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
             q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
             qc_gradient1, qc_gradient_norm1 = self.tf.clip_by_global_norm(qc_gradient1, self.args.gradient_clip_norm)
             qc_gradient2, qc_gradient_norm2 = self.tf.clip_by_global_norm(qc_gradient2, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
-            policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict = self.policy_forward_and_backward(mb_obs)
+            policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
         with self.mu_gradient_timer:
-            lam_loss, complementary_slackness, lam_gradient, lams = self.lam_forward_and_backward(mb_obs, mb_actions)
+            lam_loss, complementary_slackness, lam_gradient, lams, lam_stats = self.lam_forward_and_backward(mb_obs, mb_actions)
             lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
@@ -459,10 +465,12 @@ class SACLearnerWithCost(object):
             q_loss1=q_loss1.numpy(),
             q_loss2=q_loss2.numpy(),
             qc_loss1=qc_loss1.numpy(),
+            qc_loss2=qc_loss2.numpy(),
             policy_loss=policy_loss.numpy(),
             mb_targets_mean=np.mean(mb_targets),
             mb_cost_targets_mean=np.mean(mb_cost_targets),
             mb_cost_targets_max=np.max(mb_cost_targets),
+            qc_targets=mb_cost_targets,
             q_gradient_norm1=q_gradient_norm1.numpy(),
             q_gradient_norm2=q_gradient_norm2.numpy(),
             qc_gradient_norm1=qc_gradient_norm1.numpy(),
@@ -474,8 +482,16 @@ class SACLearnerWithCost(object):
             max_multiplier=np.max(lams.numpy()),
             mean_multiplier=np.mean(lams.numpy())
         ))
-        for (k, v) in statistic_dict.items():
+
+        # update distributions
+        for (k, v) in policy_stats.items():
             self.stats.update({k:v.numpy()})
+
+        for (k, v) in dist_stats.items():
+            self.stats.update({k: v.numpy()})
+
+        for (k, v) in lam_stats.items():
+            self.stats.update({k: v.numpy()})
 
         if self.args.alpha == 'auto':
             with self.alpha_timer:
