@@ -255,7 +255,7 @@ class PolicyWithMu(tf.Module):
 
     def __init__(self, obs_dim, act_dim,
                  value_model_cls, value_num_hidden_layers, value_num_hidden_units,
-                 value_hidden_activation, value_lr_schedule,
+                 value_hidden_activation, value_lr_schedule, cost_value_lr_schedule,
                  policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
                  policy_out_activation, policy_lr_schedule,
                  alpha, alpha_lr_schedule,
@@ -298,6 +298,7 @@ class PolicyWithMu(tf.Module):
         self.Q2_target.set_weights(self.Q2.get_weights())
         self.Q2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='Q2_adam_opt')
 
+        cost_value_lr = PolynomialDecay(*cost_value_lr_schedule)
         self.QC1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
                                    value_hidden_activation, 1, name='QC1', output_activation='softplus')
         self.QC1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
@@ -311,8 +312,8 @@ class PolicyWithMu(tf.Module):
         self.QC2_target.set_weights(self.QC2.get_weights())
 
 
-        self.QC1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='QC1_adam_opt')
-        self.QC2_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='QC2_adam_opt')
+        self.QC1_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC1_adam_opt')
+        self.QC2_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC2_adam_opt')
 
         self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                    value_hidden_activation, 1,

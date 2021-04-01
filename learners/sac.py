@@ -510,6 +510,14 @@ class SACLearnerWithCost(object):
             # q1_grad, q2_grad, q_cost_grad, policy_grad, mu_grad
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
+    def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10): # todo: add to hypers
+        sequential_grads = []
+        for i in range(size):
+            grads = self.compute_gradient(batch_data, rb, indexes, iteration + i)
+            self.policy_with_value.apply_gradient(grads)
+            sequential_grads.append(grads)
+        return sequential_grads
+
 
 if __name__ == '__main__':
     pass

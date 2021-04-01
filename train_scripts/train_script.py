@@ -58,7 +58,7 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
 NUM_WORKER = 20
-NUM_LEARNER = 5
+NUM_LEARNER = 6
 NUM_BUFFER = 4
 
 
@@ -874,6 +874,7 @@ def built_FSAC_parser():
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-5])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[5e-4, 100000, 8e-5])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
