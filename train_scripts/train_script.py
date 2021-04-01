@@ -829,7 +829,7 @@ def built_FSAC_parser():
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
-    parser.add_argument('--buffer_type', type=str, default='priority_cost')
+    parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
 
@@ -842,7 +842,7 @@ def built_FSAC_parser():
     parser.add_argument('--alg_name', default='FSAC')
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
-    parser.add_argument('--num_batch_reuse', type=int, default=1)
+    parser.add_argument('--num_batch_reuse', type=int, default=100)
     parser.add_argument('--cost_lim', type=float, default=3.0)
 
     # worker
@@ -911,9 +911,9 @@ def built_FSAC_parser():
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
-    parser.add_argument('--max_weight_sync_delay', type=int, default=300)
+    parser.add_argument('--max_weight_sync_delay', type=int, default=10)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=25)
+    parser.add_argument('--grads_max_reuse', type=int, default=10)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=10000)
     parser.add_argument('--log_interval', type=int, default=100)

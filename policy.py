@@ -302,12 +302,13 @@ class PolicyWithMu(tf.Module):
                                    value_hidden_activation, 1, name='QC1', output_activation='softplus')
         self.QC1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
                                           value_hidden_activation, 1, name='QC1_target', output_activation='softplus')
-
+        self.QC1_target.set_weights(self.QC1.get_weights())
         self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
                                   value_hidden_activation, 1, name='QC2', output_activation='softplus')
         # output_bias=kwargs.get('cost_bias')
         self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
                                          value_hidden_activation, 1, name='QC2_target', output_activation='softplus')
+        self.QC2_target.set_weights(self.QC2.get_weights())
 
 
         self.QC1_optimizer = self.tf.keras.optimizers.Adam(value_lr, name='QC1_adam_opt')
@@ -388,7 +389,7 @@ class PolicyWithMu(tf.Module):
                     grads[2*q_weights_len:3*q_weights_len], \
                     grads[3*q_weights_len:4*q_weights_len], \
                     grads[4*q_weights_len:4*q_weights_len+policy_weights_len], \
-                    grads[4*q_weights_len+policy_weights_len:]
+                    grads[4*q_weights_len+policy_weights_len: 4*q_weights_len+policy_weights_len+mu_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
                 self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))

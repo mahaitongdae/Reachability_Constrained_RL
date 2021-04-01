@@ -329,6 +329,7 @@ class SACLearnerWithCost(object):
 
                 qc_pred1 = self.policy_with_value.compute_QC1(processed_mb_obs, mb_actions)
                 qc_pred2 = self.policy_with_value.compute_QC2(processed_mb_obs, mb_actions)
+
                 qc_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred1 - mb_cost_targets))
                 qc_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred2 - mb_cost_targets))
 
