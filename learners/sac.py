@@ -359,8 +359,10 @@ class SACLearnerWithCost(object):
             # violation = all_QCs_max - self.args.cost_lim
             penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
-            lagrangian = policy_loss + penalty_terms # todo: + or -
-
+            if self.args.constrained:
+                lagrangian = policy_loss + penalty_terms # todo: + or -
+            else:
+                lagrangian = policy_loss
             policy_entropy = -self.tf.reduce_mean(logps)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = self.tf.reduce_mean(all_Qs_min)
@@ -453,6 +455,7 @@ class SACLearnerWithCost(object):
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
+
         with self.mu_gradient_timer:
             lam_loss, complementary_slackness, lam_gradient, lams, lam_stats = self.lam_forward_and_backward(mb_obs, mb_actions)
             lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.gradient_clip_norm)

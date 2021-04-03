@@ -271,6 +271,7 @@ class PolicyWithMu(tf.Module):
         self.action_range = action_range
         self.alpha = alpha
         self.dual_ascent_interval = dual_ascent_interval
+        self.constrained = kwargs.get('constrained')
 
         value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
                                             NAME2MODELCLS[policy_model_cls]
@@ -395,7 +396,7 @@ class PolicyWithMu(tf.Module):
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
                 self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
                 self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
-                if iteration % self.dual_ascent_interval == 0:
+                if iteration % self.dual_ascent_interval == 0 and self.constrained:
                     self.Lam_optimizer.apply_gradients(zip(mu_grad, self.Lam.trainable_weights))
                 if iteration % self.delay_update == 0:
                     self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
