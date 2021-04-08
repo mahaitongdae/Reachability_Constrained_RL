@@ -845,6 +845,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--num_batch_reuse', type=int, default=30)
     parser.add_argument('--cost_lim', type=float, default=10.0)
+    parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
 
     # worker
     parser.add_argument('--batch_size', type=int, default=1024)

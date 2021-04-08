@@ -55,6 +55,11 @@ class AlphaModel(Model):
         super(AlphaModel, self).__init__(name=kwargs['name'])
         self.log_alpha = tf.Variable(0., dtype=tf.float32)
 
+class LamModel(Model):
+    def __init__(self, **kwargs):
+        super(LamModel, self).__init__(name=kwargs['name'])
+        self.lam = tf.exp(tf.Variable(0., dtype=tf.float32))
+
 
 def test_alpha():
     import numpy as np

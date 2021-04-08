@@ -236,7 +236,7 @@ class SACLearnerWithCost(object):
         self.q_gradient_timer = TimerStat()
         self.alpha_timer = TimerStat()
         self.target_timer = TimerStat()
-        self.mu_gradient_timer = TimerStat()
+        self.lam_gradient_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
         self.counter = 0
@@ -355,6 +355,7 @@ class SACLearnerWithCost(object):
             lams = self.policy_with_value.compute_lam(processed_obses)
             QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
             QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
+
             all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
             # violation = all_QCs_max - self.args.cost_lim
             penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
@@ -381,7 +382,7 @@ class SACLearnerWithCost(object):
 
     @tf.function
     def lam_forward_and_backward(self, mb_obs, mb_actions):
-
+        assert self.args.constrained
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             # Qs_cost = self.policy_with_value.compute_Q_cost(processed_obses, mb_actions)
@@ -389,12 +390,20 @@ class SACLearnerWithCost(object):
             QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
             all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
             violation = all_QCs_max - self.args.cost_lim
-            lams = self.policy_with_value.compute_lam(processed_obses)
-            complementary_slackness = self.tf.reduce_mean(self.tf.multiply(lams, self.tf.stop_gradient(violation))) # todo: sum or mean
+            violation_count = self.tf.where(QC1 - self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
+            violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
+            if self.args.mlp_lam:
+                lams = self.policy_with_value.compute_lam(processed_obses)
+                complementary_slackness = self.tf.reduce_mean(
+                    self.tf.multiply(lams, self.tf.stop_gradient(violation)))
+
+            else:
+                lam = self.policy_with_value.log_lam
+                complementary_slackness = self.tf.reduce_mean(lam * self.tf.stop_gradient(violation))
             lam_loss = - complementary_slackness
 
-        lam_stats = dict(lam=lams,)
-        with self.tf.name_scope('mu_gradient') as scope:
+        lam_stats = dict(lam=lams, violation_rate=violation_rate)
+        with self.tf.name_scope('lam_gradient') as scope:
             lam_gradient = tape.gradient(lam_loss, self.policy_with_value.Lam.trainable_weights)
 
             return lam_loss, complementary_slackness, lam_gradient, lams, lam_stats
@@ -456,7 +465,7 @@ class SACLearnerWithCost(object):
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
 
-        with self.mu_gradient_timer:
+        with self.lam_gradient_timer:
             lam_loss, complementary_slackness, lam_gradient, lams, lam_stats = self.lam_forward_and_backward(mb_obs, mb_actions)
             lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.gradient_clip_norm)
 
@@ -465,7 +474,7 @@ class SACLearnerWithCost(object):
             q_timer=self.q_gradient_timer.mean,
             pg_time=self.policy_gradient_timer.mean,
             target_time=self.target_timer.mean,
-            mu_time=self.mu_gradient_timer.mean,
+            lam_time=self.lam_gradient_timer.mean,
             q_loss1=q_loss1.numpy(),
             q_loss2=q_loss2.numpy(),
             qc_loss1=qc_loss1.numpy(),
@@ -487,9 +496,9 @@ class SACLearnerWithCost(object):
             mean_multiplier=np.mean(lams.numpy())
         ))
 
-        # update distributions
+        # update statistics
         for (k, v) in policy_stats.items():
-            self.stats.update({k:v.numpy()})
+            self.stats.update({k: v.numpy()})
 
         for (k, v) in dist_stats.items():
             self.stats.update({k: v.numpy()})
@@ -510,16 +519,15 @@ class SACLearnerWithCost(object):
             gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient + alpha_gradient
         else:
             gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient
-            # q1_grad, q2_grad, q_cost_grad, policy_grad, mu_grad
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
-    def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10): # todo: add to hypers
-        sequential_grads = []
-        for i in range(size):
-            grads = self.compute_gradient(batch_data, rb, indexes, iteration + i)
-            self.policy_with_value.apply_gradient(grads)
-            sequential_grads.append(grads)
-        return sequential_grads
+    # def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10):
+    #     sequential_grads = []
+    #     for i in range(size):
+    #         grads = self.compute_gradient(batch_data, rb, indexes, iteration + i)
+    #         self.policy_with_value.apply_gradient(grads)
+    #         sequential_grads.append(grads)
+    #     return sequential_grads
 
 
 if __name__ == '__main__':
