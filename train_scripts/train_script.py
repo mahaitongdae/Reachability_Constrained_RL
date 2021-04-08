@@ -57,9 +57,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 23
-NUM_LEARNER = 5
-NUM_BUFFER = 2
+NUM_WORKER = 20
+NUM_LEARNER = 10
+NUM_BUFFER = 10
 
 
 def built_AMPC_parser():
@@ -803,18 +803,18 @@ def built_SAC_parser():
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--mode', type=str, default='testing') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-02-17-38-44'
+        test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[500000],
+                           test_iter_list=[2300000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=3,
+                           num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=1000,
@@ -853,7 +853,7 @@ def built_FSAC_parser():
 
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
-    parser.add_argument('--replay_starts', type=int, default=4000)
+    parser.add_argument('--replay_starts', type=int, default=20000)
     parser.add_argument('--replay_batch_size', type=int, default=2048)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
@@ -893,7 +893,7 @@ def built_FSAC_parser():
     parser.add_argument('--target', type=bool, default=True)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--delay_update', type=int, default=4)
-    parser.add_argument('--dual_ascent_interval', type=int, default=20)
+    parser.add_argument('--dual_ascent_interval', type=int, default=12)
     parser.add_argument('--deterministic_policy', type=bool, default=False)
     parser.add_argument('--action_range', type=float, default=1.0)
     parser.add_argument('--mu_bias', type=float, default=0.0)
@@ -910,13 +910,13 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=2000000)
+    parser.add_argument('--max_iter', type=int, default=3000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=10)
+    parser.add_argument('--grads_max_reuse', type=int, default=25)
     parser.add_argument('--eval_interval', type=int, default=3000)
     parser.add_argument('--save_interval', type=int, default=10000)
     parser.add_argument('--log_interval', type=int, default=100)
@@ -959,7 +959,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=5120*1024*1024)
+        ray.init(object_store_memory=32768*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)

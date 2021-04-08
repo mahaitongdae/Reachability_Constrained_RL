@@ -304,7 +304,7 @@ class SACLearnerWithCost(object):
 
         cost_values_t = self.policy_with_value.compute_QC1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_Q_cost_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, target_act_tp1).numpy()
-        cost_td_error = np.abs(processed_cost + self.args.gamma * target_Q_cost_of_tp1 - cost_values_t)
+        cost_td_error = np.abs(processed_cost + self.args.gamma * target_Q_cost_of_tp1 - cost_values_t) + 1e-8
         return td_error, cost_td_error
 
     def get_weights(self):
