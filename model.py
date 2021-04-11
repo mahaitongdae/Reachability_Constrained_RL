@@ -58,7 +58,7 @@ class AlphaModel(Model):
 class LamModel(Model):
     def __init__(self, **kwargs):
         super(LamModel, self).__init__(name=kwargs['name'])
-        self.lam = tf.exp(tf.Variable(0., dtype=tf.float32))
+        self.lam = tf.nn.softplus(tf.Variable(0., dtype=tf.float32))
 
 
 def test_alpha():

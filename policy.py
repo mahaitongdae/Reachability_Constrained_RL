@@ -302,15 +302,15 @@ class PolicyWithMu(tf.Module):
 
         cost_value_lr = PolynomialDecay(*cost_value_lr_schedule)
         self.QC1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                   value_hidden_activation, 1, name='QC1', output_activation='softplus')
+                                   value_hidden_activation, 1, name='QC1', output_activation='relu')
         self.QC1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                          value_hidden_activation, 1, name='QC1_target', output_activation='softplus')
+                                          value_hidden_activation, 1, name='QC1_target', output_activation='relu')
         self.QC1_target.set_weights(self.QC1.get_weights())
         self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='QC2', output_activation='softplus')
+                                  value_hidden_activation, 1, name='QC2', output_activation='relu')
         # output_bias=kwargs.get('cost_bias')
         self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='QC2_target', output_activation='softplus')
+                                         value_hidden_activation, 1, name='QC2_target', output_activation='relu')
         self.QC2_target.set_weights(self.QC2.get_weights())
 
 
@@ -321,7 +321,7 @@ class PolicyWithMu(tf.Module):
         if self.mlp_lam:
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='softplus') #  todo: + act_dim , output_bias=kwargs.get('mu_bias')
+                                       name='Lam', output_activation='relu') #  todo: + act_dim , output_bias=kwargs.get('mu_bias')
             self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
         else:
             self.Lam = LamModel(name='Lam')
@@ -338,9 +338,9 @@ class PolicyWithMu(tf.Module):
                 assert self.target
                 self.target_models = (self.Q1_target, self.Q2_target, self.QC1_target, self.QC2_target,
                                       self.policy_target,)
-                self.models = (self.Q1, self.Q2, self.QC1, self.QC2, self.policy,)
+                self.models = (self.Q1, self.Q2, self.QC1, self.QC2, self.policy,self.Lam,)
                 self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.QC1_optimizer, self.QC2_optimizer,
-                                   self.policy_optimizer,)
+                                   self.policy_optimizer,self.Lam_optimizer,)
             elif self.target:
                 self.target_models = (self.Q1_target, self.policy_target,)
                 self.models = (self.Q1, self.policy,)
@@ -350,9 +350,6 @@ class PolicyWithMu(tf.Module):
                 self.models = (self.Q1, self.policy,)
                 self.optimizers = (self.Q1_optimizer, self.policy_optimizer,)
 
-        if self.constrained:
-            self.models += (self.Lam)
-            self.optimizers += (self.Lam_optimizer)
 
         if self.alpha == 'auto':
             self.alpha_model = AlphaModel(name='alpha')
@@ -404,8 +401,9 @@ class PolicyWithMu(tf.Module):
                     grads[4*q_weights_len:4*q_weights_len+policy_weights_len],
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
-                self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
-                self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
+                if iteration > 0:  # todo: add to hyper
+                    self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
+                    self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
                 if iteration % self.dual_ascent_interval == 0 and self.constrained:
                     lam_grad = \
                         grads[
