@@ -227,6 +227,8 @@ class SACLearnerWithCost(object):
 
     def __init__(self, policy_cls, args):
         self.args = args
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.batch_size = self.args.replay_batch_size
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
@@ -242,6 +244,11 @@ class SACLearnerWithCost(object):
         self.info_for_buffer = {}
         self.counter = 0
         self.num_batch_reuse = self.args.num_batch_reuse
+
+    def set_seed(self, seed):
+        self.tf.random.set_seed(seed)
+        np.random.seed(seed)
+        # self.env.seed(seed)
 
     def get_stats(self):
         return self.stats
