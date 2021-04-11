@@ -330,8 +330,12 @@ class SACLearnerWithCost(object):
                 qc_pred1 = self.policy_with_value.compute_QC1(processed_mb_obs, mb_actions)
                 qc_pred2 = self.policy_with_value.compute_QC2(processed_mb_obs, mb_actions)
 
-                qc_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred1 - mb_cost_targets))
-                qc_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred2 - mb_cost_targets))
+                masked_qc_error1 = self.tf.multiply(self.batch_data['batch_costs'],
+                                                    self.tf.square(qc_pred1 - mb_cost_targets))
+                qc_loss1 = 0.5 * self.tf.reduce_mean(masked_qc_error1)
+                masked_qc_error2 = self.tf.multiply(self.batch_data['batch_costs'],
+                                                    self.tf.square(qc_pred2 - mb_cost_targets))
+                qc_loss2 = 0.5 * self.tf.reduce_mean(masked_qc_error2)
 
         with self.tf.name_scope('q_gradient') as scope:
             q_gradient1 = tape.gradient(q_loss1, self.policy_with_value.Q1.trainable_weights)

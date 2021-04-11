@@ -34,6 +34,8 @@ class OffPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.num_agent = self.args.num_agent
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
@@ -52,6 +54,11 @@ class OffPolicyWorker(object):
         self.sample_times = 0
         self.stats = {}
         logger.info('Worker initialized')
+
+    def set_seed(self, seed):
+        self.tf.random.set_seed(seed)
+        np.random.seed(seed)
+        self.env.seed(seed)
 
     def get_stats(self):
         self.stats.update(dict(worker_id=self.worker_id,

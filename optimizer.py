@@ -304,6 +304,8 @@ class OffPolicyAsyncOptimizerWithCost(object):
             replay_buffers (list): list of replay buffers, len >= 1
         """
         self.args = args
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.workers = workers
         self.local_worker = self.workers['local_worker']
         self.learners = learners
@@ -351,6 +353,11 @@ class OffPolicyAsyncOptimizerWithCost(object):
         self.learn_tasks = TaskPool()
         self._set_learners()
         logger.info('Optimizer initialized')
+
+    def set_seed(self, seed):
+        tf.random.set_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
 
     def get_stats(self):
         cost_rate = self.num_sampled_costs/self.num_sampled_steps

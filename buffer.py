@@ -101,6 +101,8 @@ class ReplayBufferWithCost(object):
           overflows the old memories are dropped.
         """
         self.args = args
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.buffer_id = buffer_id
         self._storage = []
         self._maxsize = self.args.max_buffer_size
@@ -110,6 +112,12 @@ class ReplayBufferWithCost(object):
         self.stats = {}
         self.replay_times = 0
         logger.info('Buffer initialized')
+
+    def set_seed(self, seed):
+        # self.tf.random.set_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+        # self.env.seed(seed)
 
     def get_stats(self):
         self.stats.update(dict(storage=len(self._storage)))

@@ -244,6 +244,8 @@ class EvaluatorWithCost(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         kwargs = copy.deepcopy(vars(self.args))
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
@@ -265,6 +267,11 @@ class EvaluatorWithCost(object):
         self.stats = {}
         self.eval_timer = TimerStat()
         self.eval_times = 0
+
+    def set_seed(self, seed):
+        self.tf.random.set_seed(seed)
+        np.random.seed(seed)
+        self.env.seed(seed)
 
     def get_stats(self):
         self.stats.update(dict(eval_time=self.eval_timer.mean))
