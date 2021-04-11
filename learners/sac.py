@@ -24,6 +24,7 @@ class SACLearner(object):
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
 
+
     def __init__(self, policy_cls, args):
         self.args = args
         self.batch_size = self.args.replay_batch_size
