@@ -167,6 +167,9 @@ class Evaluator(object):
                 plt.figure()
                 plt.contourf(D,V,z,50,cmap='rainbow')
                 plt.grid()
+                x = np.linspace(0, 10)
+                t = np.sqrt(2 * 5 * x)
+                plt.plot(x, t, linestyle='--', color='red')
                 # plt.plot(d, np.sqrt(2*5*d),lw=2)
                 name_2d=name + '_2d.jpg'
                 plt.savefig(os.path.join(self.log_dir, name_2d))
@@ -179,37 +182,25 @@ class Evaluator(object):
                 plt.savefig(os.path.join(self.log_dir,name_3d))
             plot_region(mu, str(k))
 
-
-def test_trained_model(model_dir, ppc_params_dir, iteration):
-    from train_script import built_mixedpg_parser
-    from policy import PolicyWithQs
-    args = built_mixedpg_parser()
-    evaluator = Evaluator(PolicyWithQs, args.env_id, args)
-    evaluator.load_weights(model_dir, iteration)
-    evaluator.load_ppc_params(ppc_params_dir)
-    return evaluator.metrics(1000, render=False, reset=False)
-
-def atest_trained_model(model_dir, ppc_params_dir, iteration):
-    from train_script import built_AMPC_parser
-    from policy import Policy4Toyota
-    args = built_AMPC_parser()
-    evaluator = Evaluator(Policy4Toyota, args.env_id, args)
-    evaluator.load_weights(model_dir, iteration)
-    # evaluator.load_ppc_params(ppc_params_dir)
-    path = model_dir + '/all_obs.npy'
-    evaluator.compute_action_from_batch_obses(path)
-
-def static_region(model_dir, iteration):
+def static_region(test_dir, iteration):
+    import json
+    import argparse
+    import datetime
     from train_script import built_LMAMPC_parser
     from policy import Policy4Lagrange
-    args = built_LMAMPC_parser()
-    args.obs_dim = 2
-    args.act_dim = 1
-    args.obs_scale = [0.1, 0.1]
+    # args = built_LMAMPC_parser()
+    params = json.loads(open(test_dir + '/config.json').read())
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    test_log_dir = params['log_dir'] + '/tester/test-region-{}'.format(time_now)
+    params.update(dict(mode='testing',
+                       test_dir=test_dir,
+                       test_log_dir=test_log_dir,))
+    parser = argparse.ArgumentParser()
+    for key, val in params.items():
+        parser.add_argument("-" + key, default=val)
+    args =  parser.parse_args()
     evaluator = Evaluator(Policy4Lagrange, args.env_id, args)
-    evaluator.load_weights(model_dir, iteration)
-    # evaluator.load_ppc_params(ppc_params_dir)
-    # path = model_dir + '/all_obs.npy'
+    evaluator.load_weights(os.path.join(test_dir, 'models'), iteration)
     evaluator.static_region()
 
 def test_evaluator():
@@ -228,4 +219,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/experiment-2021-03-15-08-44-37/models', 1000000)
+    static_region('./results/toyota3lane/experiment-2021-03-15-08-44-37', 1000000)
