@@ -526,7 +526,11 @@ class SACLearnerWithCost(object):
             gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient + alpha_gradient
         else:
             gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient
-        return list(map(lambda x: x.numpy(), gradient_tensor))
+
+        grads = list(map(lambda x: x.numpy(), gradient_tensor))
+        # self.policy_with_value.apply_gradients(iteration, grads)
+        # todo: if using batch reuse and not adding this,then compute a same grad?
+        return grads
 
     # def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10):
     #     sequential_grads = []

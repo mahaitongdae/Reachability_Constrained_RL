@@ -302,19 +302,18 @@ class PolicyWithMu(tf.Module):
 
         cost_value_lr = PolynomialDecay(*cost_value_lr_schedule)
         self.QC1 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                   value_hidden_activation, 1, name='QC1', output_activation='relu')
+                                   value_hidden_activation, 1, name='QC1')
         self.QC1_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                          value_hidden_activation, 1, name='QC1_target', output_activation='relu')
+                                          value_hidden_activation, 1, name='QC1_target')
         self.QC1_target.set_weights(self.QC1.get_weights())
+        self.QC1_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC1_adam_opt')
+
         self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='QC2', output_activation='relu')
+                                  value_hidden_activation, 1, name='QC2')
         # output_bias=kwargs.get('cost_bias')
         self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='QC2_target', output_activation='relu')
+                                         value_hidden_activation, 1, name='QC2_target')
         self.QC2_target.set_weights(self.QC2.get_weights())
-
-
-        self.QC1_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC1_adam_opt')
         self.QC2_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC2_adam_opt')
 
         lam_lr = PolynomialDecay(*lam_lr_schedule)

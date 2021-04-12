@@ -244,14 +244,14 @@ class EvaluatorWithCost(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        if isinstance(self.args.random_seed, int):
-            self.set_seed(self.args.random_seed)
         kwargs = copy.deepcopy(vars(self.args))
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.policy_with_value = policy_cls(**kwargs)
         self.iteration = 0
         if self.args.mode == 'training':

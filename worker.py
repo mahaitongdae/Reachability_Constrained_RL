@@ -34,14 +34,14 @@ class OffPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        if isinstance(self.args.random_seed, int):
-            self.set_seed(self.args.random_seed)
         self.num_agent = self.args.num_agent
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
@@ -147,6 +147,8 @@ class OffPolicyWorkerWithCost(object):
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
+        if isinstance(self.args.random_seed, int):
+            self.set_seed(self.args.random_seed)
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
@@ -160,6 +162,11 @@ class OffPolicyWorkerWithCost(object):
         self.num_costs = 0
         self.stats = {}
         logger.info('Worker initialized')
+
+    def set_seed(self, seed):
+        self.tf.random.set_seed(seed)
+        np.random.seed(seed)
+        self.env.seed(seed)
 
     def get_stats(self):
         cost_rate = self.num_costs / self.num_sample if self.num_sample!=0 else 0
