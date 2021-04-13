@@ -57,9 +57,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 16
-NUM_LEARNER = 16
-NUM_BUFFER = 16
+NUM_WORKER = 14
+NUM_LEARNER = 14
+NUM_BUFFER = 14
 
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
@@ -109,6 +109,7 @@ def built_FSAC_parser():
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
+    parser.add_argument('--double_QC', type=bool, default=True)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=1024)

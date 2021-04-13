@@ -389,6 +389,38 @@ class SACLearnerWithCost(object):
             return policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict
 
     @tf.function
+    def policy_forward_and_backward_uncstr(self, mb_obs):
+        with self.tf.GradientTape() as tape:
+            processed_obses = self.preprocessor.tf_process_obses(mb_obs)
+            actions, logps = self.policy_with_value.compute_action(processed_obses)
+            all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)
+            all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
+            all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
+            alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
+            lams = self.policy_with_value.compute_lam(processed_obses)
+            QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
+            QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
+
+            all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
+            penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+            policy_loss = self.tf.reduce_mean(alpha * logps - all_Qs_min)
+            lagrangian = policy_loss
+            policy_entropy = -self.tf.reduce_mean(logps)
+            value_var = self.tf.math.reduce_variance(all_Qs_min)
+            value_mean = self.tf.reduce_mean(all_Qs_min)
+            cost_value_var = self.tf.math.reduce_variance(all_QCs_max)
+            cost_value_mean = self.tf.math.reduce_mean(all_QCs_max)
+            # violation_var = self.tf.math.reduce_variance(violation)
+            # violation_mean = self.tf.math.reduce_mean(violation)
+            statistic_dict = dict(policy_entropy=policy_entropy, value_var=value_var, value_mean=value_mean,
+                                  cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
+                                  )  # violation_var=violation_var, violation_mean=violation_mean
+
+        with self.tf.name_scope('policy_gradient') as scope:
+            policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights, )
+            return policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict
+
+    @tf.function
     def lam_forward_and_backward(self, mb_obs, mb_actions):
         assert self.args.constrained
         with self.tf.GradientTape() as tape:
@@ -468,7 +500,11 @@ class SACLearnerWithCost(object):
             qc_gradient2, qc_gradient_norm2 = self.tf.clip_by_global_norm(qc_gradient2, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
-            policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
+            if iteration > int(1.5e6): # todo: add to hyper
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
+            else:
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
+                    mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
@@ -508,8 +544,10 @@ class SACLearnerWithCost(object):
         for (k, v) in policy_stats.items():
             self.stats.update({k: v.numpy()})
 
-        # if iteration > 1e6:  # todo: add to hyper
         for (k, v) in dist_stats.items():
+            self.stats.update({k: v.numpy()})
+
+        for (k, v) in lam_stats.items():
             self.stats.update({k: v.numpy()})
 
 

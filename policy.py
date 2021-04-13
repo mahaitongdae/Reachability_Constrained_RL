@@ -400,10 +400,9 @@ class PolicyWithMu(tf.Module):
                     grads[4*q_weights_len:4*q_weights_len+policy_weights_len],
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
-                if iteration > 0:  # todo: add to hyper
-                    self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
-                    self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
-                if iteration % self.dual_ascent_interval == 0 and self.constrained:
+                self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
+                self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
+                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > int(1.5e6):
                     lam_grad = \
                         grads[
                         4 * q_weights_len + policy_weights_len: 4 * q_weights_len + policy_weights_len + lam_weights_len]
