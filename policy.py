@@ -274,6 +274,7 @@ class PolicyWithMu(tf.Module):
         self.constrained = kwargs.get('constrained')
         self.mlp_lam = kwargs.get('mlp_lam')
         self.double_QC = kwargs.get('double_QC')
+        self.penalty_start = kwargs.get('penalty_start')
 
         value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
                                             NAME2MODELCLS[policy_model_cls]
@@ -322,7 +323,7 @@ class PolicyWithMu(tf.Module):
         if self.mlp_lam:
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='relu') #  todo: + act_dim , output_bias=kwargs.get('mu_bias')
+                                       name='Lam', output_activation='relu')
             self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
         else:
             self.Lam = LamModel(name='Lam')
@@ -418,7 +419,7 @@ class PolicyWithMu(tf.Module):
                 else:
                     policy_grad = grads[3*q_weights_len: 3*q_weights_len+policy_weights_len],
                     lam_grad_start = 3 * q_weights_len + policy_weights_len
-                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > int(1.5e6):
+                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > self.penalty_start:
                     lam_grad = grads[lam_grad_start: lam_grad_start + lam_weights_len]
                     self.Lam_optimizer.apply_gradients(zip(lam_grad, self.Lam.trainable_weights))
                 if iteration % self.delay_update == 0:

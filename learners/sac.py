@@ -414,7 +414,6 @@ class SACLearnerWithCost(object):
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
 
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-                # violation = all_QCs_max - self.args.cost_lim
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
             else:
                 QC = self.policy_with_value.compute_QC1(processed_obses, actions)
@@ -442,10 +441,17 @@ class SACLearnerWithCost(object):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             # Qs_cost = self.policy_with_value.compute_Q_cost(processed_obses, mb_actions)
-            QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
-            QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
-            all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-            violation = all_QCs_max - self.args.cost_lim
+            # QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
+            # QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
+            # all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
+            if self.args.double_QC:
+                QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
+                QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
+                all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
+                violation = all_QCs_max - self.args.cost_lim
+            else:
+                QC = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
+                violation = QC - self.args.cost_lim
             violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
             violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
             if self.args.mlp_lam:
@@ -523,7 +529,7 @@ class SACLearnerWithCost(object):
 
 
         with self.policy_gradient_timer:
-            if iteration > int(1.5e6): # todo: add to hyper
+            if iteration > self.args.penalty_start: # todo: add to hyper
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
             else:
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
@@ -598,14 +604,6 @@ class SACLearnerWithCost(object):
                                   + policy_gradient + lam_gradient
 
         return list(map(lambda x: x.numpy(), gradient_tensor))
-
-    # def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10):
-    #     sequential_grads = []
-    #     for i in range(size):
-    #         grads = self.compute_gradient(batch_data, rb, indexes, iteration + i)
-    #         self.policy_with_value.apply_gradient(grads)
-    #         sequential_grads.append(grads)
-    #     return sequential_grads
 
 
 if __name__ == '__main__':

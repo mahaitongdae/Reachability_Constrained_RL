@@ -94,6 +94,7 @@ def built_FSAC_parser():
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--penalty_start', type=int, default=1500000)
 
     # env
     parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
