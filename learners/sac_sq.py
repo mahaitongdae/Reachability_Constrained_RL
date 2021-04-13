@@ -24,6 +24,7 @@ class SACLearner(object):
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
 
+
     def __init__(self, policy_cls, args):
         self.args = args
         self.batch_size = self.args.replay_batch_size
@@ -284,7 +285,7 @@ class SACLearnerWithCost(object):
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, act_tp1).numpy()
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()
         target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-        target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
+        # target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
@@ -294,7 +295,7 @@ class SACLearnerWithCost(object):
 
         processed_cost = self.batch_data['batch_costs']
         # target_QC_of_tp1 = processed_cost + self.args.cost_gamma * self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-        clipped_double_qc_target = processed_cost + self.args.cost_gamma * (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
+        clipped_double_qc_target = processed_cost + self.args.cost_gamma * (target_QC1_of_tp1)
 
         return clipped_double_q_target, clipped_double_qc_target
 
@@ -323,7 +324,7 @@ class SACLearnerWithCost(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
-    # @tf.function
+    @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets, mb_cost_targets):
         processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
         with self.tf.GradientTape(persistent=True) as tape:
@@ -335,24 +336,20 @@ class SACLearnerWithCost(object):
                 q_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(q_pred2 - mb_targets))
 
                 qc_pred1 = self.policy_with_value.compute_QC1(processed_mb_obs, mb_actions)
-                qc_pred2 = self.policy_with_value.compute_QC2(processed_mb_obs, mb_actions)
+                # qc_pred2 = self.policy_with_value.compute_QC2(processed_mb_obs, mb_actions)
 
-                masked_qc_error1 = self.tf.multiply(self.batch_data['batch_costs'],
-                                                    self.tf.square(qc_pred1 - mb_cost_targets))
-                qc_loss1 = 0.5 * self.tf.reduce_mean(masked_qc_error1)
-                masked_qc_error2 = self.tf.multiply(self.batch_data['batch_costs'],
-                                                    self.tf.square(qc_pred2 - mb_cost_targets))
-                qc_loss2 = 0.5 * self.tf.reduce_mean(masked_qc_error2)
+                qc_loss1 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred1 - mb_cost_targets))
+                # qc_loss2 = 0.5 * self.tf.reduce_mean(self.tf.square(qc_pred2 - mb_cost_targets))
 
         with self.tf.name_scope('q_gradient') as scope:
             q_gradient1 = tape.gradient(q_loss1, self.policy_with_value.Q1.trainable_weights)
             q_gradient2 = tape.gradient(q_loss2, self.policy_with_value.Q2.trainable_weights)
             qc_gradient1 = tape.gradient(qc_loss1, self.policy_with_value.QC1.trainable_weights)
-            qc_gradient2 = tape.gradient(qc_loss2, self.policy_with_value.QC2.trainable_weights)
+            # qc_gradient2 = tape.gradient(qc_loss2, self.policy_with_value.QC2.trainable_weights)
 
-        distributions_stats = dict(qc1_vals=qc_pred1, qc2_vals=qc_pred2,q1_vals=q_pred1, q2_vals=q_pred2)
+        distributions_stats = dict(qc1_vals=qc_pred1,q1_vals=q_pred1, q2_vals=q_pred2) # , qc2_vals=qc_pred2
 
-        return q_loss1, q_loss2, qc_loss1, qc_loss2, q_gradient1, q_gradient2, qc_gradient1, qc_gradient2, distributions_stats
+        return q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, qc_gradient1, distributions_stats
 
     @tf.function
     def policy_forward_and_backward(self, mb_obs):
@@ -364,12 +361,16 @@ class SACLearnerWithCost(object):
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             lams = self.policy_with_value.compute_lam(processed_obses)
-            QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
-            QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
+            if self.args.double_QC:
+                QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
+                QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
 
-            all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-            # violation = all_QCs_max - self.args.cost_lim
-            penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
+                # violation = all_QCs_max - self.args.cost_lim
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+            else:
+                QC = self.policy_with_value.compute_QC1(processed_obses, actions)
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
             if self.args.constrained: # todo: add to hyper
                 lagrangian = policy_loss + penalty_terms # todo: + or -
@@ -389,6 +390,43 @@ class SACLearnerWithCost(object):
 
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights,)
+            return policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict
+
+    @tf.function
+    def policy_forward_and_backward_uncstr(self, mb_obs):
+        with self.tf.GradientTape() as tape:
+            processed_obses = self.preprocessor.tf_process_obses(mb_obs)
+            actions, logps = self.policy_with_value.compute_action(processed_obses)
+            all_Qs1 = self.policy_with_value.compute_Q1(processed_obses, actions)
+            all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
+            all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
+            alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
+            lams = self.policy_with_value.compute_lam(processed_obses)
+            if self.args.double_QC:
+                QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
+                QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
+
+                all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
+                # violation = all_QCs_max - self.args.cost_lim
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+            else:
+                QC = self.policy_with_value.compute_QC1(processed_obses, actions)
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+            policy_loss = self.tf.reduce_mean(alpha * logps - all_Qs_min)
+            lagrangian = policy_loss
+            policy_entropy = -self.tf.reduce_mean(logps)
+            value_var = self.tf.math.reduce_variance(all_Qs_min)
+            value_mean = self.tf.reduce_mean(all_Qs_min)
+            cost_value_var = self.tf.math.reduce_variance(all_QCs_max)
+            cost_value_mean = self.tf.math.reduce_mean(all_QCs_max)
+            # violation_var = self.tf.math.reduce_variance(violation)
+            # violation_mean = self.tf.math.reduce_mean(violation)
+            statistic_dict = dict(policy_entropy=policy_entropy, value_var=value_var, value_mean=value_mean,
+                                  cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
+                                  )  # violation_var=violation_var, violation_mean=violation_mean
+
+        with self.tf.name_scope('policy_gradient') as scope:
+            policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights, )
             return policy_loss, penalty_terms, lagrangian, policy_gradient, statistic_dict
 
     @tf.function
@@ -462,16 +500,18 @@ class SACLearnerWithCost(object):
         mb_cost_targets = self.batch_data['batch_cost_targets']
 
         with self.q_gradient_timer:
-            q_loss1, q_loss2, qc_loss1, qc_loss2, \
-            q_gradient1, q_gradient2, qc_gradient1, qc_gradient2, \
-            dist_stats = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
+            q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, qc_gradient1, dist_stats = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
             q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
             qc_gradient1, qc_gradient_norm1 = self.tf.clip_by_global_norm(qc_gradient1, self.args.gradient_clip_norm)
-            qc_gradient2, qc_gradient_norm2 = self.tf.clip_by_global_norm(qc_gradient2, self.args.gradient_clip_norm)
+            # qc_gradient2, qc_gradient_norm2 = self.tf.clip_by_global_norm(qc_gradient2, self.args.gradient_clip_norm)
 
         with self.policy_gradient_timer:
-            policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
+            if iteration > int(1.5e6): # todo: add to hyper
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
+            else:
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
+                    mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
@@ -489,7 +529,7 @@ class SACLearnerWithCost(object):
             q_loss1=q_loss1.numpy(),
             q_loss2=q_loss2.numpy(),
             qc_loss1=qc_loss1.numpy(),
-            qc_loss2=qc_loss2.numpy(),
+            # qc_loss2=qc_loss2.numpy(),
             policy_loss=policy_loss.numpy(),
             mb_targets_mean=np.mean(mb_targets),
             mb_cost_targets_mean=np.mean(mb_cost_targets),
@@ -498,7 +538,7 @@ class SACLearnerWithCost(object):
             q_gradient_norm1=q_gradient_norm1.numpy(),
             q_gradient_norm2=q_gradient_norm2.numpy(),
             qc_gradient_norm1=qc_gradient_norm1.numpy(),
-            qc_gradient_norm2=qc_gradient_norm2.numpy(),
+            # qc_gradient_norm2=qc_gradient_norm2.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
             lam_gradient_norm=lam_gradient_norm.numpy(),
             lam_loss=lam_loss.numpy(),
@@ -511,8 +551,10 @@ class SACLearnerWithCost(object):
         for (k, v) in policy_stats.items():
             self.stats.update({k: v.numpy()})
 
-        # if iteration > 1e6:  # todo: add to hyper
         for (k, v) in dist_stats.items():
+            self.stats.update({k: v.numpy()})
+
+        for (k, v) in lam_stats.items():
             self.stats.update({k: v.numpy()})
 
 
@@ -526,10 +568,14 @@ class SACLearnerWithCost(object):
                                    alpha_gradient_norm=alpha_gradient_norm.numpy(),
                                    alpha_time=self.alpha_timer.mean))
 
-            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient + alpha_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + policy_gradient + lam_gradient + alpha_gradient
         else:
-            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 + policy_gradient + lam_gradient
-        return list(map(lambda x: x.numpy(), gradient_tensor))
+            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + policy_gradient + lam_gradient
+
+        grads = list(map(lambda x: x.numpy(), gradient_tensor))
+        # self.policy_with_value.apply_gradients(iteration, grads)
+        # todo: if using batch reuse and not adding this,then compute a same grad?
+        return grads
 
     # def compute_listed_gradients(self, batch_data, rb, indexes, iteration, size=10):
     #     sequential_grads = []
