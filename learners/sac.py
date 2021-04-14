@@ -372,17 +372,25 @@ class SACLearnerWithCost(object):
             all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
-            lams = self.policy_with_value.compute_lam(processed_obses)
             if self.args.double_QC:
                 QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
-
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                if self.args.mlp_lam:
+                    lams = self.policy_with_value.compute_lam(processed_obses)
+                    penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                else:
+                    lams =  self.policy_with_value.log_lam
+                    penalty_terms = lams * self.tf.reduce_mean(all_QCs_max)
                 QC = all_QCs_max
             else:
                 QC = self.policy_with_value.compute_QC1(processed_obses, actions)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+                if self.args.mlp_lam:
+                    lams = self.policy_with_value.compute_lam(processed_obses)
+                    penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+                else:
+                    lams = self.policy_with_value.log_lam
+                    penalty_terms = lams * self.tf.reduce_mean(QC)
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
             if self.args.constrained: # todo: add to hyper
                 lagrangian = policy_loss + penalty_terms # todo: + or -
@@ -416,11 +424,21 @@ class SACLearnerWithCost(object):
                 QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                if self.args.mlp_lam:
+                    lams = self.policy_with_value.compute_lam(processed_obses)
+                    penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                else:
+                    lams = self.policy_with_value.log_lam
+                    penalty_terms = lams * self.tf.reduce_mean(all_QCs_max)
                 QC = all_QCs_max
             else:
                 QC = self.policy_with_value.compute_QC1(processed_obses, actions)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+                if self.args.mlp_lam:
+                    lams = self.policy_with_value.compute_lam(processed_obses)
+                    penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+                else:
+                    lams = self.policy_with_value.log_lam
+                    penalty_terms = lams * self.tf.reduce_mean(QC)
             policy_loss = self.tf.reduce_mean(alpha * logps - all_Qs_min)
             lagrangian = policy_loss
             policy_entropy = -self.tf.reduce_mean(logps)
@@ -441,10 +459,6 @@ class SACLearnerWithCost(object):
         assert self.args.constrained
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
-            # Qs_cost = self.policy_with_value.compute_Q_cost(processed_obses, mb_actions)
-            # QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
-            # QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
-            # all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
             if self.args.double_QC:
                 QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, mb_actions)
@@ -567,6 +581,7 @@ class SACLearnerWithCost(object):
             lam_gradient_norm=lam_gradient_norm.numpy(),
             lam_loss=lam_loss.numpy(),
             complementary_slackness=complementary_slackness.numpy(),
+            penalty_terms=penalty_terms.numpy(),
             max_multiplier=np.max(lams.numpy()),
             mean_multiplier=np.mean(lams.numpy())
         ))
