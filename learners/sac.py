@@ -285,7 +285,7 @@ class SACLearnerWithCost(object):
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, act_tp1).numpy()
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()
         target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-        target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
+
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
@@ -295,7 +295,12 @@ class SACLearnerWithCost(object):
 
         processed_cost = self.batch_data['batch_costs']
         # target_QC_of_tp1 = processed_cost + self.args.cost_gamma * self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-        clipped_double_qc_target = processed_cost + self.args.cost_gamma * (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
+        if self.args.double_QC:
+            target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
+            clipped_double_qc_target = processed_cost + self.args.cost_gamma * \
+                                       (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
+        else:
+            clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
 
         return clipped_double_q_target, clipped_double_qc_target
 
@@ -373,8 +378,8 @@ class SACLearnerWithCost(object):
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
 
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
-                # violation = all_QCs_max - self.args.cost_lim
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                QC = all_QCs_max
             else:
                 QC = self.policy_with_value.compute_QC1(processed_obses, actions)
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
@@ -386,13 +391,11 @@ class SACLearnerWithCost(object):
             policy_entropy = -self.tf.reduce_mean(logps)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = self.tf.reduce_mean(all_Qs_min)
-            cost_value_var = self.tf.math.reduce_variance(all_QCs_max)
-            cost_value_mean = self.tf.math.reduce_mean(all_QCs_max)
-            # violation_var = self.tf.math.reduce_variance(violation)
-            # violation_mean = self.tf.math.reduce_mean(violation)
+            cost_value_var = self.tf.math.reduce_variance(QC)
+            cost_value_mean = self.tf.math.reduce_mean(QC)
             statistic_dict = dict(policy_entropy=policy_entropy,value_var=value_var, value_mean=value_mean,
                                cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
-                               ) # violation_var=violation_var, violation_mean=violation_mean
+                               )
 
 
         with self.tf.name_scope('policy_gradient') as scope:
@@ -412,9 +415,9 @@ class SACLearnerWithCost(object):
             if self.args.double_QC:
                 QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
-
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), all_QCs_max))
+                QC = all_QCs_max
             else:
                 QC = self.policy_with_value.compute_QC1(processed_obses, actions)
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
@@ -423,13 +426,11 @@ class SACLearnerWithCost(object):
             policy_entropy = -self.tf.reduce_mean(logps)
             value_var = self.tf.math.reduce_variance(all_Qs_min)
             value_mean = self.tf.reduce_mean(all_Qs_min)
-            cost_value_var = self.tf.math.reduce_variance(all_QCs_max)
-            cost_value_mean = self.tf.math.reduce_mean(all_QCs_max)
-            # violation_var = self.tf.math.reduce_variance(violation)
-            # violation_mean = self.tf.math.reduce_mean(violation)
+            cost_value_var = self.tf.math.reduce_variance(QC)
+            cost_value_mean = self.tf.math.reduce_mean(QC)
             statistic_dict = dict(policy_entropy=policy_entropy, value_var=value_var, value_mean=value_mean,
                                   cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
-                                  )  # violation_var=violation_var, violation_mean=violation_mean
+                                  )
 
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights, )
@@ -450,8 +451,8 @@ class SACLearnerWithCost(object):
                 all_QCs_max = self.tf.reduce_max((QC1, QC2), 0)
                 violation = all_QCs_max - self.args.cost_lim
             else:
-                QC = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
-                violation = QC - self.args.cost_lim
+                QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
+                violation = QC1 - self.args.cost_lim
             violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
             violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
             if self.args.mlp_lam:
@@ -523,6 +524,7 @@ class SACLearnerWithCost(object):
             else:
                 q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, \
                 qc_gradient1, dist_stats = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
+                qc_gradient2 = qc_gradient1 # only for space
             q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
             q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
             qc_gradient1, qc_gradient_norm1 = self.tf.clip_by_global_norm(qc_gradient1, self.args.gradient_clip_norm)
@@ -589,19 +591,11 @@ class SACLearnerWithCost(object):
                                    alpha_loss=alpha_loss.numpy(),
                                    alpha_gradient_norm=alpha_gradient_norm.numpy(),
                                    alpha_time=self.alpha_timer.mean))
-            if self.args.double_QC:
-                gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
-                                  + policy_gradient + lam_gradient + alpha_gradient
-            else:
-                gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 \
-                                  + policy_gradient + lam_gradient + alpha_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
+                              + policy_gradient + lam_gradient + alpha_gradient
         else:
-            if self.args.double_QC:
-                gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
-                                  + policy_gradient + lam_gradient
-            else:
-                gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 \
-                                  + policy_gradient + lam_gradient
+            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
+                              + policy_gradient + lam_gradient
 
         return list(map(lambda x: x.numpy(), gradient_tensor))
 
