@@ -273,6 +273,8 @@ class PolicyWithMu(tf.Module):
         self.dual_ascent_interval = dual_ascent_interval
         self.constrained = kwargs.get('constrained')
         self.mlp_lam = kwargs.get('mlp_lam')
+        self.double_QC = kwargs.get('double_QC')
+        self.penalty_start = kwargs.get('penalty_start')
 
         value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
                                             NAME2MODELCLS[policy_model_cls]
@@ -308,19 +310,20 @@ class PolicyWithMu(tf.Module):
         self.QC1_target.set_weights(self.QC1.get_weights())
         self.QC1_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC1_adam_opt')
 
-        self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                  value_hidden_activation, 1, name='QC2')
-        # output_bias=kwargs.get('cost_bias')
-        self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
-                                         value_hidden_activation, 1, name='QC2_target')
-        self.QC2_target.set_weights(self.QC2.get_weights())
-        self.QC2_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC2_adam_opt')
+        if self.double_QC:
+            self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                      value_hidden_activation, 1, name='QC2')
+            # output_bias=kwargs.get('cost_bias')
+            self.QC2_target = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
+                                             value_hidden_activation, 1, name='QC2_target')
+            self.QC2_target.set_weights(self.QC2.get_weights())
+            self.QC2_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC2_adam_opt')
 
         lam_lr = PolynomialDecay(*lam_lr_schedule)
         if self.mlp_lam:
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='relu') #  todo: + act_dim , output_bias=kwargs.get('mu_bias')
+                                       name='Lam', output_activation='relu')
             self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
         else:
             self.Lam = LamModel(name='Lam')
@@ -334,12 +337,19 @@ class PolicyWithMu(tf.Module):
             self.optimizers = (self.policy_optimizer,)
         else:
             if self.double_Q:
-                assert self.target
-                self.target_models = (self.Q1_target, self.Q2_target, self.QC1_target, self.QC2_target,
-                                      self.policy_target,)
-                self.models = (self.Q1, self.Q2, self.QC1, self.QC2, self.policy,self.Lam,)
-                self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.QC1_optimizer, self.QC2_optimizer,
-                                   self.policy_optimizer,self.Lam_optimizer,)
+                if self.double_QC:
+                    assert self.target
+                    self.target_models = (self.Q1_target, self.Q2_target, self.QC1_target, self.QC2_target,
+                                          self.policy_target,)
+                    self.models = (self.Q1, self.Q2, self.QC1, self.QC2, self.policy,self.Lam,)
+                    self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.QC1_optimizer, self.QC2_optimizer,
+                                       self.policy_optimizer,self.Lam_optimizer,)
+                else:
+                    self.target_models = (self.Q1_target, self.Q2_target, self.QC1_target,
+                                          self.policy_target,)
+                    self.models = (self.Q1, self.Q2, self.QC1, self.policy, self.Lam,)
+                    self.optimizers = (self.Q1_optimizer, self.Q2_optimizer, self.QC1_optimizer,
+                                       self.policy_optimizer, self.Lam_optimizer,)
             elif self.target:
                 self.target_models = (self.Q1_target, self.policy_target,)
                 self.models = (self.Q1, self.policy,)
@@ -396,16 +406,15 @@ class PolicyWithMu(tf.Module):
                     grads[:q_weights_len], \
                     grads[q_weights_len:2*q_weights_len],\
                     grads[2*q_weights_len:3*q_weights_len], \
-                    grads[3*q_weights_len:4*q_weights_len], \
-                    grads[4*q_weights_len:4*q_weights_len+policy_weights_len],
+                    grads[3 * q_weights_len:4 * q_weights_len], \
+                    grads[4 * q_weights_len:4 * q_weights_len + policy_weights_len]
                 self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
                 self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
                 self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
-                self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
-                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > int(1.5e6):
-                    lam_grad = \
-                        grads[
-                        4 * q_weights_len + policy_weights_len: 4 * q_weights_len + policy_weights_len + lam_weights_len]
+                if self.double_QC:
+                    self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
+                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > self.penalty_start:
+                    lam_grad = grads[4 * q_weights_len + policy_weights_len: 4 * q_weights_len + policy_weights_len + lam_weights_len]
                     self.Lam_optimizer.apply_gradients(zip(lam_grad, self.Lam.trainable_weights))
                 if iteration % self.delay_update == 0:
                     self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
@@ -432,7 +441,8 @@ class PolicyWithMu(tf.Module):
         self.update_Q1_target()
         self.update_Q2_target()
         self.update_QC1_target()
-        self.update_QC2_target()
+        if self.double_QC:
+            self.update_QC2_target()
 
     def update_Q1_target(self):
         tau = self.tau

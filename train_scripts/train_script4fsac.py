@@ -84,16 +84,17 @@ def built_FSAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='test apply local grad')  # training testing
+    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
-    parser.add_argument('--buffer_type', type=str, default='priority_cost')
+    parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--penalty_start', type=int, default=1500000)
 
     # env
     parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
@@ -109,7 +110,7 @@ def built_FSAC_parser():
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
-    parser.add_argument('--double_QC', type=bool, default=True)
+    parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=1024)
