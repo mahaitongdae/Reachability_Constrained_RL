@@ -302,7 +302,7 @@ class SACLearnerWithCost(object):
         else:
             clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
 
-        return clipped_double_q_target, clipped_double_qc_target
+        return clipped_double_q_target, np.clip(clipped_double_qc_target, 0, np.inf)
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
@@ -419,7 +419,7 @@ class SACLearnerWithCost(object):
             all_Qs2 = self.policy_with_value.compute_Q2(processed_obses, actions)
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
-            lams = self.policy_with_value.compute_lam(processed_obses)
+            # lams = self.policy_with_value.compute_lam(processed_obses)
             if self.args.double_QC:
                 QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
                 QC2 = self.policy_with_value.compute_QC2(processed_obses, actions)
@@ -476,7 +476,7 @@ class SACLearnerWithCost(object):
 
             else:
                 lams = self.policy_with_value.log_lam
-                complementary_slackness = self.tf.reduce_mean(lams * self.tf.stop_gradient(violation))
+                complementary_slackness = lams * self.tf.reduce_mean(self.tf.stop_gradient(violation))
             lam_loss = - complementary_slackness
 
         lam_stats = dict(lam=lams, violation_rate=violation_rate)
@@ -556,7 +556,7 @@ class SACLearnerWithCost(object):
 
         with self.lam_gradient_timer:
             lam_loss, complementary_slackness, lam_gradient, lams, lam_stats = self.lam_forward_and_backward(mb_obs, mb_actions)
-            lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.gradient_clip_norm)
+            lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.lam_gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,

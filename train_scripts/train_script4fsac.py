@@ -68,14 +68,14 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
+        test_dir = '../results/FSAC/experiment-2021-04-14-06-36-37_success'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[2300000],
+                           test_iter_list=[3000000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=5,
+                           num_eval_episode=100,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=1000,
@@ -84,7 +84,7 @@ def built_FSAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
+    parser.add_argument('--motivation', type=str, default='sac lagrangian test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
@@ -94,10 +94,10 @@ def built_FSAC_parser():
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
-    parser.add_argument('--penalty_start', type=int, default=1500000)
+    parser.add_argument('--penalty_start', type=int, default=1200000)
 
     # env
-    parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_id', default='Safexp-CarButton1-v0')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -107,6 +107,7 @@ def built_FSAC_parser():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
+    parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
@@ -148,7 +149,7 @@ def built_FSAC_parser():
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1000000, 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 1000000, 5e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 300000, 3e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
@@ -189,7 +190,8 @@ def built_FSAC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = '../results/FSAC/experiment-{time}'.format(time=time_now)
+    env_id = parser.parse_args().env_id
+    results_dir = '../results/FSAC/{experiment}-{time}'.format(experiment=env_id.split('-')[1], time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -229,10 +231,10 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
-    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
+    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
-    parser.add_argument('--penalty_start', type=int, default=1500000)
+    parser.add_argument('--penalty_start', type=int, default=0)
 
     # env
     parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
@@ -286,7 +288,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1000000, 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 1000000, 5e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, 1000000, 5e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':

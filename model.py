@@ -58,22 +58,42 @@ class AlphaModel(Model):
 class LamModel(Model):
     def __init__(self, **kwargs):
         super(LamModel, self).__init__(name=kwargs['name'])
-        self.lam = tf.nn.softplus(tf.Variable(0., dtype=tf.float32))
+        self.var = tf.Variable(-10., dtype=tf.float32)
+
 
 
 def test_alpha():
     import numpy as np
     alpha_model = AlphaModel(name='alpha')
     print(alpha_model.trainable_weights)
+    print(len(alpha_model.trainable_weights))
     print(alpha_model.get_weights())
-    print(alpha_model.alpha)
-    b = alpha_model.alpha
+    print(alpha_model.log_alpha)
+    b = alpha_model.log_alpha
     alpha_model.set_weights(np.array([3]))
     print(b)
 
     with tf.GradientTape() as tape:
-        b = 3.*alpha_model.alpha
+        b = 3.*alpha_model.log_alpha
     print(tape.gradient(b, alpha_model.trainable_weights[0]))
+
+def test_lam():
+    import numpy as np
+
+
+
+
+    with tf.GradientTape() as tape:
+        lam_model = LamModel(name='lam')
+        print(lam_model.trainable_weights)
+        print(len(lam_model.trainable_weights))
+        print(lam_model.get_weights())
+        print(lam_model.log_lam)
+        b = lam_model.log_lam
+        lam_model.set_weights(np.array([3]))
+        print(b)
+        c = 3.*lam_model.log_lam
+    print(tape.gradient(c, lam_model.trainable_weights[0]))
 
 
 def test_attrib():
@@ -129,4 +149,4 @@ def test_memory2():
 
 
 if __name__ == '__main__':
-    test_alpha()
+    test_lam()

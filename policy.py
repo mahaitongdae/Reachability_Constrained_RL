@@ -319,15 +319,17 @@ class PolicyWithMu(tf.Module):
             self.QC2_target.set_weights(self.QC2.get_weights())
             self.QC2_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC2_adam_opt')
 
-        lam_lr = PolynomialDecay(*lam_lr_schedule)
+
         if self.mlp_lam:
+            lam_lr = PolynomialDecay(*lam_lr_schedule)
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='relu')
-            self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
+                                       name='Lam', output_activation='softplus', output_bias=-10.)
+            self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
         else:
+            lam_lr = 3e-4
             self.Lam = LamModel(name='Lam')
-            self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
+            self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
 
 
 
@@ -565,7 +567,7 @@ class PolicyWithMu(tf.Module):
 
     @tf.function
     def compute_lam(self, obs):
-        with self.tf.name_scope('compute_mu') as scope:
+        with self.tf.name_scope('compute_lam') as scope:
             # Q_inputs = self.tf.concat([obs], axis=-1)
             return tf.squeeze(self.Lam(obs), axis=1)
 
@@ -575,7 +577,7 @@ class PolicyWithMu(tf.Module):
 
     @property
     def log_lam(self):
-        return self.Lam.lam
+        return tf.nn.softplus(self.Lam.var)
 
 
 
