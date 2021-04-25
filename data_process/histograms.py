@@ -847,9 +847,6 @@ def histograms_download():
         df=pd.DataFrame((dict(g=iter,x=dist)))
         df_times.append(df)
     total_df = df_times[0].append(df_times[1:])
-    a = 1
-    # m = total_df.g.map(ord)
-    # df["x"] += m
 
     # Initialize the FacetGrid object
     pal = sns.cubehelix_palette(10, rot=-.25, light=.7)

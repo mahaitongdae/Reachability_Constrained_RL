@@ -94,10 +94,10 @@ def built_FSAC_parser():
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
-    parser.add_argument('--penalty_start', type=int, default=1200000)
+    parser.add_argument('--penalty_start', type=int, default=8000000)
 
     # env
-    parser.add_argument('--env_id', default='Safexp-CarButton1-v0')
+    parser.add_argument('--env_id', default='Safexp-DoggoGoal2-v0')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -177,7 +177,7 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=3000000)
+    parser.add_argument('--max_iter', type=int, default=10000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
