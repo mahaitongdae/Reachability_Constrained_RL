@@ -64,18 +64,18 @@ NUM_BUFFER = 14
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--mode', type=str, default='testing') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-14-06-36-37_success'
+        test_dir = '../results/FSAC/CarGoal2-2021-04-22-14-00-59'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[3000000],
+                           test_iter_list=[2800000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=100,
+                           num_eval_episode=10,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=1000,
