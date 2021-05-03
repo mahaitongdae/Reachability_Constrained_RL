@@ -192,7 +192,10 @@ def built_FSAC_parser():
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     env_id = parser.parse_args().env_id
-    results_dir = '../results/FSAC/{experiment}-{time}'.format(experiment=env_id.split('-')[1], time=time_now)
+    task = env_id.split('-')[1]
+    results_dir = '../results/FSAC/{task}/{experiment}-{time}'.format(task=task[:-1],
+                                                                      experiment=task,
+                                                                      time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -225,17 +228,19 @@ def built_SAC_Lagrangian_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
+    parser.add_argument('--motivation', type=str, default='sac lagrangian test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
-    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy') # SingleProcessOffPolicy OffPolicyAsyncWithCost
+    parser.add_argument('--optimizer_type', type=str,
+                        default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=0)
-    parser.add_argument('--penalty_start', type=int, default=0)
+    parser.add_argument('--random_seed', type=int, default=2)
+    parser.add_argument('--penalty_start', type=int, default=1500000)
+    parser.add_argument('--demo', type=bool, default=False)
 
     # env
     parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
@@ -248,6 +253,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
+    parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=False)
@@ -324,13 +330,17 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--max_weight_sync_delay', type=int, default=30)
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=10)
-    parser.add_argument('--eval_interval', type=int, default=5000)
-    parser.add_argument('--save_interval', type=int, default=200000)
-    parser.add_argument('--log_interval', type=int, default=100)
+    parser.add_argument('--eval_interval', type=int, default=5000)  # 1000
+    parser.add_argument('--save_interval', type=int, default=200000)  # 200000
+    parser.add_argument('--log_interval', type=int, default=100)  # 100
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = '../results/FSAC/experiment-{time}'.format(time=time_now)
+    env_id = parser.parse_args().env_id
+    task = env_id.split('-')[1]
+    results_dir = '../results/FSAC/{task}/{experiment}-{time}'.format(task=task[:-1],
+                                                                      experiment=task,
+                                                                      time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -343,6 +353,8 @@ def built_SAC_Lagrangian_parser():
 def built_parser(alg_name):
     if alg_name == 'FSAC':
         args = built_FSAC_parser()
+    if alg_name == 'SAC_L':
+        args = built_SAC_Lagrangian_parser()
 
     env = gym.make(args.env_id) #  **vars(args)
     args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
@@ -383,4 +395,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('FSAC')
+    main('SAC_L')
