@@ -548,7 +548,7 @@ class SACLearnerWithCost(object):
             if iteration > self.args.penalty_start: # todo: add to hyper
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
             else:
-                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
                     mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,

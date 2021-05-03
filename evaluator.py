@@ -302,14 +302,16 @@ class EvaluatorWithCost(object):
             for _ in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
-                qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
-                lam = self.policy_with_value.compute_lam(processed_obs)
-                # print("qc: {}".format(qc_val.numpy()))
-                # print("lam: {}".format(lam.numpy()))
+                if self.args.demo:
+                    qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
+                    lam = self.policy_with_value.compute_lam(processed_obs)
+                    print("qc: {}".format(qc_val.numpy()))
+                    print("lam: {}".format(lam.numpy()))
+                    qc_list.append(qc_val[0])
+                    lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
-                qc_list.append(qc_val[0])
-                lam_list.append(lam[0])
+
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
                 if render: self.env.render()
@@ -320,12 +322,17 @@ class EvaluatorWithCost(object):
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
-                qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
-                lam = self.policy_with_value.compute_lam(processed_obs)
+                if self.args.demo:
+                    qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
+                    lam = self.policy_with_value.compute_lam(processed_obs)
+                    print("qc: {}".format(qc_val.numpy()))
+                    print("lam: {}".format(lam.numpy()))
+                    qc_list.append(qc_val[0])
+                    lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
-                qc_list.append(qc_val[0])
-                lam_list.append(lam)
+                # qc_list.append(qc_val[0])
+                # lam_list.append(lam)
                 # print("qc: {}".format(qc_val.numpy()))
                 # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
@@ -519,17 +526,23 @@ def test_evaluator():
     evaluator.run_evaluation(3)
 
 def read_metrics():
-    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/FSAC/CarPush2-2021-04-22-23-10-47/logs/tester/test-2021-04-26-18-48-20/n_metrics_list_ite3000000.npy'
+    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/FSAC/CarPush/CarPush2-2021-04-27-13-28-49/logs/tester/test-2021-05-04-01-13-00/n_metrics_list_ite3000000.npy'
                       , allow_pickle=True)
     print(metrics)
     ep_cost = []
+    ep_ret = []
     for metric in metrics:
-        if metric['episode_cost'] < 400:
+        if 0 < metric['episode_cost'] < 400:
             ep_cost.append(metric['episode_cost'])
+            ep_ret.append(metric['episode_return'])
     mean = np.mean(ep_cost)
     std = np.std(ep_cost)
     upquant = np.quantile(ep_cost, 0.75)
     print('cost mean: {}, cost std: {}, quant: {}'.format(mean, std, upquant))
+    mean = np.mean(ep_ret)
+    std = np.std(ep_ret)
+    upquant = np.quantile(ep_ret, 0.75)
+    print('return mean: {}, return std: {}, quant: {}'.format(mean, std, upquant))
 
 
 
