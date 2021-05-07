@@ -526,13 +526,13 @@ def test_evaluator():
     evaluator.run_evaluation(3)
 
 def read_metrics():
-    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/FSAC/CarPush/CarPush2-2021-04-27-13-28-49/logs/tester/test-2021-05-04-01-13-00/n_metrics_list_ite3000000.npy'
+    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/SAC/PointGoal/PointGoal2-2021-05-06-10-03-50/logs/tester/test-2021-05-07-12-25-55/n_metrics_list_ite3000000.npy'
                       , allow_pickle=True)
     print(metrics)
     ep_cost = []
     ep_ret = []
     for metric in metrics:
-        if 0 < metric['episode_cost'] < 400:
+        if 0 < metric['episode_cost']<500 :
             ep_cost.append(metric['episode_cost'])
             ep_ret.append(metric['episode_return'])
     mean = np.mean(ep_cost)
