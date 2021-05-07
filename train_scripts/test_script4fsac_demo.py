@@ -68,19 +68,19 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/SAC/PointGoal/PointGoal2-2021-05-06-10-03-50'
+        test_dir = '../results/FSAC/PointButton1-2021-04-16-14-53-44-fac'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
                            test_iter_list=[3000000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=50,
+                           num_eval_episode=2,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=1000,
-                           eval_render=False,
-                           demo=False))
+                           eval_render=True,
+                           demo=True))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()

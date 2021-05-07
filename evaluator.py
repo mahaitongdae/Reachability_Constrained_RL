@@ -294,14 +294,24 @@ class EvaluatorWithCost(object):
         info_list = []
         done = 0
         cost_list = []
+        qc_list = []
+        lam_list = []
         obs = self.env.reset()
         if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
+                if self.args.demo:
+                    qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
+                    lam = self.policy_with_value.compute_lam(processed_obs)
+                    print("qc: {}".format(qc_val.numpy()))
+                    print("lam: {}".format(lam.numpy()))
+                    qc_list.append(qc_val[0])
+                    lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
+
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
                 if render: self.env.render()
@@ -312,8 +322,19 @@ class EvaluatorWithCost(object):
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
+                if self.args.demo:
+                    qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
+                    lam = self.policy_with_value.compute_lam(processed_obs)
+                    print("qc: {}".format(qc_val.numpy()))
+                    print("lam: {}".format(lam.numpy()))
+                    qc_list.append(qc_val[0])
+                    lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
+                # qc_list.append(qc_val[0])
+                # lam_list.append(lam)
+                # print("qc: {}".format(qc_val.numpy()))
+                # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
                 if render: self.env.render()
@@ -469,6 +490,24 @@ class EvaluatorWithCost(object):
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
 
+    def run_evaluation_demo(self, iteration):
+        with self.eval_timer:
+            self.iteration = iteration
+            if self.args.num_eval_agent == 1:
+                n_metrics_list, mean_metric_dict = self.run_n_episodes(self.args.num_eval_episode)
+            else:
+                n_metrics_list, mean_metric_dict = self.run_n_episodes_parallel(self.args.num_eval_episode)
+            with self.writer.as_default():
+                for key, val in mean_metric_dict.items():
+                    self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
+                for key, val in self.get_stats().items():
+                    self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
+                self.writer.flush()
+            np.save(self.log_dir + '/n_metrics_list_ite{}.npy'.format(iteration), np.array(n_metrics_list))
+        if self.eval_times % self.args.eval_log_interval == 0:
+            logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
+        self.eval_times += 1
+
 
 def test_trained_model(model_dir, ppc_params_dir, iteration):
     from train_script import built_mixedpg_parser
@@ -486,5 +525,26 @@ def test_evaluator():
     evaluator = Evaluator(PolicyWithQs, args.env_id, args)
     evaluator.run_evaluation(3)
 
+def read_metrics():
+    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/SAC/PointGoal/PointGoal2-2021-05-06-10-03-50/logs/tester/test-2021-05-07-12-25-55/n_metrics_list_ite3000000.npy'
+                      , allow_pickle=True)
+    print(metrics)
+    ep_cost = []
+    ep_ret = []
+    for metric in metrics:
+        if 0 < metric['episode_cost']<500 :
+            ep_cost.append(metric['episode_cost'])
+            ep_ret.append(metric['episode_return'])
+    mean = np.mean(ep_cost)
+    std = np.std(ep_cost)
+    upquant = np.quantile(ep_cost, 0.75)
+    print('cost mean: {}, cost std: {}, quant: {}'.format(mean, std, upquant))
+    mean = np.mean(ep_ret)
+    std = np.std(ep_ret)
+    upquant = np.quantile(ep_ret, 0.75)
+    print('return mean: {}, return std: {}, quant: {}'.format(mean, std, upquant))
+
+
+
 if __name__ == '__main__':
-    test_evaluator()
+    read_metrics()
