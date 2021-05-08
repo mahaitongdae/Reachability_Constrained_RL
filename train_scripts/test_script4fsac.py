@@ -68,7 +68,7 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/SAC/PointGoal/PointGoal2-2021-05-06-10-03-50'
+        test_dir = '../results/SAC/PointPush/PointPush1-2021-05-07-13-41-58'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
