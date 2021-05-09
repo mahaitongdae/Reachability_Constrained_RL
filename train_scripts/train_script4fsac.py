@@ -385,7 +385,7 @@ def built_SAC_UC_parser():
                         default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=2)
-    parser.add_argument('--penalty_start', type=int, default=3000000)
+    parser.add_argument('--penalty_start', type=int, default=8000000)
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
@@ -469,15 +469,15 @@ def built_SAC_UC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=3000000)
+    parser.add_argument('--max_iter', type=int, default=8000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
-    parser.add_argument('--max_weight_sync_delay', type=int, default=30)
+    parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=10)
-    parser.add_argument('--eval_interval', type=int, default=5000)  # 1000
-    parser.add_argument('--save_interval', type=int, default=200000)  # 200000
+    parser.add_argument('--eval_interval', type=int, default=1000)  # 1000
+    parser.add_argument('--save_interval', type=int, default=500000)  # 200000
     parser.add_argument('--log_interval', type=int, default=100)  # 100
 
     # IO
