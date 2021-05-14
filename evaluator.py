@@ -15,6 +15,7 @@ import numpy as np
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
+from matplotlib.colors import ListedColormap
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -150,13 +151,14 @@ class Evaluator(object):
     def static_region(self):
         d = np.linspace(0,10,100)
         v = np.linspace(0,10,100)
-
+        cmaplist = ['springgreen'] * 3 + ['gold'] * 10 + ['crimson'] * 87
+        cmap1 = ListedColormap(cmaplist)
         D, V = np.meshgrid(d, v)
         flattenD = np.reshape(D, [-1,])
         flattenV = np.reshape(V, [-1,])
         obses = np.stack([flattenD, flattenV], 1)
         preprocess_obs = self.preprocessor.np_process_obses(obses)
-        flattenMU = self.policy_with_value.compute_mu(preprocess_obs).numpy()
+        flattenMU = self.policy_with_value.compute_mu(preprocess_obs).numpy() / 100
         # flattenMU_max = np.max(flattenMU,axis=1)
         for k in range(flattenMU.shape[1]):
             flattenMU_k = flattenMU[:, k]
@@ -165,7 +167,9 @@ class Evaluator(object):
                 import matplotlib.pyplot as plt
                 from mpl_toolkits.mplot3d import Axes3D
                 plt.figure()
-                plt.contourf(D,V,z,50,cmap='rainbow')
+                z += np.clip((V**2-10*D)/50, 0, 1)
+                ct = plt.contourf(D,V,z,50, cmap=cmap1)
+                plt.colorbar(ct)
                 plt.grid()
                 x = np.linspace(0, 10)
                 t = np.sqrt(2 * 5 * x)
