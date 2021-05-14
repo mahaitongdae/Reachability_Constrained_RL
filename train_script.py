@@ -43,7 +43,7 @@ NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 def built_LMAMPC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='testing') # training testing
+    parser.add_argument('--mode', type=str, default='training') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -72,7 +72,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
-    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
@@ -84,7 +84,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--con_dim', type=int, default=10)
 
     # learner
-    parser.add_argument('--alg_name', default='LMbasline')
+    parser.add_argument('--alg_name', default='LMbaseline')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[10])
     parser.add_argument('--gamma', type=float, default=1.)
@@ -162,7 +162,7 @@ def built_LMAMPC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'LMAMPC' or 'LMAMPC-v2':
+    if alg_name == 'LMAMPC' or 'LMAMPC-v2' or 'LMbaseline':
         args = built_LMAMPC_parser()
         env = gym.make(args.env_id, **args2envkwargs(args))
         obs_space, act_space = env.observation_space, env.action_space
@@ -178,7 +178,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=5120*1024*1024)
+        ray.init(object_store_memory=1024*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
@@ -208,4 +208,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('LMAMPC-v2')
+    main('LMbaseline')
