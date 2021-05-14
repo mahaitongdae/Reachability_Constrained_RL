@@ -48,6 +48,12 @@ class MLPNet(Model):
         x = self.outputs(x)
         return x
 
+class LamModel(Model):
+    def __init__(self, **kwargs):
+        super(LamModel, self).__init__(name=kwargs['name'])
+        self.var = tf.Variable(0 * tf.ones[10,], dtype=tf.float32)
+
+
 def test_attrib():
     a = Variable(0, name='d')
 
