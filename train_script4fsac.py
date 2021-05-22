@@ -66,6 +66,7 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--random_seed', type=int, default=2)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -94,12 +95,12 @@ def built_FSAC_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=2)
+
     parser.add_argument('--penalty_start', type=int, default=1500000)
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_id', default='Safexp-CarGoal2-v0')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -111,7 +112,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=4.0)
+    parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -123,7 +124,7 @@ def built_FSAC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=1024)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -185,7 +186,7 @@ def built_FSAC_parser():
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=8)
+    parser.add_argument('--grads_max_reuse', type=int, default=5)
     parser.add_argument('--eval_interval', type=int, default=10000) # 1000
     parser.add_argument('--save_interval', type=int, default=200000) # 200000
     parser.add_argument('--log_interval', type=int, default=100) # 100
@@ -194,7 +195,7 @@ def built_FSAC_parser():
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     env_id = parser.parse_args().env_id
     task = env_id.split('-')[1]
-    results_dir = '../results/FSAC/{task}/{experiment}-{time}'.format(task=task[:-1],
+    results_dir = './results/FSAC/{task}/{experiment}-{time}'.format(task=task[:-1],
                                                                       experiment=task,
                                                                       time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
@@ -328,10 +329,10 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
-    parser.add_argument('--max_weight_sync_delay', type=int, default=30)
+    parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=10)
-    parser.add_argument('--eval_interval', type=int, default=5000)  # 1000
+    parser.add_argument('--grads_max_reuse', type=int, default=5)
+    parser.add_argument('--eval_interval', type=int, default=10000)  # 1000
     parser.add_argument('--save_interval', type=int, default=200000)  # 200000
     parser.add_argument('--log_interval', type=int, default=100)  # 100
 
