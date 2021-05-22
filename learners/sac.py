@@ -516,7 +516,7 @@ class SACLearnerWithCost(object):
         with writer.as_default():
             self.tf.summary.trace_export(name="alpha_forward_and_backward", step=0)
 
-    def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
+    def compute_gradient(self, batch_data, rb, indexes, iteration, ascent=False):  # compute gradient
         if self.counter % self.num_batch_reuse == 0:
             self.get_batch_data(batch_data, rb, indexes)
         self.counter += 1
@@ -545,7 +545,7 @@ class SACLearnerWithCost(object):
 
 
         with self.policy_gradient_timer:
-            if iteration > self.args.penalty_start: # todo: add to hyper
+            if ascent: # todo: add to hyper
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
             else:
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
