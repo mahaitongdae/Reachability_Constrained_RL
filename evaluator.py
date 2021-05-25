@@ -314,6 +314,9 @@ class EvaluatorWithCost(object):
 
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
+                if self.args.demo:
+                    qc = np.abs(qc_val[0] - 3)
+                    self.env.load_indicator(10 * lam[0] + 0.05 * qc)
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
@@ -331,12 +334,10 @@ class EvaluatorWithCost(object):
                     lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
-                # qc_list.append(qc_val[0])
-                # lam_list.append(lam)
-                # print("qc: {}".format(qc_val.numpy()))
-                # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
+
+
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
