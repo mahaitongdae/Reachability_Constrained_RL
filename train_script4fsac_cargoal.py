@@ -100,7 +100,7 @@ def built_FSAC_parser():
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_id', default='Safexp-CarGoal2-v0')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -144,20 +144,20 @@ def built_FSAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-6, 1000000, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-6, 1000000, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 4000000, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-6, 4000000, 1e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-6, 250000, 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[3e-6, 80000, 1e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1000000, 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, 330000, 3e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-6, 250000, 1e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 1000000, 3e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -180,13 +180,13 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=1200000)
+    parser.add_argument('--max_iter', type=int, default=4000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=2)
+    parser.add_argument('--grads_max_reuse', type=int, default=1)
     parser.add_argument('--eval_interval', type=int, default=10000) # 1000
     parser.add_argument('--save_interval', type=int, default=200000) # 200000
     parser.add_argument('--log_interval', type=int, default=100) # 100
@@ -201,9 +201,9 @@ def built_FSAC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/PointButton/PointButton1-2021-04-16-14-53-44-fac/models')
-    parser.add_argument('--model_load_ite', type=int, default=2800000)
-    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/PointButton/PointButton1-2021-04-16-14-53-44-fac/models')
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
+    parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
 
