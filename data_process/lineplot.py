@@ -13,59 +13,23 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.1
-SMOOTHFACTOR2 = 3
+SMOOTHFACTOR = 0.9
+SMOOTHFACTOR2 = 20
+SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
-txt_store_alg_list = ['CPO', 'PPO-Lagrangian']
-
-def load_from_event():
-    tag2plot = ['episode_return']
-    eval_summarys = tf.data.TFRecordDataset(['/home/mahaitong/PycharmProjects/mpg/results/FSAC/CarButton1-2021-04-20-14-40-50/logs/evaluator/events.out.tfevents.1618900860.mahaitong-virtual-machine.33389.1126.v2'])
-    data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
-    data_in_one_run_of_one_alg.update({'iteration': []})
-    for eval_summary in eval_summarys:
-        event = event_pb2.Event.FromString(eval_summary.numpy())
-        for v in event.summary.value:
-            t = tf.make_ndarray(v.tensor)
-            for tag in tag2plot:
-                if tag == v.tag[11:]:
-                    data_in_one_run_of_one_alg[tag].append(
-                        (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR * float(t)
-                        if data_in_one_run_of_one_alg[tag] else float(t))
-                    data_in_one_run_of_one_alg['iteration'].append(int(event.step))
-    a = 1
-
-def load_from_tf1_event(eval_dir, tag2plot):
-    from tensorboard.backend.event_processing import event_accumulator
-
-    tag2plot = []
-    ea = event_accumulator.EventAccumulator('/home/mahaitong/PycharmProjects/mpg/results/FSAC/tf1_test/fsac')
-    ea.Reload()
-    tag2plot += ea.scalars.Keys()
-    data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
-    data_in_one_run_of_one_alg.update({'iteration': []})
-    valid_tag_list = [i for i in tag2plot if i in ea.scalars.Keys()]
-    for tag in valid_tag_list:
-        events = ea.scalars.Items(tag)
-        for idx, event in enumerate(events):
-            t = event.value
-            data_in_one_run_of_one_alg[tag].append(
-                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR * float(t)
-                if data_in_one_run_of_one_alg[tag] else float(t))
-            if tag == valid_tag_list[0]:
-                data_in_one_run_of_one_alg['iteration'].append(int(event.step))
-
-    return data_in_one_run_of_one_alg
+txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
+ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-15, 33]},
+             'episode_cost':{'CarGoal': [0, 28],'PointButton': [2, 16]}} # {'CarGoal': [-5, 25]}
 
 def help_func():
     tag2plot = ['episode_cost']
-    alg_list = ['FSAC','SAC-Lagrangian', 'CPO', 'PPO-Lagrangian'] # 'SAC',
-    lbs = ['FSAC','SAC-Lagrangian',  'CPO', 'PPO-Lagrangian'] # 'SAC',
-    task = ['CarButton']
+    alg_list = [ 'FSAC','CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    lbs = [ 'FAC','CPO', 'PPO-L', 'TRPO-L', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    task = ['PointButton']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
-    palette = "bright"
+    palette = "dark"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
@@ -74,58 +38,110 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot, alg_list, task_list, lbs, palette, _, dir_str = help_func()
     df_dict = {}
     df_in_one_run_of_one_alg = {}
+    final_results = {}
     for task in task_list:
         df_list = []
         for alg in alg_list:
-
+            final_results.update({alg:[]})
             data2plot_dir = dir_str.format(alg, task)
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
-                if alg in txt_store_alg_list:
-                    eval_dir = data2plot_dir + '/' + dir
-                    print(eval_dir)
-                    df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
-                else:
-                    eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
-                    print(eval_dir)
-                    eval_file = os.path.join(eval_dir,
-                                             [file_name for file_name in os.listdir(eval_dir) if file_name.startswith('events')][0])
-                    eval_summarys = tf.data.TFRecordDataset([eval_file])
-                    data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
-                    data_in_one_run_of_one_alg.update({'iteration': []})
-                    for eval_summary in eval_summarys:
-                        event = event_pb2.Event.FromString(eval_summary.numpy())
-                        for v in event.summary.value:
-                            t = tf.make_ndarray(v.tensor)
-                            for tag in tag2plot:
-                                if tag == v.tag[11:]:
-                                    data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
-                                                                           if data_in_one_run_of_one_alg[tag] else float(t))
-                                    data_in_one_run_of_one_alg['iteration'].append(int(event.step))
-                    len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
-                    period = int(len1/len2)
-                    data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/10000. for i in range(len2)]
+                if not dir.startswith('skip'):
+                    if alg in txt_store_alg_list:
+                        eval_dir = data2plot_dir + '/' + dir
+                        print(eval_dir)
+                        df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
+                    else:
+                        eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
+                        print(eval_dir)
+                        eval_file = os.path.join(eval_dir,
+                                                 [file_name for file_name in os.listdir(eval_dir) if file_name.startswith('events')][0])
+                        eval_summarys = tf.data.TFRecordDataset([eval_file])
+                        data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
+                        data_in_one_run_of_one_alg.update({'iteration': []})
+                        for eval_summary in eval_summarys:
+                            event = event_pb2.Event.FromString(eval_summary.numpy())
+                            if dir.startswith('conti150'):
+                                step = int(event.step + 1500000)
+                            elif dir.startswith('conti'):
+                                step = int(event.step + 1000000)
+                            elif dir.startswith('add'):
+                                step = int(event.step + 2800000)
+                            else:
+                                step = event.step
+                            if step % 10000 == 0:
+                                if (not dir.startswith('add')) and  step > 3000000:
+                                    continue
+                                if dir.startswith('add') and step < 3000000:
+                                    continue
+                                if dir.startswith('half') and step > 1500000:
+                                    continue
+                                if dir.startswith('init') and step > 1000000:
+                                    continue
+                                for v in event.summary.value:
+                                    t = tf.make_ndarray(v.tensor)
+                                    for tag in tag2plot:
+                                        if tag == v.tag[11:]:
+                                            data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
+                                                                                   if data_in_one_run_of_one_alg[tag] else float(t))
 
-                    data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
-                    df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
-                df_list.append(df_in_one_run_of_one_alg)
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
+                        len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
+                        period = int(len1/len2)
+                        data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
+                        if 'episode_cost' in data_in_one_run_of_one_alg.keys():
+                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg[
+                                                                             'episode_cost']) / 10
+
+                        data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
+                        df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
+                        y = np.ones(SMOOTHFACTOR2)
+                        for tag in tag2plot:
+                            x = np.asarray(df_in_one_run_of_one_alg[tag])
+                            z = np.ones(len(x))
+                            smoothed_x = np.convolve(x, y, 'same') / np.convolve(z, y, 'same')
+                            df_in_one_run_of_one_alg[tag] = smoothed_x
+                    df_list.append(df_in_one_run_of_one_alg)
+                    lendf = len(df_in_one_run_of_one_alg[tag2plot[0]])
+                    if not dir.startswith('init'):
+                        final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
+        compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
-        axes_size = [0.11, 0.11, 0.89, 0.89] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+        axes_size = [0.11, 0.11, 0.89, 0.8] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
-        sns.lineplot(x="iteration", y="episode_cost", hue="algorithm",
-                     data=total_dataframe, linewidth=2, palette=palette
-                     )
-        base = 40 if task == 'CarPush' else 100
-        basescore = sns.lineplot(x=[0., 300.], y=[base, base], linewidth=2, color='black', linestyle='--')
-        print(ax1.lines[0].get_data())
-        ax1.set_ylabel('')
-        ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        legend = True if task == 'CarGoal' and tag == 'episode_cost' else False
+        if not legend:
+            sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", markers=True,
+                         data=total_dataframe, linewidth=2, palette=palette, legend=False, err_kws={'alpha':0.1}
+                         )
+        else:
+            p = sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", markers=True,
+                         data=total_dataframe, linewidth=2, palette=palette, err_kws={'alpha':0.1}
+                         )
+        base = 4 if task == 'PointGoal' else 10
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
-        ax1.legend(handles=handles+[basescore.lines[-1]], labels=labels+['Constraint'], loc='upper right', frameon=False, fontsize=fontsize)
+        if tag == 'episode_cost':
+            basescore = sns.lineplot(x=[0., 4.], y=[base, base], linewidth=2, color='black', linestyle='--')
+            if legend:
+                ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='lower right',
+                       frameon=False, fontsize=fontsize)
+        else:
+            if legend:
+                ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize)
+        # print(ax1.lines[0].get_data())
+        ax1.set_ylabel('')
+        ax1.set_xlabel("Million Iteration", fontsize=fontsize)
+        print(compare_dict)
+        # title = 'Episode Return {} \n {:+.0%} {:+.0%} {:+.0%}\n over TRPO-L, CPO, PPO-L'\
+        #     .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
+        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost Rate (%) ({})'.format(task)
+        if task in ylim_dict[tag]:
+            ax1.set_ylim(*ylim_dict[tag][task])
+        ax1.set_title(title, fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
@@ -148,7 +164,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         # print(results2print)
 
 
-def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, num_run=0):
+def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):
     """
     Recursively look through logdir for output files produced by
     spinup.logx.Logger.
@@ -170,8 +186,9 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, nu
             performance = 'AverageTestEpRet' if 'AverageTestEpRet' in exp_data else 'AverageEpRet'
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
-            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/10000)
-            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'])
+            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000/3*4)
+            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'] / 10)
+            exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
             datasets.append(exp_data)
             data = datasets
@@ -198,60 +215,12 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, nu
 
     return data.loc[:, slice_list]
 
-def load_from_txt(logdir='../results/CPO/PointGoal/pg1', tag=['episode_cost']):
-    data = get_datasets(logdir, tag, alg='CPO')
-    a = 1
-# def get_all_datasets(all_logdirs, legend=None, select=None, exclude=None):
-#     """
-#     For every entry in all_logdirs,
-#         1) check if the entry is a real directory and if it is,
-#            pull data from it;
-#
-#         2) if not, check to see if the entry is a prefix for a
-#            real directory, and pull data from that.
-#     """
-#     logdirs = []
-#     for logdir in all_logdirs:
-#         if osp.isdir(logdir) and logdir[-1]=='/':
-#             logdirs += [logdir]
-#         else:
-#             basedir = osp.dirname(logdir)
-#             fulldir = lambda x : osp.join(basedir, x)
-#             prefix = logdir.split('/')[-1]
-#             listdir= os.listdir(basedir)
-#             logdirs += sorted([fulldir(x) for x in listdir if prefix in x])
-#
-#     """
-#     Enforce selection rules, which check logdirs for certain substrings.
-#     Makes it easier to look at graphs from particular ablations, if you
-#     launch many jobs at once with similar names.
-#     """
-#     if select is not None:
-#         logdirs = [log for log in logdirs if all(x in log for x in select)]
-#     if exclude is not None:
-#         logdirs = [log for log in logdirs if all(not(x in log) for x in exclude)]
-#
-#     # Verify logdirs
-#     print('Plotting from...\n' + '='*DIV_LINE_WIDTH + '\n')
-#     for logdir in logdirs:
-#         print(logdir)
-#     print('\n' + '='*DIV_LINE_WIDTH)
-#
-#     # Make sure the legend is compatible with the logdirs
-#     assert not(legend) or (len(legend) == len(logdirs)), \
-#         "Must give a legend title for each set of experiments."
-#
-#     # Load data from logdirs
-#     data = []
-#     if legend:
-#         for log, leg in zip(logdirs, legend):
-#             data += get_datasets(log, leg)
-#     else:
-#         for log in logdirs:
-#             data += get_datasets(log)
-#     return data
-
-
+def dump_results(final_results_dict):
+    compare_dict = {}
+    for alg in final_results_dict.keys():
+        print('alg: {}, mean {}, std {}'.format(alg, np.mean(final_results_dict[alg]), np.std(final_results_dict[alg])))
+        compare_dict.update({alg:(np.mean(final_results_dict['FSAC'])-np.mean(final_results_dict[alg]))/np.mean(final_results_dict[alg])})
+    return compare_dict
 
 if __name__ == '__main__':
     # env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
