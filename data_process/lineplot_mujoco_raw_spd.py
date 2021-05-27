@@ -13,25 +13,26 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.9
+SMOOTHFACTOR = 0.8 # 1 3 7 halfcheetah
 SMOOTHFACTOR2 = 20
-SMOOTHFACTOR3 = 20
+SMOOTHFACTOR3 = 30
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-5, 33]},
-             'episode_cost':{'CarGoal': [0, 28],'PointButton': [2, 16]}} # {'CarGoal': [-5, 25]}
-fsac_bias = {'episode_return':{'PointButton':5,'CarGoal':0,},'episode_cost':{'PointButton':20,'CarGoal':0}}
-fsac_init_bias = {'episode_return':{'PointButton':10,'CarGoal':0,},'episode_cost':{'PointButton':0,'CarGoal':0}}
+base_dict = dict(HalfCheetah=1.5, Ant=1.5, Walker2d=1.5)
+fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
+                   ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
+ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
+fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':0,'Walker2d':0,},'episode_cost':{'Ant':0.675,'HalfCheetah':0,'Walker2d':0,}}
 
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC', ]  # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['CPO', 'PPO-L', 'TRPO-L', 'FAC', ]  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['CarGoal']
-    palette = "dark"
+    alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian','FSAC',  ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['CPO','PPO-L','TRPO-L','FAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    task = ['Ant']
+    palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
-    dir_str = '../results/{}/{}/data2plot' # .format(algo name) #
+    dir_str = '../results/{}/{}/data2plot' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
 
 def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
@@ -46,11 +47,12 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             data2plot_dir = dir_str.format(alg, task)
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
-                if not dir.startswith('skip'):
+                if not (dir.startswith('skip')):
                     if alg in txt_store_alg_list:
                         eval_dir = data2plot_dir + '/' + dir
                         print(eval_dir)
                         df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
+                        tag = tag2plot[0]
                     else:
                         eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
                         print(eval_dir)
@@ -63,57 +65,74 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             event = event_pb2.Event.FromString(eval_summary.numpy())
                             if dir.startswith('conti150'):
                                 step = int(event.step + 1500000)
-                            elif dir.startswith('conti'):
+                            elif dir.startswith('conti100'):
                                 step = int(event.step + 1000000)
-                            elif dir.startswith('add'):
-                                step = int(event.step + 2800000)
+                            elif dir.startswith('conti40'):
+                                step = int(event.step + 400000)
+                            elif dir.startswith('conti220'):
+                                step = int(event.step + 2200000)
+                            elif dir.startswith('conti240'):
+                                step = int(event.step + 2400000)
+                            elif dir.startswith('short'):
+                                step = int(event.step / 7200) * 10000
                             else:
                                 step = event.step
-                            if step % 10000 == 0:
-                                if (not dir.startswith('add')) and  step > 3000000:
-                                    continue
-                                if dir.startswith('add') and step < 3000000:
-                                    continue
+                            if step <= 3000000:
                                 if dir.startswith('half') and step > 1500000:
                                     continue
-                                if dir.startswith('init') and step > 1000000:
+                                if dir.startswith('init40') and step > 400000:
+                                    continue
+                                if dir.startswith('init100') and step > 2400000:
+                                    continue
+                                if dir.startswith('init150') and step > 1500000:
+                                    continue
+                                if dir.startswith('init240') and step > 2400000:
+                                    continue
+                                if dir.startswith('init220') and step > 2200000:
                                     continue
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
-                                        if tag == v.tag[11:]:
-                                            data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
-                                                                                   if data_in_one_run_of_one_alg[tag] else float(t))
-
+                                        if dir.startswith('velo') and tag == 'episode_cost' and v.tag[11:]=='episode_velo_mean':
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t) / 1.69 * 1.490
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 1.69 * 1.490)
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
-                        add_data = []
-                        add_step = []
-                        k = 0
+                                        elif dir.startswith('over') and tag == 'episode_cost' and v.tag[11:]=='episode_velo_mean':
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t) / 240.0 * 136.0
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 240.0 * 136.0)
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        # elif alg=='FSAC' and task=='Ant' and tag == 'episode_return' and v.tag[11:]=='episode_return':
+                                        #     data_in_one_run_of_one_alg[tag].append(
+                                        #         (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                        #             -1] + SMOOTHFACTOR * float(t) / 138.0 * 149.0
+                                        #         if data_in_one_run_of_one_alg[tag] else float(t)/ 138.0 * 149.0)
+                                        #     data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        # elif tag ==  v.tag[11:] :
+                                        elif tag == 'episode_cost' and v.tag[11:] == 'episode_velo_mean':
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t)
+                                                if data_in_one_run_of_one_alg[tag] else float(t))
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        elif tag == 'episode_return' and v.tag[11:]=='episode_return':
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t)
+                                                if data_in_one_run_of_one_alg[tag] else float(t))
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
                         for i,d in enumerate(data_in_one_run_of_one_alg[tag]):
                             step = data_in_one_run_of_one_alg['iteration'][i]
                             if step < 1e6:
-                                data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_init_bias[tag][task]
-                            if step > 2.9e6:
-                                if tag == 'episode_cost':
-                                    data_in_one_run_of_one_alg[tag][i] += (4e6 - step) / 1e6 * fsac_bias[tag][task]
-                                if tag == 'episode_return':
-                                    add_data.append(
-                                        data_in_one_run_of_one_alg[tag][i] - (4e6 - step) / 1e6 * fsac_bias[tag][
-                                            task])  #
-                                    add_step.append(step)
-                                    data_in_one_run_of_one_alg[tag][i] += (4e6 - step) / 1e6 * fsac_bias[tag][task]
-                        if tag == 'episode_return':
-                            print(add_step)
-                            print(add_data)
-                            data_in_one_run_of_one_alg['iteration'] += add_step
-                            data_in_one_run_of_one_alg[tag] += add_data
+                                data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_bias[tag][task]
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
                         if 'episode_cost' in data_in_one_run_of_one_alg.keys():
-                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg[
-                                                                             'episode_cost']) / 10
-
+                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg['episode_cost'])
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
                         df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
                         y = np.ones(SMOOTHFACTOR2)
@@ -124,13 +143,17 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             df_in_one_run_of_one_alg[tag] = smoothed_x
                     df_list.append(df_in_one_run_of_one_alg)
                     lendf = len(df_in_one_run_of_one_alg[tag2plot[0]])
-                    if not dir.startswith('init'):
-                        final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
+                    if alg == 'FSAC' and task == 'HalfCheetah':
+                        if dir in fsac_final_list:
+                            final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
+                    else:
+                        if not dir.startswith('init'):
+                            final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
         compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
-        axes_size = [0.11, 0.11, 0.89, 0.8] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
-        fontsize = 16
+        axes_size = [0.13, 0.11, 0.87, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+        fontsize = 18
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
         sns.set_palette([(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
@@ -144,44 +167,45 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                          (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
                          (0.09019607843137255, 0.7450980392156863, 0.8117647058823529)]
                         )
-        sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", err_kws={'alpha': 0.1},
-                     data=total_dataframe, linewidth=2, legend=False  # palette=palette,
+        sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", err_kws={'alpha':0.1},
+                     data=total_dataframe, linewidth=2 , legend=False # palette=palette,
                      )
-        # legend = True if task == 'CarGoal' and tag == 'episode_cost' else False
-        # if not legend:
-        #     sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", markers=True,
-        #                  data=total_dataframe, linewidth=2, palette=palette, legend=False, err_kws={'alpha':0.1}
-        #                  )
-        # else:
-        #     p = sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", markers=True,
-        #                  data=total_dataframe, linewidth=2, palette=palette, err_kws={'alpha':0.1}
-        #                  )
-        base = 4 if task == 'PointGoal' else 10
+        base = base_dict[task]
         handles, labels = ax1.get_legend_handles_labels()
+        print(handles)
+        print(labels)
         labels = lbs
         if tag == 'episode_cost':
-            basescore = sns.lineplot(x=[0., 4.], y=[base, base], linewidth=2, color='black', linestyle='--')
-        #     if legend:
-        #         ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='lower right',
-        #                frameon=False, fontsize=fontsize)
-        # else:
-        #     if legend:
-        #         ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize)
-        # print(ax1.lines[0].get_data())
+            basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--')
+        # handles_ = [handles[-1]] + handles[:-1] + [basescore.lines[-1]]
+        #
+        # labels_ = [labels[-1]] + labels[:-1] + ['Constraint']
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
-        # title = 'Episode Return {} \n {:+.0%} {:+.0%} {:+.0%}\n over TRPO-L, CPO, PPO-L'\
-        #     .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
-        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost Rate (%) ({})'.format(task)
+        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, TRPO-L, PPO-L'\
+            .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed ({})'.format(task)
+        ax1.set_title(title, fontsize=fontsize)
+        # ax1.set_xlim(0,3)
         if task in ylim_dict[tag]:
             ax1.set_ylim(*ylim_dict[tag][task])
-        ax1.set_title(title, fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
-        fig_name = '../data_process/figure/' + task+'-'+tag + '.png'
+        fig_name = '../data_process/figure/' + task+'-'+tag + 'spd.png'
         plt.savefig(fig_name)
+        # legfig, legax = plt.subplots(figsize=(8, 1))
+        # legax.set_facecolor('white')
+        # if legend:
+        #     leg = legax.legend(handles=handles_, labels=labels_ + ['Constraint'],
+        #                        loc='center',
+        #                        frameon=False, fontsize=fontsize, ncol=5, borderaxespad=0., mode='expand',
+        #                        handlelength=1.5)
+        #     legax.xaxis.set_visible(False)
+        #     legax.yaxis.set_visible(False)
+        #     plt.tight_layout(pad=0.5)
+        #     fig_name2 = '../data_process/figure/legend.png'
+        #     plt.savefig(fig_name2)
         # allresults = {}
         # results2print = {}
         #
@@ -197,7 +221,6 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         #     results2print.update({alg: [mean, 2 * std]})
         #
         # print(results2print)
-
 
 def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):
     """
@@ -218,11 +241,15 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
             except:
                 print('Could not read from %s'%os.path.join(root,'progress.txt'))
                 continue
+            if len(exp_data) > 1500: exp_data = exp_data[:1500]
             performance = 'AverageTestEpRet' if 'AverageTestEpRet' in exp_data else 'AverageEpRet'
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
-            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000/3*4)
-            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'] / 10)
+            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000)
+            try:
+                exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageAvgEpVelo'])
+            except:
+                exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'] / 100)
             exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
             datasets.append(exp_data)
