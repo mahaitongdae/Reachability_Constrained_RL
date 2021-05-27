@@ -25,7 +25,7 @@ fsac_init_bias = {'episode_return':{'PointButton':10,'CarGoal':0,},'episode_cost
 
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC', ]  # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO', 'PPO-L', 'TRPO-L', 'FAC', ]  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['CarGoal']
