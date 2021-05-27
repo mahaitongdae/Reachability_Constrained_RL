@@ -25,10 +25,10 @@ fsac_init_bias = {'episode_return':{'PointButton':10,'CarGoal':0,},'episode_cost
 
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC', ]  # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO', 'PPO-L', 'TRPO-L', 'FAC', ]  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['CarGoal']
+    task = ['PointButton']
     palette = "dark"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}/data2plot' # .format(algo name) #
@@ -173,7 +173,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         print(compare_dict)
         # title = 'Episode Return {} \n {:+.0%} {:+.0%} {:+.0%}\n over TRPO-L, CPO, PPO-L'\
         #     .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
-        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost Rate (%) ({})'.format(task)
+        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Dangerous Action Rate (%) ({})'.format(task)
         if task in ylim_dict[tag]:
             ax1.set_ylim(*ylim_dict[tag][task])
         ax1.set_title(title, fontsize=fontsize)

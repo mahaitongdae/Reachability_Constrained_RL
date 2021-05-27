@@ -19,7 +19,7 @@ SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-5, 33]},
-             'episode_cost':{'CarGoal': [0, 28],'PointButton': [2, 16]}} # {'CarGoal': [-5, 25]}
+             'episode_cost':{'CarGoal': [0, 28],'PointButton': [0, 28]}} # {'CarGoal': [-5, 25]}
 fsac_bias = {'episode_return':{'PointButton':5,'CarGoal':0,},'episode_cost':{'PointButton':20,'CarGoal':-50}}
 fsac_init_bias = {'episode_return':{'PointButton':10,'CarGoal':0,},'episode_cost':{'PointButton':0,'CarGoal':0}}
 
@@ -171,7 +171,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         print(compare_dict)
         # title = 'Episode Return {} \n {:+.0%} {:+.0%} {:+.0%}\n over TRPO-L, CPO, PPO-L'\
         #     .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
-        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost Rate (%) ({})'.format(task)
+        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Dangerous Action Rate (%) ({})'.format(task)
         if task in ylim_dict[tag]:
             ax1.set_ylim(*ylim_dict[tag][task])
         ax1.set_title(title, fontsize=fontsize)
