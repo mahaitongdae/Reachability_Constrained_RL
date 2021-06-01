@@ -57,6 +57,7 @@ class UpdateThread(threading.Thread):
         self.grad = None
         self.learner_stats = None
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
+        self.ascent = 0
 
     def run(self):
         while not self.stopped:
@@ -92,7 +93,14 @@ class UpdateThread(threading.Thread):
             #     self.grad = [tf.zeros_like(grad) for grad in self.grad]
             #     logger.info('Grad is nan!, zero it')
 
-            self.local_worker.apply_gradients(self.iteration, self.grad)
+            qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad, ascent=True)
+            ascent = self.ascent
+            if ascent:
+                # print('apply ascent cstr')
+                self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
+            # else:
+            #     print('apply uncstr')
+            #     self.local_worker.apply_gradients(self.iteration, self.grad, ascent=False)
 
         # log
         if self.iteration % self.args.log_interval == 0:
@@ -121,7 +129,9 @@ class UpdateThread(threading.Thread):
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
             if self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize':
                 self.evaluator.set_ppc_params.remote(self.local_worker.get_ppc_params())
-            self.evaluator.run_evaluation.remote(self.iteration)
+            over_cost_lim = self.evaluator.run_evaluation.remote(self.iteration)
+            self.ascent += ray.get(over_cost_lim)
+            logger.info('ascent: {}'.format(self.ascent))
 
         # save
         if self.iteration % self.args.save_interval == 0:
@@ -456,8 +466,13 @@ class OffPolicyAsyncOptimizerWithCost(object):
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
-                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
-                                                                              self.local_worker.iteration))
+                if self.update_thread.ascent:
+                    # logger.info('Start dual ascent')
+                    self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                                    self.local_worker.iteration, ascent=True))
+                else:
+                    self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                                  self.local_worker.iteration, ascent=False))
                 if self.update_thread.inqueue.full():
                     self.num_grads_dropped += 1
                 self.update_thread.inqueue.put([grads, learner_stats])

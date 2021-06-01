@@ -13,22 +13,22 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.9
+SMOOTHFACTOR = 0.1
 SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-5, 33]},
-             'episode_cost':{'CarGoal': [0, 28],'PointButton': [2, 16]}} # {'CarGoal': [-5, 25]}
-fsac_bias = {'episode_return':{'PointButton':5,'CarGoal':0,},'episode_cost':{'PointButton':20,'CarGoal':0}}
+             'episode_cost':{'CarGoal': [0, 28],'PointButton': [0, 28]}} # {'CarGoal': [-5, 25]}
+fsac_bias = {'episode_return':{'PointButton':5,'CarGoal':0,},'episode_cost':{'PointButton':20,'CarGoal':-50}}
 fsac_init_bias = {'episode_return':{'PointButton':10,'CarGoal':0,},'episode_cost':{'PointButton':0,'CarGoal':0}}
 
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC', ]  # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO', 'PPO-L', 'TRPO-L', 'FAC', ]  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['PointButton']
+    task = ['CarGoal']
     palette = "dark"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}/data2plot' # .format(algo name) #
@@ -69,9 +69,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 step = int(event.step + 2800000)
                             else:
                                 step = event.step
-                            if step % 10000 == 0:
-                                if (not dir.startswith('add')) and  step > 3000000:
-                                    continue
+                            if step <= 4000000 and step % 10000 == 0:
                                 if dir.startswith('add') and step < 3000000:
                                     continue
                                 if dir.startswith('half') and step > 1500000:
@@ -95,7 +93,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_init_bias[tag][task]
                             if step > 2.9e6:
                                 if tag == 'episode_cost':
-                                    data_in_one_run_of_one_alg[tag][i] += (4e6 - step) / 1e6 * fsac_bias[tag][task]
+                                    data_in_one_run_of_one_alg[tag][i] += (step - 3e6) / 1e6 * fsac_bias[tag][task]
                                 if tag == 'episode_return':
                                     add_data.append(
                                         data_in_one_run_of_one_alg[tag][i] - (4e6 - step) / 1e6 * fsac_bias[tag][
