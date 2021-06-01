@@ -2,7 +2,7 @@
 
 <div align=center>
 <img src="utils/walker.gif" width = 25%/>
-<img src="utils/safexp.gif" width = 28%/>
+<img src="utils/safexp.gif" width = 27%/>
 </div>
 
 This repository is the official implementation of Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety. 
