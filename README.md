@@ -1,44 +1,49 @@
-# Mixed Policy Gradient (MPG)
-The repository MPG is originated from the paper "Mixed policy gradient" (see [here](https://arxiv.org/abs/2102.11513) 
-for details), which contains a cluster of high-quality implementations of deep reinforcement learning algorithms,
-including the proposed MPG and other baseline algorithms, namely n-step Approximate Dynamic Programming (n-step ADP), 
-n-step Deterministic Policy Gradient (n-step DPG), Twin Delayed Deep Deterministic policy gradient (TD3), 
-and Soft Actor-Critic (SAC). In addition, we also implemented the widely used on-policy algorithms such as
- Trust Region Policy Optimization (TRPO) and Proximal Policy Optimization (PPO) (see branch ```mpg_on_policy```).
+# Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety
 
-The implementation is fairly thin and primarily optimized for our own development purposes. It is designed with TensorFlow 2 and Ray
-to realize a high-throughput asynchronous learning architecture, which modularizes the process of sampling, storing, learning, 
-evaluating and testing with clear interfaces, organizes each of them in parallel, as shown below. This architecture can help to
-scale to hundreds of cpu cores to largely enhance the sampling and update throughput. Besides, with the general design, 
-most of the gradient-based reinforcement learning algorithms can be incorporated.
+<div align=center>
+<img src="utils/walker.gif" width = 50%/>
+<img src="utils/safexp.gif" width = 50%/>
+</div>
 
-![images](utils/architecture.png)
+This repository is the official implementation of Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety. 
+The code base of this implementation is the [Parallel Asynchronous Buffer-Actor-Learner (PABAL) architecture](https://github.com/idthanm/mpg),
+which includes implementations of most common RL algorithms with the state-of-the-art high efficiency.
+If you are interested in or want to contribute to PABAL, 
 
-# Get started
-Run the script files under the train_scripts folder, in which you can choose an algorithm and modify its related 
-parameters. Then, enjoy it. :)
+## Requirements
 
-# References
-The algorithms are based on the following papers:
+**Important information for installing the requirements:**
+1. We test it successfully only on **Python 3.6**, and higher python version causes error with Safety Gym and TensorFlow 2.x. 
+2. Make sure you have installed [MuJoCo and mujoco-py](https://github.com/openai/mujoco-py) properly.
+3. Safety Gym and TensorFlow 2.x have conflict in numpy version. We test on numpy 1.17.5. If it runs with errors, pls check the numpy version.
 
-Guan, Y., Duan, J., Li, S. E., Li, J., Chen, J., & Cheng, B. (2021). Mixed Policy Gradient. arXiv preprint arXiv:2102.11513.
+To install requirements:
 
-Silver, David, Guy Lever, Nicolas Heess, Thomas Degris, Daan Wierstra, and Martin Riedmiller. "Deterministic policy gradient algorithms." In International conference on machine learning, pp. 387-395. PMLR, 2014.
-
-Fujimoto, Scott, Herke Hoof, and David Meger. "Addressing function approximation error in actor-critic methods." In International Conference on Machine Learning, pp. 1587-1596. PMLR, 2018.
-
-Haarnoja, Tuomas, Aurick Zhou, Pieter Abbeel, and Sergey Levine. "Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor." In International Conference on Machine Learning, pp. 1861-1870. PMLR, 2018.
-
-Schulman, John, Sergey Levine, Pieter Abbeel, Michael Jordan, and Philipp Moritz. "Trust region policy optimization." In International conference on machine learning, pp. 1889-1897. PMLR, 2015.
-
-Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. "Proximal policy optimization algorithms." arXiv preprint arXiv:1707.06347 (2017).
-
-If MPG helps you in your academic research, you are encouraged to cite our paper. Here is an example bibtex:
+```setup
+pip install -r requirements.txt
 ```
-@article{guan2021mixed,
-  title={Mixed Policy Gradient},
-  author={Guan, Yang and Duan, Jingliang and Li, Shengbo Eben and Li, Jie and Chen, Jianyu and Cheng, Bo},
-  journal={arXiv preprint arXiv:2102.11513},
-  year={2021}
-}
+
+## Training
+
+To train the model(s) in the paper, run this command:
+
+```train
+python train_scripts4fsac.py --env_id Safexp-PointButton1-v0 --seed 0
 ```
+
+
+## Evaluation
+
+To test and evaluate trained policies, run:
+
+```test
+python train_scripts4fsac.py --mode testing --test_dir <your_log_dir> --test_iter_list [3000000]
+```
+
+
+
+## Contributing
+
+When contributing to this repository, please first discuss the change you wish to make via issue, email, or any other method with me before making a change.
+
+

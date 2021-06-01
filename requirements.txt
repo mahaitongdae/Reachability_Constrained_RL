@@ -1,0 +1,6 @@
+ray == 1.2.0
+-e git+https://github.com/openai/safety-gym.git@f31042f2f9ee61b9034dd6a416955972911544f5#egg=safety_gym
+tensorflow==2.4.1
+tensorflow-probability==0.12.1
+numpy==1.17.5
+seaborn==0.11.1
