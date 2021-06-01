@@ -7,7 +7,7 @@
 
 This repository is the official implementation of Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety. 
 The code base of this implementation is the [Parallel Asynchronous Buffer-Actor-Learner (PABAL) architecture](https://github.com/idthanm/mpg),
-which includes implementations of most common RL algorithms with the state-of-the-art high efficiency.
+which includes implementations of most common RL algorithms with the state-of-the-art training efficiency.
 If you are interested in or want to contribute to PABAL, you can contact me or the [original creator](https://github.com/idthanm).
 
 ## Requirements
