@@ -95,7 +95,6 @@ def built_FSAC_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-
     parser.add_argument('--penalty_start', type=int, default=1500000)
     parser.add_argument('--demo', type=bool, default=False)
 
@@ -206,10 +205,12 @@ def built_FSAC_parser():
     parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/PointButton/PointButton1-2021-04-16-14-53-44-fac/models')
 
     return parser.parse_args()
+  
 
 def built_parser(alg_name):
     if alg_name == 'FSAC':
         args = built_FSAC_parser()
+
 
     env = gym.make(args.env_id) #  **vars(args)
     args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
@@ -251,3 +252,5 @@ def main(alg_name):
 
 if __name__ == '__main__':
     main('FSAC')
+
+
