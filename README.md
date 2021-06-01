@@ -1,8 +1,8 @@
 # Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety
 
 <div align=center>
-<img src="utils/walker.gif" width = 50%/>
-<img src="utils/safexp.gif" width = 50%/>
+<img src="utils/walker.gif" width = 25%/>
+<img src="utils/safexp.gif" width = 25%/>
 </div>
 
 This repository is the official implementation of Feasible Actor-Critic: Constrained Reinforcement Learning for Ensuring Statewise Safety. 
