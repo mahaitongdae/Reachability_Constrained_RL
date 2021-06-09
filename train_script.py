@@ -43,16 +43,16 @@ NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 def built_LMAMPC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--mode', type=str, default='testing') # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/experiment-2021-03-15-17-59-08'
+        test_dir = 'results/toyota3lane/LMbaseline-2021-05-21-13-06-23'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[800000],
+                           test_iter_list=[500000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=10,
                            eval_log_interval=1,
@@ -61,7 +61,7 @@ def built_LMAMPC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--memo', type=str, default='add mu bias') # mu dim 32, back to adam, add mu update interval
+    parser.add_argument('--memo', type=str, default='baseline') # mu dim 32, back to adam, add mu update interval
 
     # parser.add_argument('--env_version', type=str, default='1d2b82d2')
     # parser.add_argument('--train_version', type=str, default='76f7d2b4')
@@ -72,7 +72,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
-    parser.add_argument('--optimizer_type', type=str, default='SingleProcessOffPolicy')
+    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
@@ -139,10 +139,10 @@ def built_LMAMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=1000100)
-    parser.add_argument('--num_workers', type=int, default=6)
+    parser.add_argument('--max_iter', type=int, default=500000)
+    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--num_learners', type=int, default=30)
-    parser.add_argument('--num_buffers', type=int, default=8)
+    parser.add_argument('--num_buffers', type=int, default=10)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
     parser.add_argument('--eval_interval', type=int, default=10000)
@@ -151,7 +151,7 @@ def built_LMAMPC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/toyota3lane/experiment-{time}'.format(time=time_now)
+    results_dir = './results/toyota3lane/{algo}-{time}'.format(algo=parser.parse_args().alg_name, time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')

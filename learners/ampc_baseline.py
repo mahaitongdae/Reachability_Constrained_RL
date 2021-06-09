@@ -117,7 +117,7 @@ class LMAMPCLearner2(object):
         # processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
         # mu_all = self.policy_with_value.compute_mu(processed_start_obses)
         mu = self.policy_with_value.lam
-        print(mu)
+        # print(mu)
         cs_sum = self.tf.reduce_sum(self.tf.multiply(mu, self.tf.stop_gradient(constraints_mean)))
         punish_terms_sum = self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu), constraints_mean))
 
