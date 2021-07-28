@@ -61,23 +61,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         data_in_one_run_of_one_alg.update({'iteration': []})
                         for eval_summary in eval_summarys:
                             event = event_pb2.Event.FromString(eval_summary.numpy())
-                            if dir.startswith('conti150'):
-                                step = int(event.step + 1500000)
-                            elif dir.startswith('conti'):
-                                step = int(event.step + 1000000)
-                            elif dir.startswith('add'):
-                                step = int(event.step + 2800000)
-                            else:
-                                step = event.step
+                            step = event.step
                             if step % 10000 == 0:
-                                if (not dir.startswith('add')) and  step > 3000000:
-                                    continue
-                                if dir.startswith('add') and step < 3000000:
-                                    continue
-                                if dir.startswith('half') and step > 1500000:
-                                    continue
-                                if dir.startswith('init') and step > 1000000:
-                                    continue
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
@@ -91,17 +76,6 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         k = 0
                         for i,d in enumerate(data_in_one_run_of_one_alg[tag]):
                             step = data_in_one_run_of_one_alg['iteration'][i]
-                            if step < 1e6:
-                                data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_init_bias[tag][task]
-                            if step > 2.9e6:
-                                if tag == 'episode_cost':
-                                    data_in_one_run_of_one_alg[tag][i] += (4e6 - step) / 1e6 * fsac_bias[tag][task]
-                                if tag == 'episode_return':
-                                    add_data.append(
-                                        data_in_one_run_of_one_alg[tag][i] - (4e6 - step) / 1e6 * fsac_bias[tag][
-                                            task])  #
-                                    add_step.append(step)
-                                    data_in_one_run_of_one_alg[tag][i] += (4e6 - step) / 1e6 * fsac_bias[tag][task]
                         if tag == 'episode_return':
                             print(add_step)
                             print(add_data)
@@ -221,7 +195,7 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
             performance = 'AverageTestEpRet' if 'AverageTestEpRet' in exp_data else 'AverageEpRet'
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
-            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000/3*4)
+            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000)
             exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'] / 10)
             exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
