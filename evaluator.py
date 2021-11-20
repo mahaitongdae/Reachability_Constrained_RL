@@ -151,7 +151,7 @@ class Evaluator(object):
     def static_region(self):
         d = np.linspace(0,10,100)
         v = np.linspace(0,10,100)
-        cmaplist = ['springgreen'] * 3 + ['gold'] * 10 + ['crimson'] * 87
+        cmaplist = ['springgreen'] * 3 + ['crimson'] * 87
         cmap1 = ListedColormap(cmaplist)
         D, V = np.meshgrid(d, v)
         flattenD = np.reshape(D, [-1,])
@@ -167,13 +167,13 @@ class Evaluator(object):
                 import matplotlib.pyplot as plt
                 from mpl_toolkits.mplot3d import Axes3D
                 plt.figure()
-                z += np.clip((V**2-10*D)/50, 0, 1)
+                z += np.clip((V**2-6*(D-2))/50, 0, 1)
                 ct = plt.contourf(D,V,z,50, cmap=cmap1)
-                plt.colorbar(ct)
+                # plt.colorbar(ct)
                 plt.grid()
-                x = np.linspace(0, 10)
-                t = np.sqrt(2 * 5 * x)
-                plt.plot(x, t, linestyle='--', color='red')
+                x = np.linspace(0, 8)
+                t = np.sqrt(2 * 3 * x)
+                plt.plot(x+2, t, linestyle='--', color='red')
                 # plt.plot(d, np.sqrt(2*5*d),lw=2)
                 name_2d=name + '_2d.jpg'
                 plt.savefig(os.path.join(self.log_dir, name_2d))
@@ -223,4 +223,4 @@ def test_evaluator():
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/experiment-2021-03-15-08-44-37', 1000000)
+    static_region('./results/toyota3lane/LMAMPC-v2-2021-06-24-14-10-01', 200000)
