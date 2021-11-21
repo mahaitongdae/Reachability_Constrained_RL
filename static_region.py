@@ -7,37 +7,6 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from gym.envs.user_defined.EmerBrake.models import EmBrakeModel
 
-
-def model_rollout_for_update(self, start_obses, ite):
-    start_obses = self.tf.tile(start_obses, [self.M, 1])
-    self.model.reset(start_obses)
-    rewards_sum = self.tf.zeros((start_obses.shape[0],))
-    obses = start_obses
-    constraints_list = []
-    for step in range(self.num_rollout_list_for_policy_update[0]):
-        processed_obses = self.preprocessor.tf_process_obses(obses)
-        actions, _ = self.policy_with_value.compute_action(processed_obses)
-        obses, rewards, constraints = self.model.rollout_out(actions)
-        constraints_clip = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
-        constraints_list.append(self.tf.expand_dims(constraints_clip, axis=1))
-
-        rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-    constraints_all = self.tf.concat(constraints_list, 1)
-    processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
-    mu_all = self.policy_with_value.compute_mu(processed_start_obses)
-    cs_sum = self.tf.reduce_sum(self.tf.multiply(mu_all, self.tf.stop_gradient(constraints_all)), 1)
-    punish_terms_sum = self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_all), constraints_all), 1)
-
-    obj_loss = -self.tf.reduce_mean(rewards_sum)
-    punish_terms = self.tf.reduce_mean(punish_terms_sum)
-    pg_loss = obj_loss + punish_terms
-    cs_loss = -self.tf.reduce_mean(cs_sum)
-    constraints = self.tf.reduce_mean(constraints_all)
-
-    return obj_loss, punish_terms, cs_loss, pg_loss, constraints
-
-
-
 def static_region(test_dir, iteration):
     import json
     import argparse
@@ -84,21 +53,23 @@ def static_region(test_dir, iteration):
 
     preprocess_obs = evaluator.preprocessor.np_process_obses(init_obses)
     flatten_mu = evaluator.policy_with_value.compute_mu(preprocess_obs).numpy()
+    flatten_cstr = np.clip(flatten_cstr, 0, np.inf)
 
     flatten_cs = np.multiply(flatten_cstr, flatten_mu)
 
     def plot_region(data, name):
-        for k in range(data.shape[1]):
+        for k in [9]:
             data_k = data[:, k]
             data_reshape = data_k.reshape(D.shape)
             import matplotlib.pyplot as plt
             from mpl_toolkits.mplot3d import Axes3D
-            plt.figure()
-            plt.grid()
+            fig, ax = plt.subplots()
+            # plt.grid()
             x = np.linspace(0, 10)
             t = np.sqrt(2 * 5 * x)
-            ct = plt.contour(D, V, data_reshape, 50, cmap='rainbow')
+            ct = ax.contour(D, V, data_reshape, 50, cmap='rainbow')
             plt.colorbar(ct)
+            ax.clabel(ct, inline=True, fontsize=10)
             plt.plot(x, t, linestyle='--', color='red')
             name_2d = name + '_' + str(k) + '_2d.jpg'
             plt.savefig(os.path.join(evaluator.log_dir, name_2d))
@@ -115,4 +86,4 @@ def static_region(test_dir, iteration):
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/LMAMPC-v2-2021-06-24-14-10-01', 200000)
+    static_region('./results/toyota3lane/LMbaseline-2021-05-21-13-06-23', 500000)
