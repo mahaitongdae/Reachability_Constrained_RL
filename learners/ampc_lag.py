@@ -11,7 +11,8 @@ import logging
 
 import gym
 import numpy as np
-from gym.envs.user_defined.EmerBrake.models import EmBrakeModel
+# from gym.envs.user_defined.EmerBrake.models import EmBrakeModel
+from dynamics.models import PendulumModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
@@ -42,7 +43,8 @@ class LMAMPCLearner2(object):
         self.M = self.args.M
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
 
-        self.model = EmBrakeModel()
+        # self.model = EmBrakeModel()
+        self.model = PendulumModel()
         self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
@@ -93,7 +95,7 @@ class LMAMPCLearner2(object):
             obses, rewards, constraints = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
         constraints_clip = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
-        constraints_all =self.tf.expand_dims(constraints_clip, 1)
+        constraints_all =self.tf.expand_dims(constraints_clip, 1) if len(constraints_clip.shape) == 1 else constraints_clip
         processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
         mu_all = self.policy_with_value.compute_mu(processed_start_obses)
         cs_sum = self.tf.reduce_sum(self.tf.multiply(mu_all, self.tf.stop_gradient(constraints_all)), 1)
