@@ -45,6 +45,7 @@ class MLPNet(Model):
     def call(self, x, **kwargs):
         x = self.first_(x)
         x = self.hidden(x)
+        x = self.hidden(x)
         x = self.outputs(x)
         return x
 

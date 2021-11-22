@@ -58,7 +58,7 @@ def static_region(test_dir, iteration):
     flatten_cs = np.multiply(flatten_cstr, flatten_mu)
 
     def plot_region(data, name):
-        for k in [9]:
+        for k in [19]:
             data_k = data[:, k]
             data_reshape = data_k.reshape(D.shape)
             import matplotlib.pyplot as plt
@@ -86,4 +86,4 @@ def static_region(test_dir, iteration):
 
 
 if __name__ == '__main__':
-    static_region('./results/toyota3lane/LMbaseline-2021-05-21-13-06-23', 500000)
+    static_region('./results/toyota3lane/LMAMPC-v2-2021-11-21-23-04-21', 300000)
