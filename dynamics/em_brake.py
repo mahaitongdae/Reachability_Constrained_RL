@@ -15,14 +15,8 @@ class EmergencyBraking(gym.Env):
         self.B = np.array([[0],[self.step_length]])
 
 
-    def reset(self, reset_obs=None):
-        '''
-        ndarray([2,])
-        '''
-        if reset_obs is None:
-            self.obs = self._reset_init_state()
-        else:
-            self.obs = reset_obs
+    def reset(self):
+        self.obs = self._reset_init_state()
         self.action = np.array([0.0])
         self.cstr = 0.0
         return self.obs
@@ -35,7 +29,7 @@ class EmergencyBraking(gym.Env):
         self.obs = (np.matmul(self.A, self.obs[:, np.newaxis]) + np.matmul(self.B, self.action[:, np.newaxis])).reshape([-1,])
         if self.obs[1] < 0: self.obs[1] = 0
         done = True if self.obs[0] < 0 or self.obs[1] <= 0 else False
-        # constraint = np.where(self.obs[0]<0, -self.obs[0], np.zeros_like(self.obs[0])) # todo: problem
+        # constraint = np.where(self.obs[0]<0, -self.obs[0], np.zeros_like(self.obs[0]))
         constraint = -self.obs[0]
         info = dict(reward_info=dict(reward=reward, constraints=float(constraint)))
         self.cstr = constraint

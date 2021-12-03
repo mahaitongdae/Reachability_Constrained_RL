@@ -98,7 +98,7 @@ class Policy4Lagrange(tf.Module):
 
         self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v')
         self.con_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='con_v')
-
+        # todo: change to feasibility V
         self.mu = mu_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, mu_dim, name='mu', output_activation=
                                self.args.mu_out_activation, output_bias=self.args.mu_out_bias)
 
