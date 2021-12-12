@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 CONSTRAINTS_CLIP_MINUS = -1.0 # TODO: why -1
 
 
-class LMAMPCLearnerTerminal(object):
+class PureReachLearner(object):
     import tensorflow as tf
     tf.config.optimizer.set_experimental_options({'constant_folding': True,
                                                   'arithmetic_optimization': True,
