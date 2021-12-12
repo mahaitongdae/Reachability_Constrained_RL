@@ -87,7 +87,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--alg_name', default='PureReach')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
-    parser.add_argument('--gamma', type=float, default=1.)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--fea_gamma', type=float, default=0.99999)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--mu_clip_value', type=float, default=100.)

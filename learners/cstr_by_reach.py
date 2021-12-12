@@ -20,7 +20,7 @@ from utils.misc import TimerStat, args2envkwargs
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MINUS = -1.0  # TODO: why -1
+CONSTRAINTS_CLIP_MINUS = -1.0 # TODO: why -1
 
 
 class CstrReachLearner(object):
@@ -51,8 +51,7 @@ class CstrReachLearner(object):
         model_dict = {"UpperTriangle": double_intergrator_model,
                       "Air3d": air3d_model}
         self.model = model_dict.get(args.env_id.split("-")[0])
-        self.preprocessor = Preprocessor((self.args.obs_dim,), self.args.obs_preprocess_type,
-                                         self.args.reward_preprocess_type,
+        self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.grad_timer = TimerStat()
@@ -91,20 +90,19 @@ class CstrReachLearner(object):
             tape.watch(mb_obs)
             constraints = self.model.compute_constraints(mb_obs)
             fea_v_obses = self.policy_with_value.compute_fea_v(mb_obs)
-
-            d_fea_v_d_obses = tape.gradient(fea_v_obses, mb_obs)  # shape: (B, 2)
-            signed_obj = self.tf.matmul(d_fea_v_d_obses, self.model.g_x(mb_obs))  # shape: (B, 1)
-            u_safe = self.tf.where(signed_obj >= 0., -self.model.action_range,
-                                   self.model.action_range)  # action_range: tf.constant, necessary?
+            
+            d_fea_v_d_obses = tape.gradient(fea_v_obses, mb_obs) # shape: (B, 2)
+            signed_obj = self.tf.matmul(d_fea_v_d_obses, self.model.g_x(mb_obs)) # shape: (B, 1)
+            u_safe = self.tf.where(signed_obj >= 0., -self.model.action_range, self.model.action_range) # action_range: tf.constant, necessary?
             obses_tp1 = self.model.f_xu(mb_obs, u_safe)
             fea_v_obses_tp1_minimum = self.policy_with_value.compute_fea_v(obses_tp1)
             assert fea_v_obses == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
 
             fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints + \
-                                                 self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
-
+                self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
+            
             fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
-
+            
         with self.tf.name_scope('fea_gradient') as scope:
             fea_v_gradient = tape.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
 
@@ -139,8 +137,10 @@ class CstrReachLearner(object):
 
         # mu part
         complementary_slackness = self.tf.reduce_mean(
-            self.tf.multiply(mu, self.tf.stop_gradient(fea_v_tp1)))
+                                      self.tf.multiply(mu, self.tf.stop_gradient(fea_v_tp1)))
         mu_loss = - complementary_slackness
+
+
 
         return obj_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms
 
@@ -155,7 +155,7 @@ class CstrReachLearner(object):
             mu_grad = tape.gradient(mu_loss, self.policy_with_value.mu.trainable_weights)
 
         return obj_v_grad, pg_grad, mu_grad, obj_loss, pg_loss, mu_loss, \
-               fea_v_tp1, mu, punish_terms
+            fea_v_tp1, mu, punish_terms
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
