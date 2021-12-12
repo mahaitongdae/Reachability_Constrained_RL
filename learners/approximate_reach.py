@@ -83,31 +83,6 @@ class CstrReachLearner(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
-    # TODO: feasibility v learning
-    @tf.function
-    def feasibility_forward_and_backward(self, mb_obs):
-        with self.tf.GradientTape(persistent=True) as tape:
-            tape.watch(mb_obs)
-            constraints = self.model.compute_constraints(mb_obs)
-            fea_v_obses = self.policy_with_value.compute_fea_v(mb_obs)
-            
-            d_fea_v_d_obses = tape.gradient(fea_v_obses, mb_obs) # shape: (B, 2)
-            signed_obj = self.tf.matmul(d_fea_v_d_obses, self.model.g_x(mb_obs)) # shape: (B, 1)
-            u_safe = self.tf.where(signed_obj >= 0., -self.model.action_range, self.model.action_range) # action_range: tf.constant, necessary?
-            obses_tp1 = self.model.f_xu(mb_obs, u_safe)
-            fea_v_obses_tp1_minimum = self.policy_with_value.compute_fea_v(obses_tp1)
-            assert fea_v_obses == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
-
-            fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints + \
-                self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
-            
-            fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
-            
-        with self.tf.name_scope('fea_gradient') as scope:
-            fea_v_gradient = tape.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
-
-            return fea_v_gradient, fea_loss
-
     def model_rollout_for_update(self, start_obses):
         start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses)
@@ -116,21 +91,27 @@ class CstrReachLearner(object):
         for step in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            obses, rewards, _ = self.model.rollout_out(actions)
+            obses, rewards, constraints = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
+        constraints = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
         processed_obses_t = self.preprocessor.tf_process_obses(start_obses)
         processed_obses_tp1 = self.preprocessor.tf_process_obses(obses)
 
-        # value part
+        # obj value part
         v_t = self.policy_with_value.compute_obj_v(processed_obses_t)
         v_tp1 = self.policy_with_value.compute_obj_v(processed_obses_tp1)
         v_target = self.tf.stop_gradient(self.gamma * v_tp1 + rewards_sum)
         assert v_target.shape == v_tp1.shape
         obj_loss = 0.5 * self.tf.reduce_mean(self.tf.square(v_target - v_t))
 
+        # fea value part
+        fea_v_t =self.policy_with_value.compute_fea_v(processed_obses_t)
+        fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
+        fea_v_target = self.tf.where(constraints > fea_v_tp1, constraints, fea_v_tp1)
+        fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(fea_v_target) - fea_v_t))
+
         # policy part
         mu = self.tf.squeeze(self.policy_with_value.compute_mu(processed_obses_t), axis=1)
-        fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
         assert mu.shape == fea_v_tp1.shape, print(mu.shape, fea_v_tp1.shape)
         punish_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), fea_v_tp1))
         pg_loss = -(v_tp1 + rewards_sum) + punish_terms
@@ -142,20 +123,21 @@ class CstrReachLearner(object):
 
 
 
-        return obj_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms
+        return obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms
 
     @tf.function
     def forward_and_backward(self, mb_obs):
         with self.tf.GradientTape(persistent=True) as tape:
-            obj_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms = self.model_rollout_for_update(mb_obs)
+            obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms = self.model_rollout_for_update(mb_obs)
 
         with self.tf.name_scope('policy_gradient') as scope:
             obj_v_grad = tape.gradient(obj_loss, self.policy_with_value.obj_v.trainable_weights)
+            fea_v_grad = tape.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
             pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
             mu_grad = tape.gradient(mu_loss, self.policy_with_value.mu.trainable_weights)
 
-        return obj_v_grad, pg_grad, mu_grad, obj_loss, pg_loss, mu_loss, \
-            fea_v_tp1, mu, punish_terms
+        return obj_v_grad, fea_v_grad, pg_grad, mu_grad, \
+               obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -170,16 +152,13 @@ class CstrReachLearner(object):
         iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
 
         with self.grad_timer:
-            obj_v_grad, pg_grad, mu_grad, obj_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms = \
+            obj_v_grad, fea_v_grad, pg_grad, mu_grad, obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms = \
                 self.forward_and_backward(mb_obs)
 
             obj_v_grad, obj_v_grad_norm = self.tf.clip_by_global_norm(obj_v_grad, self.args.gradient_clip_norm)
+            fea_v_grad, fea_v_grad_norm = self.tf.clip_by_global_norm(fea_v_grad, self.args.gradient_clip_norm)
             pg_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
             mu_grad, mu_grad_norm = self.tf.clip_by_global_norm(mu_grad, self.args.gradient_clip_norm)
-        
-        with self.fea_grad_timer:
-            fea_v_grad, fea_loss = self.feasibility_forward_and_backward(mb_obs)
-            fea_v_grad, fea_v_grad_norm = self.tf.clip_by_global_norm(fea_v_grad, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,

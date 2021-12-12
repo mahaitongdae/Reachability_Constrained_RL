@@ -90,7 +90,6 @@ class UpperTriangleModel(object):
         actions = tf.cast(actions, dtype=tf.float32)
         rewards = - tf.square(actions[:, 0])
         constraints = self.compute_constraints(obses)
-        # constraints = tf.zeros_like(obses)
         return rewards, constraints
     
     def compute_constraints(self, obses):

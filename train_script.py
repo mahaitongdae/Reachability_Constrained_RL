@@ -20,7 +20,8 @@ from buffer import ReplayBuffer
 from evaluator import Evaluator
 from learners.ampc_lag import LMAMPCLearner2
 from learners.ampc_baseline import LMAMPCLearner2 as LMBaseline
-from learners.pure_reach import PureReachLearner
+from learners.naive_reach import CstrReachLearner as NaiveReachLearner
+from learners.approximate_reach import CstrReachLearner as ApproximateReachLearner
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
 from policy import Policy4Toyota, Policy4Reach, Policy4baseline
 from tester import Tester
@@ -35,7 +36,7 @@ logging.basicConfig(level=logging.INFO)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
 NAME2LEARNERCLS = dict([('LMAMPC-v2', LMAMPCLearner2), ('LMbaseline', LMBaseline),
-                         'PureReach', PureReachLearner])
+                         ('NaiveReach', NaiveReachLearner), ('ApproximateReach', ApproximateReachLearner)])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
@@ -84,7 +85,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--con_dim', type=int, default=1)
 
     # learner
-    parser.add_argument('--alg_name', default='PureReach')
+    parser.add_argument('--alg_name', default='ApproximateReach')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
     parser.add_argument('--gamma', type=float, default=0.95)
