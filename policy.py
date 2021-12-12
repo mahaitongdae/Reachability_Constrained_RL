@@ -75,7 +75,7 @@ class Policy4Toyota(tf.Module):
                 mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
                 return self.args.action_range * self.tf.tanh(mean) if self.args.action_range is not None else mean, 0.
 
-class Policy4Lagrange(tf.Module):
+class Policy4Reach(tf.Module):
     import tensorflow as tf
     import tensorflow_probability as tfp
     tfd = tfp.distributions
@@ -388,7 +388,7 @@ def test_policy_for_Lag():
     # env = gym.make('CrossroadEnd2end-v4')
     args.obs_dim = 3
     args.act_dim = 2
-    policy_with_value = Policy4Lagrange(args)
+    policy_with_value = Policy4Reach(args)
     # print(policy_with_value.policy.trainable_weights)
     # print(policy_with_value.Qs[0].trainable_weights)
     obses = np.array([[1., 2., 3.], [3., 4., 5.]], dtype=np.float32)

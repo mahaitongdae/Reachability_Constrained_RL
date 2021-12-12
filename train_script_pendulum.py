@@ -22,7 +22,7 @@ from evaluator import Evaluator
 from learners.ampc_lag import LMAMPCLearner2
 from learners.ampc_baseline import LMAMPCLearner2 as LMBaseline
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
-from policy import Policy4Toyota, Policy4Lagrange, Policy4baseline
+from policy import Policy4Toyota, Policy4Reach, Policy4baseline
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker
@@ -38,7 +38,7 @@ NAME2LEARNERCLS = dict([('LMAMPC-v2', LMAMPCLearner2),('LMbaseline', LMBaseline)
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICIES = dict([('Policy4Toyota', Policy4Toyota),('Policy4Lagrange', Policy4Lagrange),('Policy4baseline', Policy4baseline)])
+NAME2POLICIES = dict([('Policy4Toyota', Policy4Toyota), ('Policy4Lagrange', Policy4Reach), ('Policy4baseline', Policy4baseline)])
 NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 
 def built_LMAMPC_parser():
