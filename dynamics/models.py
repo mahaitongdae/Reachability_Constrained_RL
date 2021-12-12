@@ -75,6 +75,7 @@ class EmBrakeModel(object):
 class UpperTriangleModel(object):
     def __init__(self):
         self.constraints_num = 1
+        self.action_range = tf.constant(0.5, dtype=tf.float32)
 
     def rollout_out(self, actions):
         with tf.name_scope('model_step') as scope:
@@ -88,9 +89,13 @@ class UpperTriangleModel(object):
         obses = tf.cast(obses, dtype=tf.float32)
         actions = tf.cast(actions, dtype=tf.float32)
         rewards = - tf.square(actions[:, 0])
-        constraints = tf.stack([tf.reduce_max(tf.abs(obses), axis=1) - 5.], axis=1)
+        constraints = self.compute_constraints(obses)
         # constraints = tf.zeros_like(obses)
         return rewards, constraints
+    
+    def compute_constraints(self, obses):
+        constraints = tf.stack([tf.reduce_max(tf.abs(obses), axis=1) - 5.], axis=1)
+        return constraints
 
     def _action_transformation_for_end2end(self, actions):
         clipped_actions = tf.clip_by_value(actions, -1.05, 1.05)
@@ -103,6 +108,13 @@ class UpperTriangleModel(object):
         frequency = tf.convert_to_tensor(frequency)
         next_state = [d + 1 / frequency * v, v + 1 / frequency * a]
         return tf.stack(next_state, 1)
+    
+    def g_x(self, x):
+        '''
+        for a control-affine system, f(x,u) = g(x)*u + f'(x), here we need formulate g(x)
+        for simpler model-based feasibility computation
+        '''
+        return tf.constant([[0.], [1.]], dtype=tf.float32)
 
     def reset(self, obses):  # input are all tensors
         self.obses = obses

@@ -20,7 +20,7 @@ from utils.misc import TimerStat, args2envkwargs
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MINUS = -1.0
+CONSTRAINTS_CLIP_MINUS = -1.0 # TODO: why -1
 
 
 class LMAMPCLearnerTerminal(object):
@@ -42,6 +42,7 @@ class LMAMPCLearnerTerminal(object):
         self.all_data = {}
         self.M = self.args.M
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
+        self.fea_gamma = self.args.fea_gamma
 
         brake_model = EmBrakeModel()
         double_intergrator_model = UpperTriangleModel()
@@ -53,6 +54,7 @@ class LMAMPCLearnerTerminal(object):
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
         self.grad_timer = TimerStat()
+        self.fea_grad_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
         # self.constraint_total_dim = args.num_rollout_list_for_policy_update[0] * self.model.constraints_num
@@ -69,7 +71,6 @@ class LMAMPCLearnerTerminal(object):
                            'batch_rewards': batch_data[2].astype(np.float32),
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32)
-                           # 'batch_ref_index': batch_data[5].astype(np.int32)
                            }
 
     def get_weights(self):
@@ -81,18 +82,32 @@ class LMAMPCLearnerTerminal(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
-    def punish_factor_schedule(self, ite):
-        init_pf = self.args.init_punish_factor
-        interval = self.args.pf_enlarge_interval
-        amplifier = self.args.pf_amplifier
-        pf = init_pf * self.tf.pow(amplifier, self.tf.cast(ite//interval, self.tf.float32))
-        return pf
+    # TODO: feasibility v learning
+    @tf.function
+    def feasibility_forward_and_backward(self, mb_obs):
+        with self.tf.GradientTape(persistent=True) as tape:
+            tape.watch(mb_obs)
+            constraints = self.model.compute_constraints(mb_obs)
+            fea_v_obses = self.policy_with_value.compute_fea_v(mb_obs)
+            
+            d_fea_v_d_obses = tape.gradient(fea_v_obses, mb_obs) # shape: (B, 2)
+            signed_obj = self.tf.matmul(d_fea_v_d_obses, self.model.g_x(mb_obs)) # shape: (B, 1)
+            u_safe = self.tf.where(signed_obj >= 0., -self.model.action_range, self.model.action_range) # action_range: tf.constant, necessary?
+            obses_tp1 = self.model.f_xu(mb_obs, u_safe)
+            fea_v_obses_tp1_minimum = self.policy_with_value.compute_fea_v(obses_tp1)
+            assert fea_v_obses == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
 
-    def feasibility_forward_and_backward(self):
-        pass
-    # todo: feasibility v learning
+            fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints + \
+                self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
+            
+            fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
+            
+        with self.tf.name_scope('fea_gradient') as scope:
+            fea_v_gradient = tape.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
 
-    def model_rollout_for_update(self, start_obses, ite):
+            return fea_v_gradient, fea_loss
+
+    def model_rollout_for_update(self, start_obses):
         start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
@@ -103,30 +118,45 @@ class LMAMPCLearnerTerminal(object):
             obses, rewards, constraints = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
         constraints_clip = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
-        constraints_all =self.tf.expand_dims(constraints_clip, 1) if len(constraints_clip.shape) == 1 else constraints_clip
+        constraints_all = self.tf.expand_dims(constraints_clip, 1) if len(constraints_clip.shape) == 1 else constraints_clip
         processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
-        mu_all = self.policy_with_value.compute_mu(processed_start_obses)
-        cs_sum = self.tf.reduce_sum(self.tf.multiply(mu_all, self.tf.stop_gradient(constraints_all)), 1)
-        punish_terms_sum = self.tf.reduce_sum(self.tf.multiply(self.tf.stop_gradient(mu_all), constraints_all),1)
-        terminal_mu = mu_all[:, -1]
-        obj_loss = -self.tf.reduce_mean(rewards_sum)
-        punish_terms = self.tf.reduce_mean(punish_terms_sum)
-        pg_loss = obj_loss + punish_terms
-        cs_loss = -self.tf.reduce_mean(cs_sum)
+        processed_terminal_obses = self.preprocessor.tf_process_obses(obses)
+
+        # value part
+        v_start = self.policy_with_value.compute_obj_v(processed_start_obses)
+        v_terminal = self.policy_with_value.compute_obj_v(processed_terminal_obses)
+        v_target = self.tf.stop_gradient(v_terminal + rewards_sum)
+        assert v_target.shape == v_terminal.shape
+        obj_loss = 0.5 * self.tf.reduce_mean(self.tf.square(v_target - v_start))
+
+        # policy part
+        mu_terminal = self.tf.squeeze(self.policy_with_value.compute_mu(processed_start_obses), axis=1)
+        fea_v_terminal = self.policy_with_value.compute_fea_v(processed_terminal_obses)
+        assert mu_terminal.shape == fea_v_terminal.shape, print(mu_terminal.shape, fea_v_terminal.shape)
+        punish_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu_terminal), fea_v_terminal))
+        pg_loss = -(v_terminal + rewards_sum) + punish_terms
+
+        # mu part
+        complementary_slackness = self.tf.reduce_mean(
+                                      self.tf.multiply(mu_terminal, self.tf.stop_gradient(fea_v_terminal)))
+        mu_loss = - complementary_slackness
+
         constraints = self.tf.reduce_mean(constraints_all)
 
-        return obj_loss, punish_terms, cs_loss, pg_loss, constraints, terminal_mu
+        return obj_loss, pg_loss, mu_loss, constraints, mu_terminal, punish_terms
 
     @tf.function
-    def forward_and_backward(self, mb_obs, ite):
+    def forward_and_backward(self, mb_obs):
         with self.tf.GradientTape(persistent=True) as tape:
-            obj_loss, punish_terms, cs_loss, pg_loss, constraints, terminal_mu = self.model_rollout_for_update(mb_obs, ite)
+            obj_loss, pg_loss, mu_loss, constraints, mu_terminal, punish_terms = self.model_rollout_for_update(mb_obs)
 
         with self.tf.name_scope('policy_gradient') as scope:
+            obj_v_grad = tape.gradient(obj_loss, self.policy_with_value.obj_v.trainable_weights)
             pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
-            mu_grad = tape.gradient(cs_loss, self.policy_with_value.mu.trainable_weights)
+            mu_grad = tape.gradient(mu_loss, self.policy_with_value.mu.trainable_weights)
 
-        return pg_grad, mu_grad, obj_loss, punish_terms, cs_loss, pg_loss, constraints, terminal_mu
+        return obj_v_grad, pg_grad, mu_grad, obj_loss, pg_loss, mu_loss, \
+            constraints, mu_terminal, punish_terms
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -139,34 +169,39 @@ class LMAMPCLearnerTerminal(object):
         self.get_batch_data(samples, rb, indexs)
         mb_obs = self.tf.constant(self.batch_data['batch_obs'])
         iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
-        # mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
         with self.grad_timer:
-            pg_grad, mu_grad, obj_loss, punish_terms, cs_loss, pg_loss, constraints, terminal_mu =\
-                self.forward_and_backward(mb_obs, iteration)
+            obj_v_grad, pg_grad, mu_grad, obj_loss, pg_loss, mu_loss, constraints, mu_terminal, punish_terms = \
+                self.forward_and_backward(mb_obs)
 
-            obj_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
+            obj_v_grad, obj_v_grad_norm = self.tf.clip_by_global_norm(obj_v_grad, self.args.gradient_clip_norm)
+            pg_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
             mu_grad, mu_grad_norm = self.tf.clip_by_global_norm(mu_grad, self.args.gradient_clip_norm)
+        
+        with self.fea_grad_timer:
+            fea_v_grad, fea_loss = self.feasibility_forward_and_backward(mb_obs)
+            fea_v_grad, fea_v_grad_norm = self.tf.clip_by_global_norm(fea_v_grad, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,
             grad_time=self.grad_timer.mean,
+            fea_grad_time=self.fea_grad_timer.mean,
             obj_loss=obj_loss.numpy(),
+            fea_loss=fea_loss.numpy(),
             punish_terms=punish_terms.numpy(),
-            # real_punish_term=real_punish_term.numpy(),
-            # veh2veh4real=veh2veh4real.numpy(),
-            # veh2road4real=veh2road4real.numpy(),
             constraints=constraints.numpy(),
-            cs_loss=cs_loss.numpy(),
+            mu_loss=mu_loss.numpy(),
             pg_loss=pg_loss.numpy(),
-            pg_grads_norm=pg_grad_norm.numpy(),
+            obj_v_grad_norm=obj_v_grad_norm.numpy(),
+            fea_v_grad_norm=fea_v_grad_norm.numpy(),
+            pg_grad_norm=pg_grad_norm.numpy(),
             mu_grad_norm=mu_grad_norm.numpy(),
-            mean_terminal_mu=np.mean(terminal_mu.numpy()),
-            max_terminal_mu=np.max(terminal_mu.numpy()),
-            min_terminal_mu=np.min(terminal_mu.numpy()),
+            mean_terminal_mu=np.mean(mu_terminal.numpy()),
+            max_terminal_mu=np.max(mu_terminal.numpy()),
+            min_terminal_mu=np.min(mu_terminal.numpy()),
         ))
 
-        grads = obj_grad  + mu_grad
+        grads = obj_v_grad + fea_v_grad + pg_grad + mu_grad
 
         return list(map(lambda x: x.numpy(), grads))
 

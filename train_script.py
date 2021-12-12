@@ -20,6 +20,7 @@ from buffer import ReplayBuffer
 from evaluator import Evaluator
 from learners.ampc_lag import LMAMPCLearner2
 from learners.ampc_baseline import LMAMPCLearner2 as LMBaseline
+from learners.ampc_lag_terminal import LMAMPCLearnerTerminal
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
 from policy import Policy4Toyota, Policy4Lagrange, Policy4baseline
 from tester import Tester
@@ -33,7 +34,8 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
-NAME2LEARNERCLS = dict([('LMAMPC-v2', LMAMPCLearner2),('LMbaseline', LMBaseline)])
+NAME2LEARNERCLS = dict([('LMAMPC-v2', LMAMPCLearner2),('LMbaseline', LMBaseline),
+                         'LMAMPCLearnerTerminal', LMAMPCLearnerTerminal])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
@@ -76,23 +78,19 @@ def built_LMAMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='EmergencyBrake-v0')
-    parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
-    parser.add_argument('--env_kwargs_training_task', type=str, default='left')
+    parser.add_argument('--env_id', default='UpperTriangle-v0')
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
     parser.add_argument('--con_dim', type=int, default=1)
 
     # learner
-    parser.add_argument('--alg_name', default='LMAMPC-v2')
+    parser.add_argument('--alg_name', default='LMAMPCLearnerTerminal')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[5])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
     parser.add_argument('--gamma', type=float, default=1.)
-    parser.add_argument('--gradient_clip_norm', type=float, default=10)
-    parser.add_argument('--init_punish_factor', type=float, default=10.)
-    parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
-    parser.add_argument('--pf_amplifier', type=float, default=1.)
-    parser.add_argument('--mu_clip_value', type=float, default=100)
+    parser.add_argument('--fea_gamma', type=float, default=0.99999)
+    parser.add_argument('--gradient_clip_norm', type=float, default=10.)
+    parser.add_argument('--mu_clip_value', type=float, default=100.)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -102,33 +100,37 @@ def built_LMAMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_batch_size', type=int, default=512)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=2)
+    parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
     parser.add_argument('--fixed_steps', type=int, default=50)
-    parser.add_argument('--eval_render', type=bool, default=True)
+    parser.add_argument('--eval_render', type=bool, default=False)
 
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--mu_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 150000, 1e-5])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-4, 150000, 1e-5])
-    parser.add_argument('--mu_lr_schedule', type=list, default=[3e-6, 150000, 1e-6])
-    parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument('--hidden_activation', type=str, default='elu')
+    parser.add_argument('--fea_value_lr_schedule', type=list, default=[8e-4, 150000, 1e-5])
+
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 150000, 1e-5])
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--action_range', type=float, default=None)
+
+    parser.add_argument('--mu_model_cls', type=str, default='MLP')
+    parser.add_argument('--mu_lr_schedule', type=list, default=[3e-6, 150000, 1e-6])
+    parser.add_argument('--mu_update_interval', type=int, default=20)
     parser.add_argument('--mu_out_activation', type=str, default='relu')
     parser.add_argument('--mu_out_bias', type=float, default=0.5)
-    parser.add_argument('--action_range', type=float, default=None)
-    parser.add_argument('--mu_update_interval', type=int, default=20)
+
+    parser.add_argument('--num_hidden_layers', type=int, default=3)
+    parser.add_argument('--num_hidden_units', type=int, default=128)
+    parser.add_argument('--hidden_activation', type=str, default='elu')
 
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
@@ -141,12 +143,12 @@ def built_LMAMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=300000)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=20)
-    parser.add_argument('--num_buffers', type=int, default=8)
+    parser.add_argument('--num_learners', type=int, default=1)
+    parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
-    parser.add_argument('--eval_interval', type=int, default=10000)
-    parser.add_argument('--save_interval', type=int, default=50000)
+    parser.add_argument('--eval_interval', type=int, default=1000)
+    parser.add_argument('--save_interval', type=int, default=5000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
@@ -171,7 +173,7 @@ def built_parser(alg_name):
         #                  [1., 1 / 15., 0.2] + \
         #                  [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
         #                  [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
-        args.obs_scale = [0.1, 0.1]
+        args.obs_scale = [1., 1.] # for double integrator
         return args
 
 def main(alg_name):
