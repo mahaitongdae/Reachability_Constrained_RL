@@ -98,7 +98,7 @@ class CstrReachLearner(object):
                                    self.model.action_range)  # action_range: tf.constant, necessary?
             obses_tp1 = self.model.f_xu(mb_obs, u_safe)
             fea_v_obses_tp1_minimum = self.policy_with_value.compute_fea_v(obses_tp1)
-            assert fea_v_obses == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
+            # assert fea_v_obses.shape == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
 
             fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints + \
                                                  self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
@@ -135,7 +135,7 @@ class CstrReachLearner(object):
         fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
         assert mu.shape == fea_v_tp1.shape, print(mu.shape, fea_v_tp1.shape)
         punish_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), fea_v_tp1))
-        pg_loss = -(v_tp1 + rewards_sum) + punish_terms
+        pg_loss = -self.tf.reduce_mean(v_tp1 + rewards_sum) + punish_terms
 
         # mu part
         complementary_slackness = self.tf.reduce_mean(

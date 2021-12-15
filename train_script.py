@@ -85,17 +85,17 @@ def built_LMAMPC_parser():
     parser.add_argument('--con_dim', type=int, default=1)
 
     # learner
-    parser.add_argument('--alg_name', default='ApproximateReach')
+    parser.add_argument('--alg_name', default='NaiveReach')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
     parser.add_argument('--gamma', type=float, default=0.95)
-    parser.add_argument('--fea_gamma', type=float, default=0.99999)
+    parser.add_argument('--fea_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--mu_clip_value', type=float, default=100.)
 
     # worker
-    parser.add_argument('--batch_size', type=int, default=512)
-    parser.add_argument('--worker_log_interval', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--worker_log_interval', type=int, default=int(10000 / 16))
     parser.add_argument('--explore_sigma', type=float, default=None)
 
     # buffer
@@ -126,11 +126,11 @@ def built_LMAMPC_parser():
     parser.add_argument('--mu_model_cls', type=str, default='MLP')
     parser.add_argument('--mu_lr_schedule', type=list, default=[3e-6, 150000, 1e-6])
     parser.add_argument('--mu_update_interval', type=int, default=20)
-    parser.add_argument('--mu_out_activation', type=str, default='relu')
-    parser.add_argument('--mu_out_bias', type=float, default=0.5)
+    parser.add_argument('--mu_out_activation', type=str, default='softplus')
+    parser.add_argument('--mu_out_bias', type=float, default=0.)
 
-    parser.add_argument('--num_hidden_layers', type=int, default=3)
-    parser.add_argument('--num_hidden_units', type=int, default=128)
+    parser.add_argument('--num_hidden_layers', type=int, default=2)
+    parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
 
     # preprocessor
@@ -144,17 +144,17 @@ def built_LMAMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=300000)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=1)
-    parser.add_argument('--num_buffers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=20)
+    parser.add_argument('--num_buffers', type=int, default=8)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
-    parser.add_argument('--eval_interval', type=int, default=1000)
-    parser.add_argument('--save_interval', type=int, default=5000)
+    parser.add_argument('--eval_interval', type=int, default=10000)
+    parser.add_argument('--save_interval', type=int, default=50000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/toyota3lane/{algo}-{time}'.format(algo=parser.parse_args().alg_name, time=time_now)
+    results_dir = './results/double_integrator/{algo}-{time}'.format(algo=parser.parse_args().alg_name, time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -165,23 +165,24 @@ def built_LMAMPC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'LMAMPC' or 'LMAMPC-v2' or 'LMbaseline':
-        args = built_LMAMPC_parser()
-        env = gym.make(args.env_id, **args2envkwargs(args))
-        obs_space, act_space = env.observation_space, env.action_space
-        args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
-        # args.obs_scale = [0.2, 1., 2., 1 / 50., 1 / 50, 1 / 180.] + \
-        #                  [1., 1 / 15., 0.2] + \
-        #                  [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
-        #                  [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
-        args.obs_scale = [1., 1.] # for double integrator
-        return args
+    import numpy as np
+    # if alg_name == 'LMAMPC' or 'LMAMPC-v2' or 'LMbaseline':
+    args = built_LMAMPC_parser()
+    env = gym.make(args.env_id) # , **args2envkwargs(args)
+    obs_space, act_space = env.observation_space, env.action_space
+    args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
+    # args.obs_scale = [0.2, 1., 2., 1 / 50., 1 / 50, 1 / 180.] + \
+    #                  [1., 1 / 15., 0.2] + \
+    #                  [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
+    #                  [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
+    args.obs_scale = [1 / 10., 1 / 10.] # , 1 / np.pi
+    return args
 
 def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=1024*1024*1024)
+        ray.init(object_store_memory=10240*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)

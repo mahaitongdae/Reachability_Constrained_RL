@@ -200,6 +200,9 @@ class Air3dModel(DynamicsModel):
         constraints = tf.stack([25. - d], axis=1)
         return rewards, constraints
 
+    def check_done(self, obses):
+        pass # todo: add done in model based?
+
 
 def try_pendulum_env():
     import gym

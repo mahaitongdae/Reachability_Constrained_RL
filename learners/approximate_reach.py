@@ -20,7 +20,7 @@ from utils.misc import TimerStat, args2envkwargs
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MINUS = -1.0 # TODO: why -1
+CONSTRAINTS_CLIP_MINUS = -100.0 # TODO: why -1
 
 
 class CstrReachLearner(object):
@@ -107,14 +107,15 @@ class CstrReachLearner(object):
         # fea value part
         fea_v_t =self.policy_with_value.compute_fea_v(processed_obses_t)
         fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
-        fea_v_target = self.tf.where(constraints > fea_v_tp1, constraints, fea_v_tp1)
+        fea_v_target = (1-self.fea_gamma)* constraints \
+                       + self.fea_gamma * self.tf.where(constraints > fea_v_tp1, constraints, fea_v_tp1)
         fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(fea_v_target) - fea_v_t))
 
         # policy part
         mu = self.tf.squeeze(self.policy_with_value.compute_mu(processed_obses_t), axis=1)
         assert mu.shape == fea_v_tp1.shape, print(mu.shape, fea_v_tp1.shape)
         punish_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(mu), fea_v_tp1))
-        pg_loss = -(v_tp1 + rewards_sum) + punish_terms
+        pg_loss = - self.tf.reduce_mean(v_tp1 + rewards_sum) + punish_terms
 
         # mu part
         complementary_slackness = self.tf.reduce_mean(
