@@ -37,7 +37,7 @@ class Air3d(gym.Env):
             done = True
         else:
             done = False
-        info = dict(reward_info=dict(reward=reward, cost=float(constraint)))
+        info = dict(reward=reward, cost=float(constraint))
         self.cstr = constraint
         return self.obs, reward, done, info
 

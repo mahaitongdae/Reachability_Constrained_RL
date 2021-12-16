@@ -45,9 +45,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 14
-NUM_LEARNER = 14
-NUM_BUFFER = 14
+NUM_WORKER = 12
+NUM_LEARNER = 6
+NUM_BUFFER = 6
 
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
@@ -97,7 +97,7 @@ def built_FSAC_parser():
     parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
-    parser.add_argument('--num_batch_reuse', type=int, default=0)
+    parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=10.0)
     parser.add_argument('--mlp_lam', default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
@@ -119,8 +119,9 @@ def built_FSAC_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=None)
+    parser.add_argument('--fixed_steps', type=int, default=50)
     parser.add_argument('--eval_render', type=bool, default=True)
+    parser.add_argument('--demo', type=bool, default=False)
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
 
@@ -175,13 +176,13 @@ def built_FSAC_parser():
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=0)
     parser.add_argument('--eval_interval', type=int, default=20000) # 1000
-    parser.add_argument('--save_interval', type=int, default=500000) # 200000
-    parser.add_argument('--log_interval', type=int, default=1000) # 100
+    parser.add_argument('--save_interval', type=int, default=100000) # 200000
+    parser.add_argument('--log_interval', type=int, default=100) # 100
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     env_id = parser.parse_args().env_id
-    results_dir = '../results/FSAC/{experiment}-{time}'.format(experiment=env_id.split('-')[1], time=time_now)
+    results_dir = '../results/model-free/{experiment}-{time}'.format(experiment=env_id.split('-')[1], time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')

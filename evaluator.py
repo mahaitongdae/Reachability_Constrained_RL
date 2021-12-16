@@ -325,19 +325,13 @@ class EvaluatorWithCost(object):
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
-                if self.args.demo:
-                    qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
-                    lam = self.policy_with_value.compute_lam(processed_obs)
-                    print("qc: {}".format(qc_val.numpy()))
-                    print("lam: {}".format(lam.numpy()))
-                    qc_list.append(qc_val[0])
-                    lam_list.append(lam[0])
-                obs_list.append(obs[0])
+                # qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
+                # lam = self.policy_with_value.compute_lam(processed_obs)
+                # qc_list.append(qc_val[0])
+                # lam_list.append(lam[0])
                 action_list.append(action[0])
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = info[0].get('cost')
-
-
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
@@ -345,19 +339,14 @@ class EvaluatorWithCost(object):
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
-        episode_cost = sum(cost_list)
-        ep_cost_rate = episode_cost / episode_len
         for key in info_list[0].keys():
             info_key = list(map(lambda x: x[key], info_list))
             mean_key = sum(info_key) / len(info_key)
             info_dict.update({key: mean_key})
-        info_dict.update(dict(obs_list=np.array(obs_list),
-                              action_list=np.array(action_list),
+        info_dict.update(dict(action_list=np.array(action_list),
                               reward_list=np.array(reward_list),
                               episode_return=episode_return,
-                              episode_len=episode_len,
-                              episode_cost=episode_cost,
-                              ep_cost_rate=ep_cost_rate))
+                              episode_len=episode_len))
         return info_dict
 
     def run_n_episodes(self, n):
