@@ -10,6 +10,7 @@
 import logging
 
 import gym
+import dynamics
 import numpy as np
 
 from preprocessor import Preprocessor

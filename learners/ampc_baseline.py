@@ -10,8 +10,9 @@
 import logging
 
 import gym
+import dynamics
 import numpy as np
-from gym.envs.user_defined.EmerBrake.models import EmBrakeModel
+from dynamics.models import EmBrakeModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs

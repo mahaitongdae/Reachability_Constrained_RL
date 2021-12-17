@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2020/9/1
-# @Author  : Yang Guan (Tsinghua Univ.)
-# @FileName: ampc.py
+# @Time    : 2021/12/13
+# @Author  : Haitong Ma, Dongjie Yu (Tsinghua Univ.)
+# @FileName: naive_reach.py
 # =====================================
 
 import logging
@@ -98,9 +98,9 @@ class CstrReachLearner(object):
                                    self.model.action_range)  # action_range: tf.constant, necessary?
             obses_tp1 = self.model.f_xu(mb_obs, u_safe)
             fea_v_obses_tp1_minimum = self.policy_with_value.compute_fea_v(obses_tp1)
-            # assert fea_v_obses.shape == fea_v_obses_tp1_minimum.shape == constraints.shape == 2, print(fea_v_obses.shape)
+            assert fea_v_obses.shape == fea_v_obses_tp1_minimum.shape == constraints.shape, print(fea_v_obses.shape)
 
-            fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints + \
+            fea_v_target = self.tf.stop_gradient((1 - self.fea_gamma) * constraints +
                                                  self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum))
 
             fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
@@ -118,7 +118,7 @@ class CstrReachLearner(object):
         for step in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            obses, rewards, _ = self.model.rollout_out(actions)
+            obses, rewards, _, done = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
         processed_obses_t = self.preprocessor.tf_process_obses(start_obses)
         processed_obses_tp1 = self.preprocessor.tf_process_obses(obses)
@@ -194,12 +194,12 @@ class CstrReachLearner(object):
             fea_v_grad_norm=fea_v_grad_norm.numpy(),
             pg_grad_norm=pg_grad_norm.numpy(),
             mu_grad_norm=mu_grad_norm.numpy(),
-            mean_mu=np.mean(mu.numpy()),
-            max_mu=np.max(mu.numpy()),
-            min_mu=np.min(mu.numpy()),
-            mean_fea_v=np.mean(fea_v_tp1.numpy()),
-            max_fea_v=np.max(fea_v_tp1.numpy()),
-            min_fea_v=np.min(fea_v_tp1.numpy()),
+            mu_mean=np.mean(mu.numpy()),
+            mu_max=np.max(mu.numpy()),
+            mu_min=np.min(mu.numpy()),
+            fea_v_mean=np.mean(fea_v_tp1.numpy()),
+            fea_v_max=np.max(fea_v_tp1.numpy()),
+            fea_v_min=np.min(fea_v_tp1.numpy()),
         ))
 
         grads = obj_v_grad + fea_v_grad + pg_grad + mu_grad

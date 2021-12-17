@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import gym
+import dynamics
 
 import ray
 
@@ -101,7 +102,7 @@ def built_LMAMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=512)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -143,8 +144,8 @@ def built_LMAMPC_parser():
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=300000)
-    parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=20)
+    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_learners', type=int, default=8)
     parser.add_argument('--num_buffers', type=int, default=8)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
@@ -154,7 +155,7 @@ def built_LMAMPC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/double_integrator/{algo}-{time}'.format(algo=parser.parse_args().alg_name, time=time_now)
+    results_dir = './results/' + parser.parse_args().env_id + '/{algo}-{time}'.format(algo=parser.parse_args().alg_name, time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -182,7 +183,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=10240*1024*1024)
+        ray.init(object_store_memory=5*1024*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)

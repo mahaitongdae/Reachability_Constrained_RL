@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2020/9/1
-# @Author  : Yang Guan (Tsinghua Univ.)
-# @FileName: ampc.py
+# @Time    : 2021/12/13
+# @Author  : Haitong Ma (Tsinghua Univ.)
+# @FileName: approximate_reach.py
 # =====================================
 
 import logging
@@ -105,7 +105,7 @@ class CstrReachLearner(object):
         obj_loss = 0.5 * self.tf.reduce_mean(self.tf.square(v_target - v_t))
 
         # fea value part
-        fea_v_t =self.policy_with_value.compute_fea_v(processed_obses_t)
+        fea_v_t = self.policy_with_value.compute_fea_v(processed_obses_t)
         fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
         fea_v_target = (1-self.fea_gamma)* constraints \
                        + self.fea_gamma * self.tf.where(constraints > fea_v_tp1, constraints, fea_v_tp1)
@@ -121,8 +121,6 @@ class CstrReachLearner(object):
         complementary_slackness = self.tf.reduce_mean(
                                       self.tf.multiply(mu, self.tf.stop_gradient(fea_v_tp1)))
         mu_loss = - complementary_slackness
-
-
 
         return obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms
 

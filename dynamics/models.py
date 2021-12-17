@@ -83,17 +83,20 @@ class UpperTriangleModel(object):
             rewards, constraints = self.compute_rewards(self.obses, self.actions)
             self.obses = self.f_xu(self.obses, self.actions)
 
-            return self.obses, rewards, constraints
+            new_sctr = self.compute_constraints(self.obses)
+            done = tf.where(new_sctr > 0, 1., 0.)
+
+            return self.obses, rewards, constraints, done
 
     def compute_rewards(self, obses, actions):
         obses = tf.cast(obses, dtype=tf.float32)
         actions = tf.cast(actions, dtype=tf.float32)
-        rewards = - tf.square(actions[:, 0])
+        rewards = - tf.square(obses[:, 0]) - tf.square(obses[:, 1]) - 10 * tf.square(actions[:, 0])
         constraints = self.compute_constraints(obses)
         return rewards, constraints
     
     def compute_constraints(self, obses):
-        constraints = tf.stack([tf.reduce_max(tf.abs(obses), axis=1) - 5.], axis=1)
+        constraints = tf.reduce_max(tf.abs(obses), axis=1) - 5.
         return constraints
 
     def _action_transformation_for_end2end(self, actions):
@@ -225,7 +228,8 @@ def try_pendulum_model():
 def try_up_model():
     model = UpperTriangleModel()
     model.reset(np.array([[0.,1.],[0.,1.],[0.,1.]]))
-    model.rollout_out([[0.],[0.],[0.]])
+    obses, rewards, cstrs = model.rollout_out([[0.],[0.5],[1.]])
+    print(obses, rewards, cstrs)
 
 def try_air3d_model():
     model = Air3dModel()
@@ -234,5 +238,5 @@ def try_air3d_model():
 
 
 if __name__ == '__main__':
-    try_air3d_model()
+    try_up_model()
 

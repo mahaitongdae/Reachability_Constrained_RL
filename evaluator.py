@@ -11,6 +11,7 @@ import logging
 import os
 
 import gym
+import dynamics
 import numpy as np
 
 from preprocessor import Preprocessor

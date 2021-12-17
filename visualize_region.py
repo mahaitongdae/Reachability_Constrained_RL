@@ -1,8 +1,8 @@
-from policy import Policy4Lagrange
+from policy import Policy4Reach
 import os
 from evaluator import Evaluator
 import gym
-from utils.em_brake_4test import EmergencyBraking
+# from utils.em_brake_4test import EmergencyBraking
 import numpy as np
 from matplotlib.colors import ListedColormap
 from dynamics.models import EmBrakeModel, UpperTriangleModel, Air3dModel
@@ -34,7 +34,7 @@ def static_region(test_dir, iteration,
     import json
     import argparse
     import datetime
-    from policy import Policy4Lagrange
+    from policy import Policy4Reach
     params = json.loads(open(test_dir + '/config.json').read())
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     test_log_dir = params['log_dir'] + '/tester/test-region-{}'.format(time_now)
@@ -45,7 +45,7 @@ def static_region(test_dir, iteration,
     for key, val in params.items():
         parser.add_argument("-" + key, default=val)
     args = parser.parse_args()
-    evaluator = Evaluator(Policy4Lagrange, args.env_id, args)
+    evaluator = Evaluator(Policy4Reach, args.env_id, args)
     evaluator.load_weights(os.path.join(test_dir, 'models'), iteration)
     brake_model = EmBrakeModel()
     double_intergrator_model = UpperTriangleModel()
@@ -77,7 +77,7 @@ def static_region(test_dir, iteration,
         for step in range(args.num_rollout_list_for_policy_update[0]):
             processed_obses = evaluator.preprocessor.tf_process_obses(obses)
             actions, _ = evaluator.policy_with_value.compute_action(processed_obses)
-            obses, rewards, constraints = model.rollout_out(actions)
+            obses, rewards, constraints, done = model.rollout_out(actions)
             constraints = evaluator.tf.expand_dims(constraints, 1) if len(constraints.shape) == 1 else constraints
             constraints_list.append(constraints)
         flattern_cstr = evaluator.tf.concat(constraints_list, 1).numpy()
@@ -102,9 +102,9 @@ def static_region(test_dir, iteration,
 
     plot_items = ['cs']
     data_dict = {'cs': flatten_cs, 'mu':flatten_mu, 'cstr': flatten_cstr}
-    if baseline:
-        grid, target_values = hj_baseline()
-        grid1, target_values1 = hj_baseline(timet=10.0)
+    # if baseline:
+    #     grid, target_values = hj_baseline()
+    #     grid1, target_values1 = hj_baseline(timet=10.0)
 
     def plot_region(data_reshape, name):
         fig = plt.figure(figsize=[5,6])
@@ -119,12 +119,12 @@ def static_region(test_dir, iteration,
                    colors="green",
                    linewidths=3)
         if baseline:
-            ct2 = ax.contour(grid.coordinate_vectors[0],
-                       grid.coordinate_vectors[1],
-                       target_values.T,
-                       levels=0,
-                       colors="grey",
-                       linewidths=3)
+            # ct2 = ax.contour(grid.coordinate_vectors[0],
+            #            grid.coordinate_vectors[1],
+            #            target_values.T,
+            #            levels=0,
+            #            colors="grey",
+            #            linewidths=3)
 
             data = np.load('/home/mahaitong/PycharmProjects/toyota_exp_train (copy)/baseline/init_feasible_f1.npy')
             data2 = np.load('/home/mahaitong/PycharmProjects/toyota_exp_train (copy)/baseline/init_feasible_f0.4.npy')
@@ -137,12 +137,12 @@ def static_region(test_dir, iteration,
                              levels=0,
                              colors="cornflowerblue",
                              linewidths=3)
-            ct2 = ax.contour(Ds,
-                             Vs,
-                             data2.T,
-                             levels=0,
-                             colors="orange",
-                             linewidths=3)
+            # ct2 = ax.contour(Ds,
+            #                  Vs,
+            #                  data2.T,
+            #                  levels=0,
+            #                  colors="orange",
+            #                  linewidths=3)
             # ct2.collections[0].set_label('HJ-Reachability Boundary')
         name_2d = name + '_' + str(iteration) + '_2d.jpg'
         ax.set_xlabel(r'$x_1$')
@@ -153,8 +153,8 @@ def static_region(test_dir, iteration,
         rect4 = plt.Rectangle((0, 0), 1, 1, fill=False, ec='cornflowerblue', linewidth=3)
         ax = plt.axes([0.05, 0.02, 0.9, 0.16])
         plt.axis('off')
-        ax.legend((rect1,rect2, rect3, rect4), ('Feasible region', 'HJ avoid set', 'Energy-based','MPC-feasiblity')
-                   , loc='lower center',ncol=2, fontsize=15)
+        ax.legend((rect1, rect2, rect3, rect4), ('Feasible region', 'HJ avoid set', 'Energy-based', 'MPC-feasiblity'),
+                  loc='lower center',ncol=2, fontsize=15)
         # plt.title('Feasible Region of Double Integrator')
         plt.tight_layout(pad=0.5)
         plt.savefig(os.path.join(evaluator.log_dir, name_2d))
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     #               bound=(-6., 20., -10., 10.),
     #               baseline=True) #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
-    static_region('./results/uppep_triangle/LMAMPC-terminal-2021-12-02-23-07-17', 300000,
+    static_region('./results/double_integrator/NaiveReach-2021-12-17-11-19-12', 50000,
                   bound=(-5., 5., -5., 5.),
                   vector=False,
                   baseline=True)  #
