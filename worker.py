@@ -191,9 +191,9 @@ class OffPolicyWorkerWithCost(object):
     def set_weights(self, weights):
         return self.policy_with_value.set_weights(weights)
 
-    def apply_gradients(self, iteration, grads, ascent):
+    def apply_gradients(self, iteration, grads):
         self.iteration = iteration
-        qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads, ascent=ascent)
+        qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
         return qc_grad, lam_grad
 
     def apply_ascent_gradients(self, iteration, qc_grad, lam_grad):

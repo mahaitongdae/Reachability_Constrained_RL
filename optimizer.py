@@ -93,7 +93,7 @@ class UpdateThread(threading.Thread):
             #     self.grad = [tf.zeros_like(grad) for grad in self.grad]
             #     logger.info('Grad is nan!, zero it')
 
-            qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad, ascent=True)
+            qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad)
             if self.iteration > 50000: # todo: change to proportional definition wrt max iter
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             # ascent = self.ascent
@@ -591,7 +591,9 @@ class AllReduceOptimizer(object):
 
         ### update
         with self.timers['grad_apply_timer']:
-            self.local_worker.apply_gradients(self.iteration, grads)
+            qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, grads)
+            if self.iteration > 50000:  # todo: change to proportional definition wrt max iter
+                self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             weights = ray.put(self.local_worker.get_weights)
             for learner in self.learners:
                 learner.set_weights(weights)

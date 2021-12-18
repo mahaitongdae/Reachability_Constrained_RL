@@ -167,7 +167,7 @@ class PolicyWithMu(tf.Module):
                 self.target_models[i-len(self.models)].set_weights(weight)
 
     @tf.function
-    def apply_gradients(self, iteration, grads, ascent):
+    def apply_gradients(self, iteration, grads):
         if self.policy_only:
             policy_grad = grads
             self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
