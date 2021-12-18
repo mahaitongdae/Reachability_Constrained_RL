@@ -485,12 +485,159 @@ class OffPolicyAsyncOptimizerWithCost(object):
     def stop(self):
         self.update_thread.stopped = True
 
+class AllReduceOptimizer(object):
+    def __init__(self, workers, learners, replay_buffers, evaluator, args):
+        self.args = args
+        self.evaluator = evaluator
+        self.workers = workers
+        self.learners = learners
+        self.learner_queue = queue.Queue(LEARNER_QUEUE_MAX_SIZE)
+        self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
+                                                "learning_timer", "grad_apply_timer"]}
+        self.replay_buffers = replay_buffers
+        self.local_worker = self.workers['local_worker']
+        self.max_weight_sync_delay = self.args.max_weight_sync_delay
+        self.num_sampled_steps = 0
+        self.num_sampled_costs = 0
+        self.steps_since_update = {}
+        self.num_updates = 0
+        self.iteration = 0
+        self.log_dir = self.args.log_dir
+        self.model_dir = self.args.model_dir
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+        self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
+        self.stats = {}
+        self.step_timer = TimerStat()
+        logger.info('Optimizer initialized')
+        self.sample_tasks = TaskPool()
+        self._set_workers()
+
+        # fill buffer to replay starts
+        logger.info('start filling the replay')
+        while not all([l >= self.args.replay_starts for l in
+                       ray.get([rb.__len__.remote() for rb in self.replay_buffers])]):
+            for worker, objID in list(self.sample_tasks.completed()):
+                sample_batch, count, count_costs = ray.get(objID)
+                random.choice(self.replay_buffers).add_batch.remote(sample_batch)
+                self.num_sampled_steps += count
+                self.num_sampled_costs += count_costs
+                self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
+        logger.info('end filling the replay')
+
+        self._set_learners()
+
+    def _set_workers(self):
+        weights = self.local_worker.get_weights()
+        for worker in self.workers['remote_workers']:
+            worker.set_weights.remote(weights)
+            self.steps_since_update[worker] = 0
+            for _ in range(WORKER_DEPTH):
+                self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
+
+    def _set_learners(self):
+        weights = self.local_worker.get_weights()
+        for learner in self.learners:
+            learner.set_weights.remote(weights)
+
+    def get_stats(self):
+        self.stats.update(dict(iteration=self.iteration,
+                               num_sampled_steps=self.num_sampled_steps,
+                               num_updates=self.num_updates,
+                               step_timer=self.step_timer.mean,
+                               )
+                          )
+        return self.stats
+
+    def step(self):
+
+        # sampling
+        with self.timers['sampling_timer']:
+            for worker, objID in self.sample_tasks.completed():
+                sample_batch, count, count_costs = ray.get(objID)
+                random.choice(self.replay_buffers).add_batch.remote(sample_batch)
+                self.num_sampled_steps += count
+                self.num_sampled_costs += count_costs
+                self.steps_since_update[worker] += count
+                ppc_params = worker.get_ppc_params.remote()
+                if self.steps_since_update[worker] >= self.max_weight_sync_delay:
+                    # judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
+                    if weights is None:
+                        weights = ray.put(self.local_worker.get_weights())
+                    worker.set_weights.remote(weights)
+                    self.steps_since_update[worker] = 0
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+
+        ### replay and learning
+        with self.timers["learning_timer"]:
+            batch_grads = []
+            for learner in self.learners:
+                samples = random.choice(self.replay_buffers).replay.remote()
+                print(type(samples))
+                mb_grads = learner.compute_gradient.remote(samples, self.iteration, ascent=True)
+                batch_grads.append(mb_grads)
+
+            batch_grads = ray.get(batch_grads)
+            grads = np.array(batch_grads).mean(axis=0).tolist()
+
+            try:
+                judge_is_nan(grads)
+            except ValueError:
+                grads = [tf.zeros_like(grad) for grad in grads]
+                logger.info('Grad is nan!, zero it')
+
+        ### update
+        with self.timers['grad_apply_timer']:
+            self.local_worker.apply_gradients(self.iteration, grads)
+            weights = ray.put(self.local_worker.get_weights)
+            for learner in self.learners:
+                learner.set_weights(weights)
+
+
+        # log
+        learner_stats = ray.get(random.choice(self.learners).get_stats.remote()) #TODO: change to all reduce?
+        if self.iteration % self.args.log_interval == 0:
+            logger.info('updating {} in total'.format(self.iteration))
+            logger.info('sampling {} in total'.format(self.stats['num_sampled_steps']))
+            with self.writer.as_default():
+                for key, val in learner_stats.items():
+                    if not isinstance(val, list):
+                        tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val,
+                                          step=self.iteration)
+                    else:
+                        assert isinstance(val, list)
+                        for i, v in enumerate(val):
+                            tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v,
+                                              step=self.iteration)
+                for key, val in self.stats.items():
+                    tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
+                self.writer.flush()
+
+        # evaluate # TODO: parallel evaluate?
+        if self.iteration % self.args.eval_interval == 0:
+            self.evaluator.set_weights.remote(self.local_worker.get_weights())
+            self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+            self.evaluator.run_evaluation.remote(self.iteration)
+
+        # save
+        if self.iteration % self.args.save_interval == 0:
+            self.workers['local_worker'].save_weights(self.model_dir, self.iteration)
+            self.workers['remote_workers'][0].save_ppc_params.remote(self.args.model_dir)
+        self.iteration += 1
+        self.num_sampled_steps += self.args.sample_batch_size * len(self.workers['remote_workers'])
+        self.num_updates += self.iteration * self.args.epoch * int(self.args.sample_batch_size / self.args.mini_batch_size)
+        self.get_stats()
+
+    def stop(self):
+        pass
 
 class SingleProcessOffPolicyOptimizer(object):
-    def __init__(self, worker, learner, replay_buffer, evaluator, args):
+    def __init__(self, worker, learners, replay_buffer, evaluator, args):
         self.args = args
         self.worker = worker
-        self.learner = learner
+        self.learners = learners
         self.replay_buffer = replay_buffer
         self.evaluator = evaluator
         self.num_sampled_steps = 0
