@@ -48,6 +48,7 @@ NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', Evalua
 NUM_WORKER = 12
 NUM_LEARNER = 6
 NUM_BUFFER = 6
+MAX_ITER = 300000
 
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
@@ -86,7 +87,7 @@ def built_FSAC_parser():
     parser.add_argument('--penalty_start', type=int, default=0)
 
     # env
-    parser.add_argument('--env_id', default='Air3d-v0')
+    parser.add_argument('--env_id', default='UpperTriangle-v0')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -94,11 +95,11 @@ def built_FSAC_parser():
     parser.add_argument('--alg_name', default='FSAC')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--cost_gamma', type=float, default=0.99)
+    parser.add_argument('--cost_gamma', type=float, default=1.0)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=10.0)
+    parser.add_argument('--cost_lim', type=float, default=0.0)
     parser.add_argument('--mlp_lam', default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -132,25 +133,25 @@ def built_FSAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 8e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 8e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 30000, 3e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / 2), 3e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / 12), 3e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / 2), 8e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
     parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--delay_update', type=int, default=4)
+    parser.add_argument('--delay_update', type=int, default=2)
     parser.add_argument('--dual_ascent_interval', type=int, default=12)
     parser.add_argument('--deterministic_policy', type=bool, default=False)
     parser.add_argument('--action_range', type=float, default=1.0)
@@ -168,21 +169,21 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=300000)
+    parser.add_argument('--max_iter', type=int, default=MAX_ITER)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=0)
-    parser.add_argument('--eval_interval', type=int, default=20000) # 1000
-    parser.add_argument('--save_interval', type=int, default=100000) # 200000
+    parser.add_argument('--eval_interval', type=int, default=5000) # 1000
+    parser.add_argument('--save_interval', type=int, default=20000) # 200000
     parser.add_argument('--log_interval', type=int, default=100) # 100
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     env_id = parser.parse_args().env_id
-    results_dir = '../results/model-free/{experiment}-{time}'.format(experiment=env_id.split('-')[1], time=time_now)
+    results_dir = '../results/model-free/{experiment}-{time}'.format(experiment=env_id.split('-')[0], time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
@@ -336,7 +337,12 @@ def built_parser(alg_name):
 
     env = gym.make(args.env_id) #  **vars(args)
     args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
-    args.obs_scale = [1.] * args.obs_dim
+    if args.env_id.split('-')[0] == 'Air3d':
+        args.obs_scale = [1.] * args.obs_dim
+    elif args.env_id.split('-')[0] == 'UpperTraingle':
+        args.obs_scale = [1./ 5., 1./5.]
+    else:
+        args.obs_scale = [1.] * args.obs_dim
     return args
 
 def main(alg_name):

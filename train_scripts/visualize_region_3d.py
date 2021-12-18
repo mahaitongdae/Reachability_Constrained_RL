@@ -32,8 +32,6 @@ def hj_baseline():
 
 def static_region(test_dir, iteration,
                   bound=(-5., 5., -5., 5.),
-                  sum=True,
-                  vector=False,
                   baseline=False):
     import json
     import argparse
@@ -91,12 +89,12 @@ def static_region(test_dir, iteration,
     # flatten_cstr = reduced_model_rollout_for_update(init_obses)
 
     preprocess_obs = evaluator.preprocessor.np_process_obses(init_obses)
-    flatten_mu = evaluator.policy_with_value.compute_mu(preprocess_obs).numpy()
+    flatten_mu = evaluator.policy_with_value.compute_lam(preprocess_obs).numpy()
 
     processed_obses = evaluator.preprocessor.tf_process_obses(init_obses)
     actions, _ = evaluator.policy_with_value.compute_action(processed_obses)
     flatten_cost_q = evaluator.policy_with_value.compute_QC1(processed_obses, actions).numpy()
-    flatten_fea_v = flatten_cost_q[:, np.newaxis]
+    flatten_fea_v = flatten_cost_q
 
     flatten_cs = np.multiply(flatten_fea_v, flatten_mu)
 
@@ -104,7 +102,7 @@ def static_region(test_dir, iteration,
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
 
-    plot_items = ['fea', 'cs', 'fea']
+    plot_items = ['fea']
     data_dict = {'cs': flatten_cs, 'mu':flatten_mu, 'fea':flatten_fea_v}
     if baseline:
         grid, target_values = hj_baseline()
@@ -151,17 +149,16 @@ def static_region(test_dir, iteration,
     fig = plt.figure(figsize=(12, 3))
     for plot_item in plot_items:
         data = data_dict.get(plot_item)
-        if sum:
-            data_k = np.sum(data, axis=1)
-            data_reshape = data_k.reshape(D.shape)
-            for k in range(data_reshape.shape[-1]):
-                plot_region(data_reshape[..., k], plot_item + '_sum', k, fig)
+        data_k = data
+        data_reshape = data_k.reshape(D.shape)
+        for k in range(data_reshape.shape[-1]):
+            plot_region(data_reshape[..., k], plot_item + '_sum', k, fig)
 
 
 
 if __name__ == '__main__':
     # static_region('./results/toyota3lane/LMAMPC-v2-2021-11-21-23-04-21', 300000)
-    static_region('./results/model-free/v0-2021-12-16-16-58-07', 300000,
+    static_region('../results/model-free/Air3d-2021-12-17-00-59-13', 1000000,
                   bound=(-6., 20., -13., 13.),
                   baseline=True) #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
