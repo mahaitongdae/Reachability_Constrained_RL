@@ -96,7 +96,7 @@ class SACLearnerWithCost(object):
         processed_cost = self.batch_data['batch_costs']
         qc_target_terminal = processed_cost
         qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
-                                 + self.args.cost_gamma * np.minimum(processed_cost, target_QC1_of_tp1)
+                                 + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
         clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
 
 
