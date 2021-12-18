@@ -84,7 +84,7 @@ class UpperTriangleModel(object):
             self.obses = self.f_xu(self.obses, self.actions)
 
             new_sctr = self.compute_constraints(self.obses)
-            done = tf.where(new_sctr > 0, 1., 0.)
+            done = tf.where(new_sctr > tf.zeros_like(new_sctr), tf.ones_like(new_sctr), tf.zeros_like(new_sctr))
 
             return self.obses, rewards, constraints, done
 

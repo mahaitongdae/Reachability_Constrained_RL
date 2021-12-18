@@ -76,7 +76,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
-    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
+    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')  # SingleProcessOffPolicy OffPolicyAsync
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
@@ -90,7 +90,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
     parser.add_argument('--gamma', type=float, default=0.95)
-    parser.add_argument('--fea_gamma', type=float, default=0.99)
+    parser.add_argument('--fea_gamma', type=float, default=0.9999)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--mu_clip_value', type=float, default=100.)
 
@@ -108,18 +108,18 @@ def built_LMAMPC_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=5)
+    parser.add_argument('--num_eval_episode', type=int, default=10)
     parser.add_argument('--eval_log_interval', type=int, default=1)
     parser.add_argument('--fixed_steps', type=int, default=50)
     parser.add_argument('--eval_render', type=bool, default=False)
 
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-4, 150000, 1e-5])
-    parser.add_argument('--fea_value_lr_schedule', type=list, default=[8e-4, 150000, 1e-5])
+    parser.add_argument('--value_lr_schedule', type=list, default=[3e-4, 150000, 1e-5])
+    parser.add_argument('--fea_value_lr_schedule', type=list, default=[3e-4, 150000, 1e-5])
 
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 150000, 1e-5])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[1e-4, 150000, 1e-5])
     parser.add_argument('--deterministic_policy', default=True, action='store_true')
     parser.add_argument('--policy_out_activation', type=str, default='tanh')
     parser.add_argument('--action_range', type=float, default=None)
@@ -145,11 +145,11 @@ def built_LMAMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=300000)
     parser.add_argument('--num_workers', type=int, default=8)
-    parser.add_argument('--num_learners', type=int, default=8)
+    parser.add_argument('--num_learners', type=int, default=12)
     parser.add_argument('--num_buffers', type=int, default=8)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=30)
-    parser.add_argument('--eval_interval', type=int, default=10000)
+    parser.add_argument('--eval_interval', type=int, default=2500)
     parser.add_argument('--save_interval', type=int, default=50000)
     parser.add_argument('--log_interval', type=int, default=100)
 
@@ -176,14 +176,14 @@ def built_parser(alg_name):
     #                  [1., 1 / 15., 0.2] + \
     #                  [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
     #                  [1 / 50., 1 / 50., 0.2, 1 / 180.] * env.veh_num
-    args.obs_scale = [1 / 10., 1 / 10.] # , 1 / np.pi
+    args.obs_scale = [1 / 5., 1 / 5.] # , 1 / np.pi
     return args
 
 def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=5*1024*1024*1024)
+        ray.init(object_store_memory=10*1024*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
