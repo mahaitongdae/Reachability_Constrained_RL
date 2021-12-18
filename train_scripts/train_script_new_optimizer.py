@@ -19,6 +19,7 @@ import ray
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
 from learners.sac import SACLearnerWithCost
+from learners.sac_simple import SACLearnerWithCost as SACLearnerSimple
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, \
     OffPolicyAsyncOptimizerWithCost, AllReduceOptimizer
 from policy import  PolicyWithMu
@@ -34,7 +35,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
                        ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
-NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost)
+NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
+                        ('FSAC-v1', SACLearnerSimple)
                         ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
@@ -93,7 +95,7 @@ def built_FSAC_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
-    parser.add_argument('--alg_name', default='FSAC')
+    parser.add_argument('--alg_name', default='FSAC-v1')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=0.99)
@@ -335,7 +337,6 @@ def built_SAC_Lagrangian_parser():
 def built_parser(alg_name):
     if alg_name == 'FSAC':
         args = built_FSAC_parser()
-
     env = gym.make(args.env_id) #  **vars(args)
     args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
     args.obs_scale = [1.] * args.obs_dim
