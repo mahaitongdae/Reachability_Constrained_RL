@@ -51,16 +51,17 @@ def built_LMAMPC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = 'results/toyota3lane/LMbaseline-2021-05-21-13-06-23'
+        test_dir = './results/UpperTriangle-v0/NaiveReach-2021-12-18-22-09-01'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[500000],
+                           test_iter_list=[300000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=10,
                            eval_log_interval=1,
-                           fixed_steps=50))
+                           eval_render=True,
+                           fixed_steps=None))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -95,7 +96,7 @@ def built_LMAMPC_parser():
     parser.add_argument('--mu_clip_value', type=float, default=100.)
 
     # worker
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--worker_log_interval', type=int, default=int(10000 / 16))
     parser.add_argument('--explore_sigma', type=float, default=None)
 
@@ -110,7 +111,7 @@ def built_LMAMPC_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=10)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=50)
+    parser.add_argument('--fixed_steps', type=int, default=None)
     parser.add_argument('--eval_render', type=bool, default=False)
 
     # policy and model

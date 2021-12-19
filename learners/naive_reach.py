@@ -87,12 +87,15 @@ class CstrReachLearner(object):
     # TODO: feasibility v learning
     @tf.function
     def feasibility_forward_and_backward(self, mb_obs, mb_done):
-        with self.tf.GradientTape(persistent=True) as tape:
-            tape.watch(mb_obs)
+        with self.tf.GradientTape(persistent=True) as tape1:
+            tape1.watch(mb_obs)
             constraints = self.model.compute_constraints(mb_obs)
             fea_v_obses = self.policy_with_value.compute_fea_v(mb_obs)
 
-            d_fea_v_d_obses = tape.gradient(fea_v_obses, mb_obs)  # shape: (B, 2)
+        d_fea_v_d_obses = tape1.gradient(fea_v_obses, mb_obs)  # shape: (B, 2)
+
+        with self.tf.GradientTape(persistent=True) as tape2:
+            fea_v_obses = self.policy_with_value.compute_fea_v(mb_obs)
             signed_obj = self.tf.matmul(d_fea_v_d_obses, self.model.g_x(mb_obs))  # shape: (B, 1)
             u_safe = self.tf.where(signed_obj >= 0., -self.model.action_range,
                                    self.model.action_range)  # action_range: tf.constant, necessary?
@@ -103,12 +106,12 @@ class CstrReachLearner(object):
             fea_v_terminal = constraints
             fea_v_non_terminal = (1 - self.fea_gamma) * constraints + \
                                  self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum)
-            fea_v_target = self.tf.stop_gradient(self.tf.where(mb_done, fea_v_terminal, fea_v_non_terminal))
+            fea_v_target = self.tf.stop_gradient(self.tf.where(mb_done == self.tf.ones_like(mb_done), fea_v_terminal, fea_v_non_terminal))
 
             fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
 
         with self.tf.name_scope('fea_gradient') as scope:
-            fea_v_gradient = tape.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
+            fea_v_gradient = tape2.gradient(fea_loss, self.policy_with_value.fea_v.trainable_weights)
 
             return fea_v_gradient, fea_loss
 

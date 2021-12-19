@@ -174,6 +174,6 @@ if __name__ == '__main__':
     #               bound=(-6., 20., -10., 10.),
     #               baseline=True) #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
-    static_region('./results/double_integrator/NaiveReach-2021-12-17-11-19-12', 50000,
+    static_region('./results/UpperTriangle-v0/NaiveReach-2021-12-18-22-09-01', 300000,
                   bound=(-5., 5., -5., 5.),
                   baseline=True)  #

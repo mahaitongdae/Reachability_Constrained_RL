@@ -13,12 +13,14 @@ class UpperTriangle(gym.Env):
         self.obs = self._reset_init_state()
         self.A = np.array([[0., 1.], [0., 0.]])
         self.B = np.array([[0.], [1.]])
-
+        self.steps_count = None
+        self.MAX_STEPS = 50
 
     def reset(self):
         self.obs = self._reset_init_state()
         self.action = np.array([0.0])
         self.cstr = 0.0
+        self.steps_count = 0
         return self.obs
 
     def step(self, action, frequency=5.0):
@@ -26,15 +28,17 @@ class UpperTriangle(gym.Env):
             action = action.reshape([-1,])
         self.action = self._action_transform(action)
         reward = self.compute_reward(self.obs, self.action)
+
         dx_dt = np.array([self.obs[1], self.action], dtype=np.float32)
         self.obs = self.obs + dx_dt * (1 / frequency)
         constraint = np.max(np.abs(self.obs)) - 5.
-        done = True if constraint > 0 else False
-        info = dict(reward_info=dict(reward=reward, constraints=float(constraint)))
         self.cstr = constraint
+
+        self.steps_count += 1
+        done = True if constraint > 0 or self.steps_count >= self.MAX_STEPS else False
+        info = dict(reward_info=dict(reward=reward, constraints=float(constraint)))
+
         return self.obs, reward, done, info # s' r
-
-
 
     def _action_transform(self, action):
         action = 0.5 * np.clip(action, -1.05, 1.05)
@@ -61,11 +65,11 @@ class UpperTriangle(gym.Env):
             plt.title("Upper Triangle")
             ax = plt.axes(xlim=(-5 - extension, 5 + extension),
                           ylim=(-5 - extension, 5 + extension))
-            plt.axis("equal")
-            plt.axis('off')
+            ax.axis("equal")
+            ax.axis('off')
 
             ax.add_patch(plt.Rectangle((-5, -5), 10, 10, edgecolor='black', facecolor='none'))
-            plt.scatter(self.obs[0], self.obs[1])
+            ax.scatter(self.obs[0], self.obs[1])
 
             text_x, text_y = -5, 5
             plt.text(text_x, text_y, 'x: {:.2f}'.format(self.obs[0]))
