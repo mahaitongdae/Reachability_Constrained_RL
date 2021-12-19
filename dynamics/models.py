@@ -76,6 +76,7 @@ class UpperTriangleModel(object):
     def __init__(self):
         self.constraints_num = 1
         self.action_range = tf.constant(0.5, dtype=tf.float32)
+        self.frequency = tf.constant(5.0, dtype=tf.float32)
 
     def rollout_out(self, actions):
         with tf.name_scope('model_step') as scope:
@@ -84,7 +85,7 @@ class UpperTriangleModel(object):
             self.obses = self.f_xu(self.obses, self.actions)
 
             new_sctr = self.compute_constraints(self.obses)
-            done = tf.where(new_sctr > tf.zeros_like(new_sctr), tf.ones_like(new_sctr), tf.zeros_like(new_sctr))
+            done = new_sctr > tf.zeros_like(new_sctr)
 
             return self.obses, rewards, constraints, done
 
@@ -104,11 +105,10 @@ class UpperTriangleModel(object):
         acc = 0.5 * clipped_actions
         return acc
 
-    def f_xu(self, x, u, frequency=5.0):
+    def f_xu(self, x, u):
         d, v = tf.cast(x[:, 0], dtype=tf.float32), tf.cast(x[:, 1], dtype=tf.float32)
         a = tf.cast(u[:, 0], dtype=tf.float32)
-        frequency = tf.convert_to_tensor(frequency)
-        next_state = [d + 1 / frequency * v, v + 1 / frequency * a]
+        next_state = [d + 1 / self.frequency * v, v + 1 / self.frequency * a]
         return tf.stack(next_state, 1)
     
     def g_x(self, x):
@@ -228,8 +228,8 @@ def try_pendulum_model():
 def try_up_model():
     model = UpperTriangleModel()
     model.reset(np.array([[0.,1.],[0.,1.],[0.,1.]]))
-    obses, rewards, cstrs = model.rollout_out([[0.],[0.5],[1.]])
-    print(obses, rewards, cstrs)
+    obses, rewards, cstrs, dones = model.rollout_out([[0.],[0.5],[1.]])
+    print(obses, rewards, cstrs, dones)
 
 def try_air3d_model():
     model = Air3dModel()

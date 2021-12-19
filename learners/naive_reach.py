@@ -106,7 +106,7 @@ class CstrReachLearner(object):
             fea_v_terminal = constraints
             fea_v_non_terminal = (1 - self.fea_gamma) * constraints + \
                                  self.fea_gamma * self.tf.maximum(constraints, fea_v_obses_tp1_minimum)
-            fea_v_target = self.tf.stop_gradient(self.tf.where(mb_done == self.tf.ones_like(mb_done), fea_v_terminal, fea_v_non_terminal))
+            fea_v_target = self.tf.stop_gradient(self.tf.where(mb_done, fea_v_terminal, fea_v_non_terminal))
 
             fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(fea_v_target - fea_v_obses))
 

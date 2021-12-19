@@ -93,7 +93,7 @@ class CstrReachLearner(object):
         actions, _ = self.policy_with_value.compute_action(processed_obses)
         obses, rewards, constraints, dones = self.model.rollout_out(actions)
         rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-        constraints = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
+        # constraints = self.tf.clip_by_value(constraints, CONSTRAINTS_CLIP_MINUS, 100)
         processed_obses_t = self.preprocessor.tf_process_obses(start_obses)
         processed_obses_tp1 = self.preprocessor.tf_process_obses(obses)
 
@@ -111,7 +111,7 @@ class CstrReachLearner(object):
         fea_v_terminal = constraints
         fea_v_non_terminal = (1-self.fea_gamma) * constraints \
                              + self.fea_gamma * self.tf.maximum(constraints, target_fea_v_tp1)
-        fea_v_target = self.tf.where(dones == self.tf.ones_like(dones), fea_v_terminal, fea_v_non_terminal)
+        fea_v_target = self.tf.where(dones, fea_v_terminal, fea_v_non_terminal)
         assert fea_v_terminal.shape == fea_v_non_terminal.shape == fea_v_t.shape == fea_v_target.shape
         fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(fea_v_target) - fea_v_t))
 
