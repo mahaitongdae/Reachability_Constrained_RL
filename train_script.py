@@ -135,6 +135,10 @@ def built_LMAMPC_parser():
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
 
+    parser.add_argument('--target', type=bool, default=True)
+    parser.add_argument('--tau', type=float, default=0.005)
+    parser.add_argument('--delay_update', type=int, default=4)
+
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)

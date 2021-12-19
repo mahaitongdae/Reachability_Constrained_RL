@@ -107,11 +107,12 @@ class CstrReachLearner(object):
         # fea value part
         fea_v_t = self.policy_with_value.compute_fea_v(processed_obses_t)
         fea_v_tp1 = self.policy_with_value.compute_fea_v(processed_obses_tp1)
+        target_fea_v_tp1 = self.policy_with_value.compute_fea_v_target(processed_obses_tp1)
         fea_v_terminal = constraints
         fea_v_non_terminal = (1-self.fea_gamma) * constraints \
-                             + self.fea_gamma * self.tf.maximum(constraints, fea_v_tp1)
+                             + self.fea_gamma * self.tf.maximum(constraints, target_fea_v_tp1)
         fea_v_target = self.tf.where(dones == self.tf.ones_like(dones), fea_v_terminal, fea_v_non_terminal)
-        assert fea_v_terminal.shape == fea_v_non_terminal.shape == fea_v_t.shape == fea_v_target.shape, print(mu.shape, fea_v_tp1.shape)
+        assert fea_v_terminal.shape == fea_v_non_terminal.shape == fea_v_t.shape == fea_v_target.shape
         fea_loss = 0.5 * self.tf.reduce_mean(self.tf.square(self.tf.stop_gradient(fea_v_target) - fea_v_t))
 
         # policy part
@@ -125,12 +126,12 @@ class CstrReachLearner(object):
                                       self.tf.multiply(mu, self.tf.stop_gradient(fea_v_tp1)))
         mu_loss = - complementary_slackness
 
-        return obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms, constraints
+        return obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, target_fea_v_tp1, mu, punish_terms, constraints
 
     @tf.function
     def forward_and_backward(self, mb_obs):
         with self.tf.GradientTape(persistent=True) as tape:
-            obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms, constraints = self.model_rollout_for_update(mb_obs)
+            obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, target_fea_v_tp1, mu, punish_terms, constraints = self.model_rollout_for_update(mb_obs)
 
         with self.tf.name_scope('policy_gradient') as scope:
             obj_v_grad = tape.gradient(obj_loss, self.policy_with_value.obj_v.trainable_weights)
@@ -139,7 +140,7 @@ class CstrReachLearner(object):
             mu_grad = tape.gradient(mu_loss, self.policy_with_value.mu.trainable_weights)
 
         return obj_v_grad, fea_v_grad, pg_grad, mu_grad, \
-               obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms, constraints
+               obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, target_fea_v_tp1, mu, punish_terms, constraints
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
@@ -154,7 +155,7 @@ class CstrReachLearner(object):
         iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
 
         with self.grad_timer:
-            obj_v_grad, fea_v_grad, pg_grad, mu_grad, obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, mu, punish_terms, constraints = \
+            obj_v_grad, fea_v_grad, pg_grad, mu_grad, obj_loss, fea_loss, pg_loss, mu_loss, fea_v_tp1, target_fea_v_tp1, mu, punish_terms, constraints = \
                 self.forward_and_backward(mb_obs)
 
             obj_v_grad, obj_v_grad_norm = self.tf.clip_by_global_norm(obj_v_grad, self.args.gradient_clip_norm)
@@ -181,6 +182,9 @@ class CstrReachLearner(object):
             fea_v_mean=np.mean(fea_v_tp1.numpy()),
             fea_v_max=np.max(fea_v_tp1.numpy()),
             fea_v_min=np.min(fea_v_tp1.numpy()),
+            fea_v_tp1_target_mean=np.mean(target_fea_v_tp1.numpy()),
+            fea_v_tp1_target_max=np.max(target_fea_v_tp1.numpy()),
+            fea_v_tp1_target_min=np.min(target_fea_v_tp1.numpy()),
             constraints_mean=np.mean(constraints.numpy())
         ))
 

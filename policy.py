@@ -93,6 +93,8 @@ class Policy4Reach(tf.Module):
         fea_value_model_cls = NAME2MODELCLS[self.args.value_model_cls]
         policy_model_cls = NAME2MODELCLS[self.args.policy_model_cls]
         mu_model_cls = NAME2MODELCLS[self.args.mu_model_cls]
+        self.tau = self.args.tau
+        self.target = self.args.target
 
         self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy',
                                        output_activation=self.args.policy_out_activation)
@@ -101,11 +103,12 @@ class Policy4Reach(tf.Module):
 
         self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v')
         self.fea_v = fea_value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='fea_v')
+        self.fea_v_target = fea_value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='fea_v_target')
+        self.fea_v_target.set_weights(self.fea_v.get_weights())
         obj_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
         self.obj_value_optimizer = self.tf.keras.optimizers.Adam(obj_value_lr_schedule, name='objv_adam_opt')
         fea_value_lr_schedule = PolynomialDecay(*self.args.fea_value_lr_schedule)
         self.fea_value_optimizer = self.tf.keras.optimizers.Adam(fea_value_lr_schedule, name='feav_adam_opt')
-        # todo: change to feasibility V
 
         self.mu = mu_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, mu_dim, name='mu', output_activation=
                                self.args.mu_out_activation, output_bias=self.args.mu_out_bias)
@@ -113,6 +116,7 @@ class Policy4Reach(tf.Module):
         mu_value_lr_schedule = PolynomialDecay(*self.args.mu_lr_schedule)
         self.mu_optimizer = self.tf.optimizers.Adam(mu_value_lr_schedule, name='mu_adam_opt')
 
+        self.target_models = (self.fea_v_target,)
         self.models = (self.obj_v, self.fea_v, self.policy, self.mu)
         self.optimizers = (self.obj_value_optimizer, self.fea_value_optimizer, self.policy_optimizer, self.mu)
 
@@ -149,8 +153,16 @@ class Policy4Reach(tf.Module):
         self.obj_value_optimizer.apply_gradients(zip(obj_v_grad, self.obj_v.trainable_weights))
         self.fea_value_optimizer.apply_gradients(zip(fea_v_grad, self.fea_v.trainable_weights))
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+        if iteration % self.args.delay_update == 0:
+            self.update_fea_v_target()
+
         if iteration % self.args.mu_update_interval == 0:
             self.mu_optimizer.apply_gradients(zip(mu_grad, self.mu.trainable_weights))
+
+    def update_fea_v_target(self):
+        tau = self.tau
+        for source, target in zip(self.fea_v.trainable_weights, self.fea_v_target.trainable_weights):
+            target.assign(tau * source + (1.0 - tau) * target)
 
     @tf.function
     def compute_mode(self, obs):
@@ -193,6 +205,11 @@ class Policy4Reach(tf.Module):
     def compute_fea_v(self, obs):
         with self.tf.name_scope('compute_fea_v') as scope:
             return tf.squeeze(self.fea_v(obs), axis=1)
+
+    @tf.function
+    def compute_fea_v_target(self, obs):
+        with self.tf.name_scope('compute_fea_v_target') as scope:
+            return tf.squeeze(self.fea_v_target(obs), axis=1)
 
     @tf.function
     def compute_mu(self, obs):
