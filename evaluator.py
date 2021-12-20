@@ -12,8 +12,9 @@ import logging
 import os
 
 import gym
-import safety_gym
 import numpy as np
+
+import dynamics
 
 from preprocessor import Preprocessor
 from utils.dummy_vec_env import DummyVecEnv

@@ -16,11 +16,13 @@ import os
 import gym
 import ray
 
+import dynamics
+
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
 from learners.sac import SACLearnerWithCost
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, OffPolicyAsyncOptimizerWithCost
-from policy import  PolicyWithMu
+from policy import PolicyWithMu
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker, OffPolicyWorkerWithCost
@@ -100,13 +102,13 @@ def built_FSAC_parser():
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=0.0)
-    parser.add_argument('--mlp_lam', default=True)
+    parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
     sample_batch_size = 30
     parser.add_argument('--batch_size', type=int, default=sample_batch_size)
-    parser.add_argument('--worker_log_interval', type=int, default=int(1000/sample_batch_size))
+    parser.add_argument('--worker_log_interval', type=int, default=int(50000))
     parser.add_argument('--explore_sigma', type=float, default=None)
 
     # buffer
@@ -164,7 +166,7 @@ def built_FSAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=1.)
+    parser.add_argument('--rew_scale', type=float, default=0.1)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
@@ -340,7 +342,7 @@ def built_parser(alg_name):
     if args.env_id.split('-')[0] == 'Air3d':
         args.obs_scale = [1.] * args.obs_dim
     elif args.env_id.split('-')[0] == 'UpperTraingle':
-        args.obs_scale = [1./ 5., 1./5.]
+        args.obs_scale = [1./5., 1./5.]
     else:
         args.obs_scale = [1.] * args.obs_dim
     return args
@@ -349,7 +351,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=32768*1024*1024)
+        ray.init(object_store_memory=32*1024*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
