@@ -49,9 +49,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
+NUM_WORKER = 6
+NUM_LEARNER = 8
+NUM_BUFFER = 6
 MAX_ITER = 1000000
 
 def built_FAC_parser():

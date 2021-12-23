@@ -282,10 +282,10 @@ class SACLearnerWithCost(object):
         self.counter += 1
         if self.args.buffer_type != 'normal':
             self.info_for_buffer.update(dict(td_error=self.compute_td_error()))
-        mb_obs = self.batch_data['batch_obs']
-        mb_actions = self.batch_data['batch_actions']
-        mb_targets = self.batch_data['batch_targets']
-        mb_cost_targets = self.batch_data['batch_cost_targets']
+        mb_obs = self.tf.constant(self.batch_data['batch_obs'], dtype=self.tf.float32)
+        mb_actions = self.tf.constant(self.batch_data['batch_actions'], dtype=self.tf.float32)
+        mb_targets = self.tf.constant(self.batch_data['batch_targets'], dtype=self.tf.float32)
+        mb_cost_targets = self.tf.constant(self.batch_data['batch_cost_targets'], dtype=self.tf.float32)
 
         with self.q_gradient_timer:
             q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, \
@@ -322,7 +322,7 @@ class SACLearnerWithCost(object):
             mb_targets_mean=np.mean(mb_targets),
             mb_cost_targets_mean=np.mean(mb_cost_targets),
             mb_cost_targets_max=np.max(mb_cost_targets),
-            qc_targets=mb_cost_targets,
+            qc_targets=mb_cost_targets.numpy(),
             q_gradient_norm1=q_gradient_norm1.numpy(),
             q_gradient_norm2=q_gradient_norm2.numpy(),
             qc_gradient_norm1=qc_gradient_norm1.numpy(),
