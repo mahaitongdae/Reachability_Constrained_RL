@@ -97,8 +97,8 @@ def static_region(test_dir, iteration,
     plt.rcParams.update({'font.size': 16})
     from mpl_toolkits.mplot3d import Axes3D
 
-    plot_items = ['cs', 'mu', 'cstr']
-    data_dict = {'cs': flatten_cs, 'mu':flatten_mu, 'cstr': flatten_fea_v}
+    plot_items = ['cstr']
+    data_dict = {'cs': flatten_cs, 'mu': flatten_mu, 'cstr': flatten_fea_v}
     if baseline:
         grid, target_values = hj_baseline()
         grid1, target_values1 = hj_baseline(timet=10.0)
@@ -154,7 +154,8 @@ def static_region(test_dir, iteration,
         #            , loc='lower center',ncol=2, fontsize=15)
         # plt.title('Feasible Region of Double Integrator')
         plt.tight_layout(pad=0.5)
-        plt.savefig(os.path.join(evaluator.log_dir, name_2d))
+        plt.show()
+        # plt.savefig(os.path.join(evaluator.log_dir, name_2d))
         # figure = plt.figure()
         # ax = Axes3D(figure)
         # ax.plot_surface(D, V, data_reshape, rstride=1, cstride=1, cmap='rainbow')
@@ -179,6 +180,6 @@ if __name__ == '__main__':
     #               bound=(-6., 20., -10., 10.),
     #               baseline=True) #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
-    static_region('../results/model-free/UpperTriangle-2021-12-18-15-07-24', 240000,
+    static_region('../results/model-free/UpperTriangle-2021-12-20-22-06-18', 300000,
                   bound=(-5., 5., -5., 5.),
-                  baseline=True)  #
+                  baseline=False)  #

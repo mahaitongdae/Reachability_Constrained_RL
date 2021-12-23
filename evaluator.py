@@ -15,6 +15,9 @@ import gym
 import numpy as np
 
 import dynamics
+import safe_control_gym
+from safe_control_gym.utils.configuration import ConfigFactory
+from safe_control_gym.utils.registration import make
 
 from preprocessor import Preprocessor
 from utils.dummy_vec_env import DummyVecEnv
@@ -236,6 +239,7 @@ class Evaluator(object):
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
 
+
 class EvaluatorWithCost(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
@@ -248,6 +252,9 @@ class EvaluatorWithCost(object):
         kwargs = copy.deepcopy(vars(self.args))
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
+        elif self.args.env_id == 'quadrotor':
+            env = make('quadrotor', **self.args.config.quadrotor_config)
+            self.env = DummyVecEnv(env)
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
@@ -297,7 +304,7 @@ class EvaluatorWithCost(object):
         cost_list = []
         qc_list = []
         lam_list = []
-        obs = self.env.reset()
+        obs, info = self.env.reset()
         if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
@@ -306,15 +313,15 @@ class EvaluatorWithCost(object):
                 if self.args.demo:
                     qc_val = self.policy_with_value.compute_QC1(processed_obs, action)
                     lam = self.policy_with_value.compute_lam(processed_obs)
-                    print("qc: {}".format(qc_val.numpy()))
-                    print("lam: {}".format(lam.numpy()))
+                    # print("qc: {}".format(qc_val.numpy()))
+                    # print("lam: {}".format(lam.numpy()))
                     qc_list.append(qc_val[0])
                     lam_list.append(lam[0])
                 obs_list.append(obs[0])
                 action_list.append(action[0])
 
                 obs, reward, done, info = self.env.step(action.numpy())
-                cost = info[0].get('cost')
+                cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_value; gym: cost
                 if self.args.demo:
                     qc = np.abs(qc_val[0] - 3)
                     self.env.load_indicator(10 * lam[0] + 0.05 * qc)
@@ -332,20 +339,22 @@ class EvaluatorWithCost(object):
                 # lam_list.append(lam[0])
                 action_list.append(action[0])
                 obs, reward, done, info = self.env.step(action.numpy())
-                cost = info[0].get('cost')
+                cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 cost_list.append(cost)
         episode_return = sum(reward_list)
+        episode_cost_sum = sum(cost_list)
         episode_len = len(reward_list)
         info_dict = dict()
         for key in info_list[0].keys():
-            info_key = list(map(lambda x: x[key], info_list))
+            info_key = list(map(lambda x: max(x[key]) if key is 'constraint_values' else x[key], info_list))
             mean_key = sum(info_key) / len(info_key)
             info_dict.update({key: mean_key})
         info_dict.update(dict(action_list=np.array(action_list),
                               reward_list=np.array(reward_list),
+                              episode_cost_sum=episode_cost_sum,
                               episode_return=episode_return,
                               episode_len=episode_len))
         return info_dict
@@ -368,7 +377,7 @@ class EvaluatorWithCost(object):
         obses_list = []
         actions_list = []
         rewards_list = []
-        obses = self.env.reset()
+        obses, info = self.env.reset()
         if self.args.eval_render: self.env.render()
         for _ in range(self.args.fixed_steps):
             processed_obses = self.preprocessor.tf_process_obses(obses)
@@ -396,7 +405,6 @@ class EvaluatorWithCost(object):
             value_list = list(map(lambda x: x[key], metrics_list))
             out.update({key: sum(value_list) / len(value_list)})
         return metrics_list, out
-
 
     def metrics_for_an_episode(self, episode_info):  # user defined, transform episode info dict to metric dict
         key_list = ['episode_return', 'episode_len']
@@ -455,6 +463,13 @@ class EvaluatorWithCost(object):
             key_list.extend(['episode_cost', 'ep_cost_rate'])
             value_list.extend([episode_cost, ep_cost_rate])
 
+        elif self.args.env_id == 'quadrotor':
+            episode_cost_sum = episode_info['episode_cost_sum']
+            episode_mse = episode_info['mse']
+            episode_constraint_violation = episode_info['constraint_violation']
+            key_list.extend(['episode_cost_sum', 'episode_mse', 'episode_constraint_violation'])
+            value_list.extend([episode_cost_sum, episode_mse, episode_constraint_violation])
+
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
@@ -480,7 +495,7 @@ class EvaluatorWithCost(object):
         if self.eval_times % self.args.eval_log_interval == 0:
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
-        over_cost_lim = mean_metric_dict['episode_return'] > 22 # todo
+        over_cost_lim = mean_metric_dict['episode_return'] > -6000 # todo
         return over_cost_lim
 
     def run_evaluation_demo(self, iteration):

@@ -43,6 +43,7 @@ class SACLearnerWithCost(object):
         self.info_for_buffer = {}
         self.counter = 0
         self.num_batch_reuse = self.args.num_batch_reuse
+        self.constrained_value_type = self.args.constrained_value
 
     def set_seed(self, seed):
         self.tf.random.set_seed(seed)
@@ -86,19 +87,22 @@ class SACLearnerWithCost(object):
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()
         target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
 
-
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                   (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-
         processed_cost = self.batch_data['batch_costs']
         qc_target_terminal = processed_cost
-        qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
-                                 + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
-        clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
+        if self.constrained_value_type == 'feasibility':
+            qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
+                                     + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
+        elif self.constrained_value_type == 'Qc':
+            qc_target_non_terminal = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
+        else:
+            raise NotImplementedError("Undefined constrained value")
 
+        clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
 
         return clipped_double_q_target, clipped_qc_target
 
@@ -146,11 +150,10 @@ class SACLearnerWithCost(object):
             q_gradient2 = tape.gradient(q_loss2, self.policy_with_value.Q2.trainable_weights)
             qc_gradient1 = tape.gradient(qc_loss1, self.policy_with_value.QC1.trainable_weights)
 
-        distributions_stats = dict(qc1_vals=qc_pred1,q1_vals=q_pred1, q2_vals=q_pred2)
+        distributions_stats = dict(qc1_vals=qc_pred1, q1_vals=q_pred1, q2_vals=q_pred2)
 
         return q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, \
                qc_gradient1, distributions_stats
-
 
     @tf.function
     def policy_forward_and_backward(self, mb_obs):
@@ -169,7 +172,7 @@ class SACLearnerWithCost(object):
                 lams = self.policy_with_value.log_lam
                 penalty_terms = lams * self.tf.reduce_mean(QC)
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
-            if self.args.constrained: # todo: add to hyper
+            if self.args.constrained:  # todo: add to hyper
                 lagrangian = policy_loss + penalty_terms # todo: + or -
             else:
                 lagrangian = policy_loss
@@ -181,7 +184,6 @@ class SACLearnerWithCost(object):
             statistic_dict = dict(policy_entropy=policy_entropy,value_var=value_var, value_mean=value_mean,
                                cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
                                )
-
 
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights,)
@@ -232,7 +234,6 @@ class SACLearnerWithCost(object):
                 lams = self.policy_with_value.compute_lam(processed_obses)
                 complementary_slackness = self.tf.reduce_mean(
                     self.tf.multiply(lams, self.tf.stop_gradient(violation)))
-
             else:
                 lams = self.policy_with_value.log_lam
                 complementary_slackness = lams * self.tf.reduce_mean(self.tf.stop_gradient(violation))
@@ -294,7 +295,6 @@ class SACLearnerWithCost(object):
             q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
             qc_gradient1, qc_gradient_norm1 = self.tf.clip_by_global_norm(qc_gradient1, self.args.gradient_clip_norm)
 
-
         with self.policy_gradient_timer:
             if ascent:
                 policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
@@ -344,7 +344,6 @@ class SACLearnerWithCost(object):
 
         for (k, v) in lam_stats.items():
             self.stats.update({k: v.numpy()})
-
 
         if self.args.alpha == 'auto':
             with self.alpha_timer:

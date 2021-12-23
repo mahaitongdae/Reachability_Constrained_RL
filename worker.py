@@ -13,6 +13,9 @@ import gym
 import numpy as np
 
 import dynamics
+import safe_control_gym
+from safe_control_gym.utils.configuration import ConfigFactory
+from safe_control_gym.utils.registration import make
 
 from preprocessor import Preprocessor
 from utils.dummy_vec_env import DummyVecEnv
@@ -131,6 +134,7 @@ class OffPolicyWorker(object):
         batch_data = self.sample()
         return batch_data, len(batch_data)
 
+
 class OffPolicyWorkerWithCost(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
@@ -145,6 +149,9 @@ class OffPolicyWorkerWithCost(object):
         self.num_agent = self.args.num_agent
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
+        elif self.args.env_id == 'quadrotor':
+            env = make('quadrotor', **self.args.config.quadrotor_config)
+            self.env = DummyVecEnv(env)
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
@@ -152,7 +159,7 @@ class OffPolicyWorkerWithCost(object):
             self.set_seed(self.args.random_seed)
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_size = self.args.batch_size
-        self.obs = self.env.reset()
+        self.obs, self.info = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(**vars(self.args))
 
@@ -232,12 +239,12 @@ class OffPolicyWorkerWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
-            cost = info[0].get('cost', 0)
+            cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
             self.sampled_costs += cost
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):
                 batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost))
-            self.obs = self.env.reset()
+            self.obs, self.info = self.env.reset()
 
         if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
             logger.info('Worker_info: {}'.format(self.get_stats()))
@@ -267,7 +274,7 @@ class OffPolicyWorkerWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action)
-            cost = info[0].get('cost', 0)
+            cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
             self.sampled_costs += cost
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):

@@ -1,0 +1,71 @@
+quadrotor_config:
+  seed: 1337
+  info_in_reset: True
+  ctrl_freq: 60
+  pyb_freq: 240
+  gui: False
+  physics: pyb
+  quad_type: 2
+  normalized_rl_action_space: True
+
+  init_state:
+    init_x: 1
+    init_x_dot: 0
+    init_z: 1
+    init_z_dot: 0
+    init_theta: 0
+    init_theta_dot: 0
+  randomized_init: True
+  init_state_randomization_info:
+    init_x: 
+      distrib: "uniform"
+      low: -0.1
+      high: 0.1
+    init_x_dot:
+      distrib: "uniform"
+      low: -0.01
+      high: 0.01
+    init_z:
+      distrib: "uniform"
+      low: -0.1
+      high: 0.1
+    init_z_dot:
+      distrib: "uniform"
+      low: -0.01
+      high: 0.01
+    init_theta:
+      distrib: "uniform"
+      low: -0.2
+      high: 0.2
+    init_theta_dot:
+      distrib: "uniform"
+      low: -0.01
+      high: 0.01
+  randomized_inertial_prop: False
+
+  task: traj_tracking
+  task_info:
+    stabilization_goal: [0, 1]
+    stabilization_goal_tolerance: 0.01
+    trajectory_type: circle
+    num_cycles: 1
+    trajectory_plane: "xz"
+    trajectory_position_offset: [0, 1]
+    trajectory_scale: 1
+
+  episode_len_sec: 6
+  cost: rl_reward
+  rew_exponential: False
+  done_on_out_of_bound: True
+
+  done_on_violation: False
+  constraints:
+    - constraint_form: bounded_constraint
+      constrained_variable: state
+      lower_bounds:
+        - 0.5
+      upper_bounds:
+        - 1.5
+      active_dims:
+        - 2
+      

@@ -57,7 +57,7 @@ class UpdateThread(threading.Thread):
         self.grad = None
         self.learner_stats = None
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
-        self.ascent = 0
+        self.ascent = False
 
     def run(self):
         while not self.stopped:
@@ -94,7 +94,8 @@ class UpdateThread(threading.Thread):
             #     logger.info('Grad is nan!, zero it')
 
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad)
-            if self.iteration > 50000: # todo: change to proportional definition wrt max iter
+            if self.iteration > int(self.args.max_iter / 5.):  # todo: change to proportional definition wrt max iter
+                self.ascent = True
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             # ascent = self.ascent
             # if ascent:
@@ -305,6 +306,7 @@ class OffPolicyAsyncOptimizer(object):
     def stop(self):
         self.update_thread.stopped = True
 
+
 class OffPolicyAsyncOptimizerWithCost(object):
     def __init__(self, workers, learners, replay_buffers, evaluator, args):
         """Initialize an off-policy async optimizers.
@@ -467,13 +469,15 @@ class OffPolicyAsyncOptimizerWithCost(object):
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
-                # if self.update_thread.ascent:
+                if self.update_thread.ascent:
                     # logger.info('Start dual ascent')
-                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
-                                                                                    self.local_worker.iteration, ascent=True))
-                # else:
-                #     self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
-                #                                                                   self.local_worker.iteration, ascent=False))
+                    self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                                  self.local_worker.iteration,
+                                                                                  ascent=True))
+                else:
+                    self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
+                                                                                  self.local_worker.iteration,
+                                                                                  ascent=False))
                 # todo: remove ascent compute
                 if self.update_thread.inqueue.full():
                     self.num_grads_dropped += 1
@@ -712,9 +716,7 @@ class SingleProcessOffPolicyOptimizer(object):
                 info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'], info_for_buffer['td_error'])
             if self.args.buffer_type == 'priority_cost':
                 info_for_buffer = self.learner.get_info_for_buffer()
-                info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'],
-                                                               info_for_buffer[
-                                                                   'cost_td_error'])
+                info_for_buffer['rb'].update_priorities(info_for_buffer['indexes'], info_for_buffer['cost_td_error'])
 
         # apply grad
         with self.timers['grad_apply_timer']:

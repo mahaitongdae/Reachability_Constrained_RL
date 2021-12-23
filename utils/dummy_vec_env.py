@@ -15,7 +15,7 @@ class DummyVecEnv(Wrapper):  # todo: only for conti task
         super().__init__(env)
         self.num_agent = 1
         self.done = False
-        self.obs = self.env.reset()
+        self.obs, self.info = self.env.reset()
 
     def step(self, actions):
         self.obs, rew, self.done, info = self.env.step(actions[0])
@@ -30,10 +30,10 @@ class DummyVecEnv(Wrapper):  # todo: only for conti task
             return init_obs
         else:
             if self.done:
-                self.obs = self.env.reset()
-                return self.obs[np.newaxis, :]
+                self.obs, info = self.env.reset()
+                return self.obs[np.newaxis, :], [info]
             else:
-                return self.obs[np.newaxis, :]
+                return self.obs[np.newaxis, :], [self.info]
 
 
 

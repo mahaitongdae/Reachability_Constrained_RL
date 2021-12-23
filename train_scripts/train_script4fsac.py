@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2021/12/23
-# @Author  : Dongjie Yu (Tsinghua Univ.)
-# @FileName: train_script.py
+# @Time    : 2021/12
+# @Author  : Haitong Ma (Tsinghua Univ.)
+# @FileName: train_script4fsac.py
 # ALL todos are env-related
 # =====================================
 
@@ -49,12 +49,12 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 2
-NUM_LEARNER = 2
-NUM_BUFFER = 2
-MAX_ITER = 300000
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
+MAX_ITER = 1000000
 
-def built_RAC_parser():
+def built_FAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training')  # training testing
@@ -77,7 +77,7 @@ def built_RAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='model-free rcrl')  # training testing
+    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
@@ -96,15 +96,15 @@ def built_RAC_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
-    parser.add_argument('--alg_name', default='RAC')
+    parser.add_argument('--alg_name', default='FSAC')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--cost_gamma', type=float, default=1.0)
+    parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=1.0)  # todo
-    parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
+    parser.add_argument('--constrained_value', type=str, default='Qc')  # todo: Qc feasibility
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -145,7 +145,7 @@ def built_RAC_parser():
     parser.add_argument('--log_interval', type=int, default=100)
 
     # policy and model
-    delayed_update = parser.parse_args().delayed_update
+    delay_update = parser.parse_args().delay_update
     dual_ascent_interval = parser.parse_args().dual_ascent_interval
     parser.add_argument('--obs_dim', type=int, default=None)
     parser.add_argument('--act_dim', type=int, default=None)
@@ -160,13 +160,13 @@ def built_RAC_parser():
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delayed_update), 1e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
     parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, int(MAX_ITER / dual_ascent_interval), 3e-6])
     parser.add_argument('--alpha', default=0.02)  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delayed_update), 3e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delay_update), 3e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -203,8 +203,8 @@ def built_RAC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'RAC':
-        args = built_RAC_parser()
+    if alg_name == 'FSAC':
+        args = built_FAC_parser()
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
@@ -261,4 +261,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('RAC')
+    main('FSAC')
