@@ -244,8 +244,8 @@ class OffPolicyWorkerWithCost(object):
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):
                 batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost))
-            if self.done[0]:
-                self.obs, self.info = self.env.reset()
+
+            self.obs = self.env.reset()[0] if self.done else obs_tp1.copy()
 
         if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
             logger.info('Worker_info: {}'.format(self.get_stats()))

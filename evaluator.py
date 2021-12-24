@@ -337,6 +337,7 @@ class EvaluatorWithCost(object):
                 # lam = self.policy_with_value.compute_lam(processed_obs)
                 # qc_list.append(qc_val[0])
                 # lam_list.append(lam[0])
+                obs_list.append(obs[0])
                 action_list.append(action[0])
                 obs, reward, done, info = self.env.step(action.numpy())
                 cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
@@ -354,6 +355,7 @@ class EvaluatorWithCost(object):
             info_dict.update({key: mean_key})
         info_dict.update(dict(action_list=np.array(action_list),
                               reward_list=np.array(reward_list),
+                              obs_list=np.array(obs_list),
                               episode_cost_sum=episode_cost_sum,
                               episode_return=episode_return,
                               episode_len=episode_len))
@@ -361,10 +363,17 @@ class EvaluatorWithCost(object):
 
     def run_n_episodes(self, n):
         metrics_list = []
+        vectors_list = []
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))
             episode_info = self.run_an_episode(self.args.fixed_steps, self.args.eval_render)
             metrics_list.append(self.metrics_for_an_episode(episode_info))
+            if self.args.mode == 'testing' and self.args.env_id == 'quadrotor':
+                vectors_list.append({'x': episode_info['obs_list'][:, 0], 'z': episode_info['obs_list'][:, 2]})
+
+        if self.args.mode == 'testing' and self.args.env_id == 'quadrotor':
+            np.save(self.log_dir + '/coordinates_x_z.npy', np.array((vectors_list)))
+
         out = {}
         for key in metrics_list[0].keys():
             value_list = list(map(lambda x: x[key], metrics_list))

@@ -12,7 +12,11 @@ import argparse
 import datetime
 import json
 import logging
+import sys
 import os
+from copy import deepcopy
+
+sys.path.append( os.path.join( os.path.dirname(__file__), os.path.pardir ) )
 
 import gym
 import ray
@@ -49,10 +53,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 2
-NUM_LEARNER = 2
-NUM_BUFFER = 2
-MAX_ITER = 300000
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
+MAX_ITER = 1000000
 
 def built_RAC_parser():
     parser = argparse.ArgumentParser()
@@ -61,17 +65,17 @@ def built_RAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
+        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[3000000],
+                           test_iter_list=[1000000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=1000,
+                           fixed_steps=360,
                            eval_render=True))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
@@ -145,7 +149,7 @@ def built_RAC_parser():
     parser.add_argument('--log_interval', type=int, default=100)
 
     # policy and model
-    delayed_update = parser.parse_args().delayed_update
+    delay_update = parser.parse_args().delay_update
     dual_ascent_interval = parser.parse_args().dual_ascent_interval
     parser.add_argument('--obs_dim', type=int, default=None)
     parser.add_argument('--act_dim', type=int, default=None)
@@ -160,13 +164,13 @@ def built_RAC_parser():
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delayed_update), 1e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
     parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, int(MAX_ITER / dual_ascent_interval), 3e-6])
     parser.add_argument('--alpha', default=0.02)  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delayed_update), 3e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delay_update), 3e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -212,7 +216,8 @@ def built_parser(alg_name):
         config = CONFIG_FACTORY.merge()
 
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
-        args.config = config
+        args.config = deepcopy(config)
+        config.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
         args.obs_scale = [1. for _ in range(env.observation_space.shape[0])]
     else:  # standard gym envs

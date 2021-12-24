@@ -65,18 +65,18 @@ def built_FAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21'
+        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[200000],
+                           test_iter_list=[950000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=5,
+                           num_eval_episode=1,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=None,
-                           eval_render=True))
+                           fixed_steps=360,
+                           eval_render=False))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
