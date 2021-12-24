@@ -12,7 +12,11 @@ import argparse
 import datetime
 import json
 import logging
+import sys
 import os
+from copy import deepcopy
+
+sys.path.append( os.path.join( os.path.dirname(__file__), os.path.pardir ) )
 
 import gym
 import ray
@@ -49,9 +53,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 6
-NUM_LEARNER = 8
-NUM_BUFFER = 6
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
 MAX_ITER = 1000000
 
 def built_FAC_parser():
@@ -61,17 +65,17 @@ def built_FAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
+        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[3000000],
+                           test_iter_list=[200000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=1000,
+                           fixed_steps=None,
                            eval_render=True))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
@@ -212,7 +216,8 @@ def built_parser(alg_name):
         config = CONFIG_FACTORY.merge()
 
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
-        args.config = config
+        args.config = deepcopy(config)
+        config.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
         args.obs_scale = [1. for _ in range(env.observation_space.shape[0])]
     else:  # standard gym envs
