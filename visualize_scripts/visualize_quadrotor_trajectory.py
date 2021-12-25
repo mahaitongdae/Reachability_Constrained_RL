@@ -16,12 +16,18 @@ def plt_trajectory(trj_dir, episode=None):
         trj = ax.scatter(xs, zs, s=5., label='ep'+str(i),
                          c=range(len(xs)),
                          linewidth=1,
-                         cmap='viridis')
+                         cmap='Blues')
         plt.colorbar(trj)
 
     ref = plt_ref_trj()
     ax.add_artist(ref)
     plt_constraint(ax)
+
+    # PID uncstr baseline
+    PID_x_zs = np.load('../baseline/PID_x_z.npy', allow_pickle=True)
+    PID_baseline = ax.scatter(PID_x_zs[0, :], PID_x_zs[1, :], s=5, label='PID', c=range(PID_x_zs.shape[1]),
+                              cmap='Oranges')
+    plt.colorbar(PID_baseline)
 
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$z$')
