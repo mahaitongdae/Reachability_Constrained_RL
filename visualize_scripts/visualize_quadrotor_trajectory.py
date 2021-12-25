@@ -13,7 +13,6 @@ def plt_trajectory(trj_dir, episode=None):
         coor_dict_i = coordinates_list[i]
         xs = coor_dict_i['x']
         zs = coor_dict_i['z']
-        print(xs)
         trj = ax.scatter(xs, zs, s=5., label='ep'+str(i),
                          c=range(len(xs)),
                          linewidth=1,
@@ -27,7 +26,7 @@ def plt_trajectory(trj_dir, episode=None):
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$z$')
     ax.set_xlim(-2, 2)
-    ax.set_ylim(-3, 3)
+    ax.set_ylim(-1, 3)
     plt.show()
 
 
@@ -53,5 +52,5 @@ if __name__ == '__main__':
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-17-45/')  # 1M
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-20-46/')  # 0.95M
 
-    # # FSAC-uncstr
-    plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21/logs/tester/test-2021-12-24-16-05-04/')
+    # SAC-uncstr
+    plt_trajectory('../results/quadrotor/FSAC-Qc/SAC-2021-12-25-09-57-35-only_tracking_rew5/logs/tester/test-2021-12-25-14-04-37/')

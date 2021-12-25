@@ -239,9 +239,15 @@ class OffPolicyWorkerWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
-            cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
+            
+            if self.args.constrained_value == 'Qc':
+                cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
+            elif self.args.constrained_value == 'feasibility':
+                cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
+            else:
+                raise NotImplementedError("Undefined constrained value")
             self.sampled_costs += cost
-            processed_rew = self.preprocessor.process_rew(reward, self.done)
+
             for i in range(self.num_agent):
                 batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost))
 
@@ -275,9 +281,15 @@ class OffPolicyWorkerWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action)
-            cost = np.max(info[0].get('constraint_values', 0))  # todo: scg: constraint_values; gym: cost
+
+            if self.args.constrained_value == 'Qc':
+                cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
+            elif self.args.constrained_value == 'feasibility':
+                cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
+            else:
+                raise NotImplementedError("Undefined constrained value")
             self.sampled_costs += cost
-            processed_rew = self.preprocessor.process_rew(reward, self.done)
+            
             for i in range(self.num_agent):
                 batch_data.append((self.obs[i].copy(), action[i], reward[i], obs_tp1[i].copy(), self.done[i], cost))
             if self.done[0]:

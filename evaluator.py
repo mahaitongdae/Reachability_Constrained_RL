@@ -369,7 +369,10 @@ class EvaluatorWithCost(object):
             episode_info = self.run_an_episode(self.args.fixed_steps, self.args.eval_render)
             metrics_list.append(self.metrics_for_an_episode(episode_info))
             if self.args.mode == 'testing' and self.args.env_id == 'quadrotor':
-                vectors_list.append({'x': episode_info['obs_list'][:, 0], 'z': episode_info['obs_list'][:, 2]})
+                vectors_list.append({'x': episode_info['obs_list'][:, 0], 
+                                     'x_dot': episode_info['obs_list'][:, 1], 
+                                     'z': episode_info['obs_list'][:, 2],
+                                     'z_dot': episode_info['obs_list'][:, 3]})
 
         if self.args.mode == 'testing' and self.args.env_id == 'quadrotor':
             np.save(self.log_dir + '/coordinates_x_z.npy', np.array((vectors_list)))

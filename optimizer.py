@@ -27,7 +27,7 @@ logger.setLevel(logging.INFO)
 
 WORKER_DEPTH = 2
 BUFFER_DEPTH = 4
-LEARNER_QUEUE_MAX_SIZE = 128
+LEARNER_QUEUE_MAX_SIZE = 192
 
 
 class UpdateThread(threading.Thread):
