@@ -89,10 +89,8 @@ class SACLearnerWithCost(object):
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
-        clipped_double_q_terminal = processed_rewards
-        clipped_double_q_nonterminal = processed_rewards + self.args.gamma * \
+        clipped_double_q_target = processed_rewards + self.args.gamma * \
                                        (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
-        clipped_double_q_target = np.where(done, clipped_double_q_terminal, clipped_double_q_nonterminal)
 
         processed_cost = self.batch_data['batch_costs']
         qc_target_terminal = processed_cost
