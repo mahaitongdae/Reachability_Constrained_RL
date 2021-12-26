@@ -478,9 +478,14 @@ class EvaluatorWithCost(object):
         elif self.args.env_id == 'quadrotor':
             episode_cost_sum = episode_info['episode_cost_sum']
             episode_mse = episode_info['mse']
+            episode_mse_speed = episode_info['mse_speed']
+            episode_mse_angle = episode_info['mse_angle']
+            episode_mse_angle_speed = episode_info['mse_angle_speed']
             episode_constraint_violation = episode_info['constraint_violation']
-            key_list.extend(['episode_cost_sum', 'episode_mse', 'episode_constraint_violation'])
-            value_list.extend([episode_cost_sum, episode_mse, episode_constraint_violation])
+            key_list.extend(['episode_cost_sum', 'episode_mse', 'mse_speed', 'mse_angle',
+                             'mse_angle_speed', 'episode_constraint_violation'])
+            value_list.extend([episode_cost_sum, episode_mse, episode_mse_speed, episode_mse_angle,
+                               episode_mse_angle_speed, episode_constraint_violation])
 
         return dict(zip(key_list, value_list))
 
