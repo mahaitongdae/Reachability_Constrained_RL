@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def plt_trajectory(trj_dir, episode=None):
-    coordinates_list = np.load(trj_dir + 'coordinates_x_z.npy', allow_pickle=True)
+    coordinates_list = np.load(trj_dir + '/coordinates_x_z.npy', allow_pickle=True)
     epi_num = len(coordinates_list)
 
     fig = plt.figure(figsize=[5, 5])
@@ -59,4 +59,4 @@ if __name__ == '__main__':
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-20-46/')  # 0.95M
 
     # SAC-uncstr
-    plt_trajectory('../results/quadrotor/FSAC-Qc/SAC-2021-12-25-09-57-35-only_tracking_rew5/logs/tester/test-2021-12-25-14-04-37/')
+    plt_trajectory('../results/quadrotor/FSAC-Qc/SAC-2021-12-25-09-57-35-only_tracking_rew5/logs/tester/test-2021-12-25-14-04-37')
