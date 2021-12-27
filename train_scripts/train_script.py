@@ -56,7 +56,7 @@ NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', Evalua
 NUM_WORKER = 1
 NUM_LEARNER = 1
 NUM_BUFFER = 1
-MAX_ITER = 1000000
+MAX_ITER = 2000000
 
 def built_RAC_parser():
     parser = argparse.ArgumentParser()
@@ -126,7 +126,7 @@ def built_RAC_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=5)
+    parser.add_argument('--num_eval_episode', type=int, default=10)
     parser.add_argument('--eval_log_interval', type=int, default=1)
     parser.add_argument('--fixed_steps', type=int, default=1000)  # todo
     parser.add_argument('--eval_render', type=bool, default=False)
@@ -212,7 +212,7 @@ def built_parser(alg_name):
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
-        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking.yaml'])
+        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking_reset.yaml'])
         config = CONFIG_FACTORY.merge()
 
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
