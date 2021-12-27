@@ -76,7 +76,7 @@ def built_RAC_parser():
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=360,
-                           eval_render=True))
+                           eval_render=False))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()

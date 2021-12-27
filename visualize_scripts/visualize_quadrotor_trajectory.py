@@ -16,7 +16,7 @@ def plt_trajectory(trj_dir, episode=None):
         trj = ax.scatter(xs, zs, s=5., label='ep'+str(i),
                          c=range(len(xs)),
                          linewidth=1,
-                         cmap='Blues')
+                         cmap='Greens')
         plt.colorbar(trj)
 
     ref = plt_ref_trj()
@@ -24,10 +24,14 @@ def plt_trajectory(trj_dir, episode=None):
     plt_constraint(ax)
 
     # PID uncstr baseline
-    PID_x_zs = np.load('../baseline/PID_x_z.npy', allow_pickle=True)
-    PID_baseline = ax.scatter(PID_x_zs[0, :], PID_x_zs[1, :], s=5, label='PID', c=range(PID_x_zs.shape[1]),
+    PID_trj = np.load('../baseline/PID_traj.npy', allow_pickle=True)
+    PID_ref = np.load('../baseline/PID_ref.npy', allow_pickle=True)
+    PID_trj_plot = ax.scatter(PID_trj[:, 0], PID_trj[:, 1], s=5, label='PID', c=range(PID_trj.shape[0]),
                               cmap='Oranges')
-    plt.colorbar(PID_baseline)
+    PID_ref_plot = ax.scatter(PID_ref[:, 0], PID_ref[:, 1], s=5, label='PID', c=range(PID_ref.shape[0]),
+                              cmap='Blues')
+    plt.colorbar(PID_trj_plot)
+    plt.colorbar(PID_ref_plot)
 
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$z$')
@@ -58,5 +62,8 @@ if __name__ == '__main__':
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-17-45/')  # 1M
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-20-46/')  # 0.95M
 
-    # SAC-uncstr
-    plt_trajectory('../results/quadrotor/FSAC-Qc/SAC-2021-12-25-09-57-35-only_tracking_rew5/logs/tester/test-2021-12-25-14-04-37')
+    # RAC
+    plt_trajectory('../results/quadrotor/RAC-feasibility/2021-12-26-20-04-19/logs/tester/test-2021-12-27-16-34-00')
+
+    # # SAC-uncstr
+    # plt_trajectory('../results/quadrotor/FSAC-Qc/SAC-2021-12-25-09-57-35-only_tracking_rew5/logs/tester/test-2021-12-25-14-04-37')
