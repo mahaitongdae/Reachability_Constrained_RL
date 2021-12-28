@@ -47,6 +47,7 @@ class PolicyWithMu(tf.Module):
         self.mlp_lam = kwargs.get('mlp_lam')
         self.double_QC = kwargs.get('double_QC')
         self.penalty_start = kwargs.get('penalty_start')
+        self.mu_upperbound = kwargs.get('mu_upperbound')
 
         value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
                                             NAME2MODELCLS[policy_model_cls]
@@ -347,7 +348,10 @@ class PolicyWithMu(tf.Module):
     def compute_lam(self, obs):
         with self.tf.name_scope('compute_lam') as scope:
             # Q_inputs = self.tf.concat([obs], axis=-1)
-            return tf.squeeze(self.Lam(obs), axis=1)
+            assert self.mu_upperbound is not None
+            return tf.clip_by_value(tf.squeeze(self.Lam(obs), axis=1),
+                                    clip_value_min=-1.,
+                                    clip_value_max=self.mu_upperbound)
 
     @property
     def log_alpha(self):
@@ -355,5 +359,8 @@ class PolicyWithMu(tf.Module):
 
     @property
     def log_lam(self):
-        return tf.nn.softplus(self.Lam.var)
+        assert self.mu_upperbound is not None
+        return tf.clip_by_value(tf.nn.softplus(self.Lam.var),
+                                clip_value_min=-10.,
+                                clip_value_max=tf.math.log(self.mu_upperbound))
 

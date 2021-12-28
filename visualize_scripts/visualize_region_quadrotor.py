@@ -253,13 +253,13 @@ class Visualizer_quadrotor(object):
                     sub_ax = axes[j]
 
                 ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='Accent')
-                sub_ax.set_xlabel(r'$x$')
-                sub_ax.set_ylabel(r'$z$')
                 sub_ax.set_title(metric + ', ' + r'$\dot{z}=$' + str(self.z_dot_list[i]))
 
                 if i == len(self.z_dot_list) - 1:
                     cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
                     colorbar_types.append((ct, cax))
+        fig.supxlabel(r'$x$')
+        fig.supylabel(r'$z$')
 
         for i, pairs in enumerate(colorbar_types):
             plt.colorbar(pairs[0], cax=pairs[1])
@@ -267,7 +267,7 @@ class Visualizer_quadrotor(object):
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2021-12-26-20-04-19-Failed',
-                                 600000,
-                                 z_dot_list=[-1., 0.])
-    vizer.plot_region(['fea', 'cs'])
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2021-12-27-22-43-36',
+                                 2000000,
+                                 z_dot_list=[-1., 0., 1.])
+    vizer.plot_region(['fea', 'cs', 'mu'])

@@ -65,13 +65,14 @@ def built_RAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21'
+        test_dir = '../results/quadrotor/RAC-feasibility/2021-12-27-22-43-36'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[1000000],
+                           test_iter_list=[2000000],
                            test_log_dir=test_log_dir,
+                           random_seed=59,
                            num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
@@ -107,7 +108,7 @@ def built_RAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=1.0)  # todo
+    parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
@@ -180,6 +181,7 @@ def built_RAC_parser():
     parser.add_argument('--mu_bias', type=float, default=0.0)
     cost_lim = parser.parse_args().cost_lim
     parser.add_argument('--cost_bias', type=float, default=0.0)
+    parser.add_argument('--mu_upperbound', type=float, default=1.0e4)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
