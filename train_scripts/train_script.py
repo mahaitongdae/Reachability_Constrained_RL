@@ -73,7 +73,7 @@ def built_RAC_parser():
                            test_iter_list=[2000000],
                            test_log_dir=test_log_dir,
                            random_seed=59,
-                           num_eval_episode=5,
+                           num_eval_episode=1,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=360,
@@ -127,11 +127,10 @@ def built_RAC_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=10)
+    parser.add_argument('--num_eval_episode', type=int, default=3)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=1000)  # todo
+    parser.add_argument('--fixed_steps', type=int, default=None)  # todo
     parser.add_argument('--eval_render', type=bool, default=False)
-    num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # Optimizer (PABAL)
@@ -217,11 +216,17 @@ def built_parser(alg_name):
         CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking_reset.yaml'])
         config = CONFIG_FACTORY.merge()
 
+        CONFIG_FACTORY_EVAL = ConfigFactory()
+        CONFIG_FACTORY_EVAL.parser.set_defaults(overrides=['./env_configs/constrained_tracking_eval.yaml'])
+        config_eval = CONFIG_FACTORY_EVAL.merge()
+
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
         args.config = deepcopy(config)
+        args.config_eval = deepcopy(config_eval)
         config.quadrotor_config['gui'] = False
+        args.config_eval.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
-        args.obs_scale = [1. for _ in range(env.observation_space.shape[0])]
+        args.obs_scale = [1.] * env.observation_space.shape[0]
     else:  # standard gym envs
         env = gym.make(args.env_id)  # **vars(args)
 

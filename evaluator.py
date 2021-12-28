@@ -253,7 +253,7 @@ class EvaluatorWithCost(object):
         if self.args.env_id == 'PathTracking-v0':
             self.env = gym.make(self.args.env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
         elif self.args.env_id == 'quadrotor':
-            env = make('quadrotor', **self.args.config.quadrotor_config)
+            env = make('quadrotor', **self.args.config_eval.quadrotor_config)
             self.env = DummyVecEnv(env)
         else:
             env = gym.make(self.args.env_id)
