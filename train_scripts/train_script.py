@@ -114,7 +114,7 @@ def built_RAC_parser():
     parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--worker_log_interval', type=int, default=5000)
     parser.add_argument('--explore_sigma', type=float, default=None)
 
@@ -165,8 +165,8 @@ def built_RAC_parser():
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, int(MAX_ITER / dual_ascent_interval), 3e-6])
-    parser.add_argument('--alpha', default=0.02)  # todo 'auto' 0.02
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / dual_ascent_interval), 5e-7])
+    parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo

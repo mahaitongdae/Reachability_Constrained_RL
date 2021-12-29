@@ -22,23 +22,23 @@ class MLPNet(Model):
         super(MLPNet, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
                             activation=hidden_activation,
-                            kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
+                            kernel_initializer=tf.keras.initializers.HeNormal(),
                             dtype=tf.float32)
         self.hidden = Sequential([Dense(num_hidden_units,
                                         activation=hidden_activation,
-                                        kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
+                                        kernel_initializer=tf.keras.initializers.HeNormal(),
                                         dtype=tf.float32) for _ in range(num_hidden_layers-1)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         if kwargs.get('output_bias'):
             self.outputs = Dense(output_dim,
                                  activation=output_activation,
-                                 kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                                 kernel_initializer=tf.keras.initializers.HeNormal(),
                                  bias_initializer=tf.keras.initializers.Constant(kwargs.get('output_bias')),
                                  dtype=tf.float32)
         else:
             self.outputs = Dense(output_dim,
                                  activation=output_activation,
-                                 kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                                 kernel_initializer=tf.keras.initializers.HeNormal(),
                                  bias_initializer=tf.keras.initializers.Constant(0.),
                                  dtype=tf.float32)
         self.build(input_shape=(None, input_dim))

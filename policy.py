@@ -348,10 +348,12 @@ class PolicyWithMu(tf.Module):
     def compute_lam(self, obs):
         with self.tf.name_scope('compute_lam') as scope:
             # Q_inputs = self.tf.concat([obs], axis=-1)
-            assert self.mu_upperbound is not None
-            return tf.clip_by_value(tf.squeeze(self.Lam(obs), axis=1),
-                                    clip_value_min=-1.,
-                                    clip_value_max=self.mu_upperbound)
+            if self.mu_upperbound is not None:
+                return tf.clip_by_value(tf.squeeze(self.Lam(obs), axis=1),
+                                        clip_value_min=-1.,
+                                        clip_value_max=self.mu_upperbound)
+            else:
+                return tf.squeeze(self.Lam(obs), axis=1)
 
     @property
     def log_alpha(self):
@@ -359,8 +361,10 @@ class PolicyWithMu(tf.Module):
 
     @property
     def log_lam(self):
-        assert self.mu_upperbound is not None
-        return tf.clip_by_value(tf.nn.softplus(self.Lam.var),
-                                clip_value_min=-10.,
-                                clip_value_max=tf.math.log(self.mu_upperbound))
+        if self.mu_upperbound is not None:
+            return tf.clip_by_value(tf.nn.softplus(self.Lam.var),
+                                    clip_value_min=-1.,
+                                    clip_value_max=self.mu_upperbound)
+        else:
+            return tf.nn.softplus(self.Lam.var)
 
