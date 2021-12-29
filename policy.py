@@ -96,7 +96,7 @@ class PolicyWithMu(tf.Module):
             lam_lr = PolynomialDecay(*lam_lr_schedule)
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='softplus', output_bias=0.)
+                                       name='Lam', output_activation='relu', output_bias=1.)
             self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
         else:
             lam_lr = 3e-4

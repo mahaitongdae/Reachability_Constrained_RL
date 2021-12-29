@@ -94,7 +94,7 @@ class UpdateThread(threading.Thread):
             #     logger.info('Grad is nan!, zero it')
 
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad)
-            if self.iteration > 50000: # todo: change to proportional definition wrt max iter
+            if self.iteration > 90000: # todo: change to proportional definition wrt max iter
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             # ascent = self.ascent
             # if ascent:
@@ -492,7 +492,6 @@ class AllReduceOptimizer(object):
         self.evaluator = evaluator
         self.workers = workers
         self.learners = learners
-        self.learner_queue = queue.Queue(LEARNER_QUEUE_MAX_SIZE)
         self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
                                                 "learning_timer", "grad_apply_timer"]}
         self.replay_buffers = replay_buffers
@@ -528,6 +527,13 @@ class AllReduceOptimizer(object):
                 self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
         logger.info('end filling the replay')
 
+        self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_sampled_costs=self.num_sampled_costs,
+                               iteration=self.iteration,
+                               )
+
+        )
+
         self._set_learners()
 
     def _set_workers(self):
@@ -544,15 +550,18 @@ class AllReduceOptimizer(object):
             learner.set_weights.remote(weights)
 
     def get_stats(self):
-        self.stats.update(dict(iteration=self.iteration,
-                               num_sampled_steps=self.num_sampled_steps,
-                               num_updates=self.num_updates,
-                               step_timer=self.step_timer.mean,
+        self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_sampled_costs=self.num_sampled_costs,
+                               iteration=self.iteration,
+                               sampling_time=self.timers['sampling_timer'].mean,
+                               replay_time=self.timers["replay_timer"].mean,
+                               learning_time=self.timers['learning_timer'].mean
                                )
                           )
         return self.stats
 
     def step(self):
+        weights = None
 
         # sampling
         with self.timers['sampling_timer']:
@@ -562,7 +571,7 @@ class AllReduceOptimizer(object):
                 self.num_sampled_steps += count
                 self.num_sampled_costs += count_costs
                 self.steps_since_update[worker] += count
-                ppc_params = worker.get_ppc_params.remote()
+                # ppc_params = worker.get_ppc_params.remote()
                 if self.steps_since_update[worker] >= self.max_weight_sync_delay:
                     # judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
                     if weights is None:
@@ -576,12 +585,12 @@ class AllReduceOptimizer(object):
             batch_grads = []
             for learner in self.learners:
                 samples = random.choice(self.replay_buffers).replay.remote()
-                print(type(samples))
                 mb_grads = learner.compute_gradient.remote(samples, self.iteration, ascent=True)
                 batch_grads.append(mb_grads)
 
             batch_grads = ray.get(batch_grads)
             grads = np.array(batch_grads).mean(axis=0).tolist()
+            grads[-1] = np.float32(grads[-1])
 
             try:
                 judge_is_nan(grads)
@@ -594,9 +603,9 @@ class AllReduceOptimizer(object):
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, grads)
             if self.iteration > 50000:  # todo: change to proportional definition wrt max iter
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
-            weights = ray.put(self.local_worker.get_weights)
+            weights = self.local_worker.get_weights()
             for learner in self.learners:
-                learner.set_weights(weights)
+                learner.set_weights.remote(weights)
 
 
         # log
@@ -607,13 +616,26 @@ class AllReduceOptimizer(object):
             with self.writer.as_default():
                 for key, val in learner_stats.items():
                     if not isinstance(val, list):
-                        tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val,
-                                          step=self.iteration)
+                        if not isinstance(val, np.ndarray):
+                            tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val, step=self.iteration)
+                        else:
+                            tf.summary.histogram('optimizer/learner_stats/distribution/{}'.format(key), val, step=self.iteration)
                     else:
                         assert isinstance(val, list)
                         for i, v in enumerate(val):
-                            tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v,
-                                              step=self.iteration)
+                            if not isinstance(val, np.ndarray):
+                                tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
+                            else:
+                                tf.summary.histogram('optimizer/learner_stats/list/{}/{}'.format(key, i), v, step=self.iteration)
+                # for key, val in learner_stats.items():
+                #     if not isinstance(val, list):
+                #         tf.summary.scalar('optimizer/learner_stats/scalar/{}'.format(key), val,
+                #                           step=self.iteration)
+                #     else:
+                #         assert isinstance(val, list)
+                #         for i, v in enumerate(val):
+                #             tf.summary.scalar('optimizer/learner_stats/list/{}/{}'.format(key, i), v,
+                #                               step=self.iteration)
                 for key, val in self.stats.items():
                     tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                 self.writer.flush()
@@ -629,8 +651,6 @@ class AllReduceOptimizer(object):
             self.workers['local_worker'].save_weights(self.model_dir, self.iteration)
             self.workers['remote_workers'][0].save_ppc_params.remote(self.args.model_dir)
         self.iteration += 1
-        self.num_sampled_steps += self.args.sample_batch_size * len(self.workers['remote_workers'])
-        self.num_updates += self.iteration * self.args.epoch * int(self.args.sample_batch_size / self.args.mini_batch_size)
         self.get_stats()
 
     def stop(self):

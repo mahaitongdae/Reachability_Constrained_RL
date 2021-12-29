@@ -16,6 +16,7 @@ from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+CONSTRAINTS_CLIP_MIN = -100
 
 
 class SACLearnerWithCost(object):
@@ -225,9 +226,9 @@ class SACLearnerWithCost(object):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
-            violation = QC1 - self.args.cost_lim
-            violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
-            violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
+            violation = self.tf.clip_by_value(QC1 - self.args.cost_lim, CONSTRAINTS_CLIP_MIN, 100.)
+            # violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
+            # violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
             if self.args.mlp_lam:
                 lams = self.policy_with_value.compute_lam(processed_obses)
                 complementary_slackness = self.tf.reduce_mean(
@@ -238,7 +239,7 @@ class SACLearnerWithCost(object):
                 complementary_slackness = lams * self.tf.reduce_mean(self.tf.stop_gradient(violation))
             lam_loss = - complementary_slackness
 
-        lam_stats = dict(lam=lams, violation_rate=violation_rate)
+        lam_stats = dict(lam=lams) # , violation_rate=violation_rate
         with self.tf.name_scope('lam_gradient') as scope:
             lam_gradient = tape.gradient(lam_loss, self.policy_with_value.Lam.trainable_weights)
 

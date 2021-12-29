@@ -68,20 +68,6 @@ def static_region(test_dir, iteration,
     else:
         init_obses = np.stack([flatten_d, flatten_v], 1)
 
-    # define rollout
-    # def reduced_model_rollout_for_update(obses):
-    #     model.reset(obses)
-    #     constraints_list = []
-    #     for step in range(args.num_rollout_list_for_policy_update[0]):
-    #         processed_obses = evaluator.preprocessor.tf_process_obses(obses)
-    #         actions, _ = evaluator.policy_with_value.compute_action(processed_obses)
-    #         obses, rewards, constraints = model.rollout_out(actions)
-    #         constraints = evaluator.tf.expand_dims(constraints, 1) if len(constraints.shape) == 1 else constraints
-    #         constraints_list.append(constraints)
-    #     flattern_cstr = evaluator.tf.concat(constraints_list, 1).numpy()
-    #     return flattern_cstr
-    # flatten_cstr = reduced_model_rollout_for_update(init_obses)
-
     preprocess_obs = evaluator.preprocessor.np_process_obses(init_obses)
     flatten_mu = evaluator.policy_with_value.compute_lam(preprocess_obs).numpy()
 
@@ -97,7 +83,7 @@ def static_region(test_dir, iteration,
     plt.rcParams.update({'font.size': 16})
     from mpl_toolkits.mplot3d import Axes3D
 
-    plot_items = ['cs', 'mu', 'cstr']
+    plot_items = ['mu','cstr']
     data_dict = {'cs': flatten_cs, 'mu':flatten_mu, 'cstr': flatten_fea_v}
     if baseline:
         grid, target_values = hj_baseline()
@@ -179,6 +165,8 @@ if __name__ == '__main__':
     #               bound=(-6., 20., -10., 10.),
     #               baseline=True) #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
-    static_region('../results/model-free/UpperTriangle-2021-12-18-15-07-24', 240000,
-                  bound=(-5., 5., -5., 5.),
-                  baseline=True)  #
+    for itr in range(11):
+        static_region('../results/model-free/UpperTriangle-2021-12-27-22-54-50', int(itr * 20000 + 100000),
+                      bound=(-5., 5., -5., 5.),
+                      baseline=True)
+        #

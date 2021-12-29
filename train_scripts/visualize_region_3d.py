@@ -102,7 +102,7 @@ def static_region(test_dir, iteration,
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
 
-    plot_items = ['fea']
+    plot_items = ['fea','mu'] # 'fea','cs','mu'
     data_dict = {'cs': flatten_cs, 'mu':flatten_mu, 'fea':flatten_fea_v}
     if baseline:
         grid, target_values = hj_baseline()
@@ -158,9 +158,13 @@ def static_region(test_dir, iteration,
 
 if __name__ == '__main__':
     # static_region('./results/toyota3lane/LMAMPC-v2-2021-11-21-23-04-21', 300000)
-    static_region('../results/model-free/Air3d-2021-12-17-00-59-13', 1000000,
+    # for iter in range(10):
+    #     static_region('../results/model-free/Air3d-2021-12-22-00-51-33', int(20000*iter + 100000),
+    #                   bound=(-6., 20., -13., 13.),
+    #                   baseline=True) #
+    static_region('../results/model-free/Air3d-2021-12-26-13-12-11', int(20000 * 14),
                   bound=(-6., 20., -13., 13.),
-                  baseline=True) #
+                  baseline=True)  #
     # LMAMPC - vector - 2021 - 11 - 29 - 21 - 22 - 40
     # static_region('./results/uppep_triangle/LMAMPC-terminal-2021-11-30-12-40-50', 300000,
     #               bound=(-5., 5., -5., 5.),

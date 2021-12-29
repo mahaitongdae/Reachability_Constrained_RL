@@ -31,9 +31,9 @@ class Air3d(gym.Env):
         self.obs = self.obs + 0.1 * dx
         self.obs[2] = self.obs[2] % (2 * np.pi)
         constraint = 5 - np.linalg.norm(self.obs[:2])
-        if constraint > 0:
-            done = True
-        elif self.obs[0] > 20. or self.obs[0] < -6. or np.abs(self.obs[1]) > 10.:
+        # if constraint > 0:
+        #     done = True
+        if self.obs[0] > 20. or self.obs[0] < -6. or np.abs(self.obs[1]) > 10.:
             done = True
         else:
             done = False
@@ -48,7 +48,7 @@ class Air3d(gym.Env):
         return action
 
     def compute_reward(self, obs, action):
-        r = action[0] ** 2
+        r = - 0.1 * action[0] ** 2
         return r
 
     def _reset_init_state(self):

@@ -336,7 +336,10 @@ class EvaluatorWithCost(object):
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 cost_list.append(cost)
-        episode_return = sum(reward_list)
+        if self.args.env_id.split('_')[0] == "lunar":
+            episode_return = sum(reward_list[:-1])
+        else:
+            episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
         for key in info_list[0].keys():
