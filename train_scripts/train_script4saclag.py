@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2021/12
-# @Author  : Yang Guan (Tsinghua Univ.)
+# @Time    : 2021/12/29
+# @Author  : Dongjie Yu (Tsinghua Univ.)
 # @FileName: train_script4saclag.py
 # ALL todos are env-related
 # =====================================
@@ -12,7 +12,11 @@ import argparse
 import datetime
 import json
 import logging
+import sys
 import os
+from copy import deepcopy
+
+sys.path.append( os.path.join( os.path.dirname(__file__), os.path.pardir ) )
 
 import gym
 import ray
@@ -49,10 +53,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 2
-NUM_LEARNER = 2
-NUM_BUFFER = 2
-MAX_ITER = 300000
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
+MAX_ITER = 2000000
 
 def built_SAC_Lagrangian_parser():
     parser = argparse.ArgumentParser()
@@ -66,18 +70,19 @@ def built_SAC_Lagrangian_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[3000000],
+                           test_iter_list=[2000000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=5,
+                           random_seed=59,
+                           num_eval_episode=1,
                            num_eval_agent=1,
                            eval_log_interval=1,
-                           fixed_steps=1000,
-                           eval_render=True))
+                           fixed_steps=360,
+                           eval_render=False))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
+    parser.add_argument('--motivation', type=str, default='SAC-L 1st test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
@@ -109,7 +114,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--worker_log_interval', type=int, default=5000)
     parser.add_argument('--explore_sigma', type=float, default=None)
 
@@ -122,11 +127,10 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=5)
+    parser.add_argument('--num_eval_episode', type=int, default=3)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=1000)  # todo
+    parser.add_argument('--fixed_steps', type=int, default=None)  # todo
     parser.add_argument('--eval_render', type=bool, default=False)
-    num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
 
     # Optimizer (PABAL)
@@ -145,6 +149,8 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--log_interval', type=int, default=100)
 
     # policy and model
+    delay_update = parser.parse_args().delay_update
+    dual_ascent_interval = parser.parse_args().dual_ascent_interval
     parser.add_argument('--obs_dim', type=int, default=None)
     parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
@@ -158,13 +164,13 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, MAX_ITER, 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, MAX_ITER, 5e-6])
-    parser.add_argument('--alpha', default=0.02)  # 'auto' 0.02
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / dual_ascent_interval), 5e-7])
+    parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, MAX_ITER, 8e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delay_update), 3e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -174,6 +180,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--mu_bias', type=float, default=0.0)
     cost_lim = parser.parse_args().cost_lim
     parser.add_argument('--cost_bias', type=float, default=0.0)
+    parser.add_argument('--mu_upperbound', type=float, default=None)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
@@ -206,13 +213,20 @@ def built_parser(alg_name):
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
-        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking.yaml'])
+        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking_reset.yaml'])
         config = CONFIG_FACTORY.merge()
 
+        CONFIG_FACTORY_EVAL = ConfigFactory()
+        CONFIG_FACTORY_EVAL.parser.set_defaults(overrides=['./env_configs/constrained_tracking_eval.yaml'])
+        config_eval = CONFIG_FACTORY_EVAL.merge()
+
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
-        args.config = config
+        args.config = deepcopy(config)
+        args.config_eval = deepcopy(config_eval)
+        config.quadrotor_config['gui'] = False
+        args.config_eval.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
-        args.obs_scale = [1. for _ in range(env.observation_space.shape[0])]
+        args.obs_scale = [1.] * env.observation_space.shape[0]
     else:  # standard gym envs
         env = gym.make(args.env_id)  # **vars(args)
 

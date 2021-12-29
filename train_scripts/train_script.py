@@ -180,7 +180,7 @@ def built_RAC_parser():
     parser.add_argument('--mu_bias', type=float, default=0.0)
     cost_lim = parser.parse_args().cost_lim
     parser.add_argument('--cost_bias', type=float, default=0.0)
-    parser.add_argument('--mu_upperbound', type=float, default=1.0e4)
+    parser.add_argument('--mu_upperbound', type=float, default=None)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')

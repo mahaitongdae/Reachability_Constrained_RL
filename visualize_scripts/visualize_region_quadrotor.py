@@ -27,7 +27,7 @@ from evaluator import EvaluatorWithCost
 
 class Visualizer_quadrotor(object):
     def __init__(self, policy_dir, iteration,
-                bound=(-2, 2., 0., 3.),
+                bound=(-1.5, 1.5, 0.5, 1.5),
                 z_dot_list=[-1., 0., 1.],
                 baseline=False):
         # 1 Load params and models
@@ -41,13 +41,13 @@ class Visualizer_quadrotor(object):
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         args = parser.parse_args()
-        args.config = munch.munchify(args.config)
+        args.config_eval = munch.munchify(args.config_eval)
         evaluator = EvaluatorWithCost(PolicyWithMu, args.env_id, args)
         evaluator.load_weights(os.path.join(policy_dir, 'models'), iteration)
 
         self.args = args
         self.evaluator = evaluator
-        self.quadrotor_config = self.args.config.quadrotor_config
+        self.quadrotor_config = self.args.config_eval.quadrotor_config
         self.z_dot_list = z_dot_list
 
         # 2 Generate batch observations
@@ -252,7 +252,8 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='Accent')
+                ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='viridis',
+                                     levels=2)
                 sub_ax.set_title(metric + ', ' + r'$\dot{z}=$' + str(self.z_dot_list[i]))
 
                 if i == len(self.z_dot_list) - 1:
