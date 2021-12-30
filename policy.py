@@ -100,7 +100,7 @@ class PolicyWithMu(tf.Module):
                                        name='Lam', output_activation='softplus', output_bias=0.)
             self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
         else:
-            lam_lr = 1e-6
+            lam_lr = 3e-4
             self.Lam = LamModel(name='Lam')
             self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
 
