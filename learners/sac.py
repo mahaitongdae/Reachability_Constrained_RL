@@ -99,6 +99,8 @@ class SACLearnerWithCost(object):
                                      + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
         elif self.constrained_value_type == 'Qc':
             qc_target_non_terminal = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
+            
+            return clipped_double_q_target, qc_target_non_terminal
         else:
             raise NotImplementedError("Undefined constrained value")
 

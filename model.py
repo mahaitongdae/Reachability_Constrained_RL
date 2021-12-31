@@ -58,7 +58,7 @@ class AlphaModel(Model):
 class LamModel(Model):
     def __init__(self, **kwargs):
         super(LamModel, self).__init__(name=kwargs['name'])
-        self.var = tf.Variable(-10., dtype=tf.float32)
+        self.var = tf.Variable(-1., dtype=tf.float32)
 
 
 
