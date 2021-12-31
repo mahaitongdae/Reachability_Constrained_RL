@@ -33,7 +33,7 @@ class Visualizer_quadrotor(object):
         # 1 Load params and models
         params = json.loads(open(policy_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        test_log_dir = params['log_dir'] + '/tester/test-region-{}'.format(time_now)
+        test_log_dir = policy_dir + '/logs' + '/tester/test-region-{}'.format(time_now)
         params.update(dict(mode='testing',
                            test_dir=policy_dir,
                            test_log_dir=test_log_dir, ))

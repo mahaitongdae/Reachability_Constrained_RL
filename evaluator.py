@@ -10,6 +10,7 @@
 import copy
 import logging
 import os
+from copy import deepcopy
 
 import gym
 import numpy as np
@@ -275,6 +276,9 @@ class EvaluatorWithCost(object):
         self.stats = {}
         self.eval_timer = TimerStat()
         self.eval_times = 0
+        self.eval_start_location = self.args.eval_start_location
+        assert self.args.num_eval_episode % len(self.eval_start_location) == 0, \
+            print('num_epi:', self.args.num_eval_episode, 'len(starting loc):', len(self.eval_start_location))
 
     def set_seed(self, seed):
         self.tf.random.set_seed(seed)
@@ -295,7 +299,7 @@ class EvaluatorWithCost(object):
         self.load_weights(model_load_dir, iteration)
         self.load_ppc_params(ppc_params_load_dir)
 
-    def run_an_episode(self, steps=None, render=True):
+    def run_an_episode(self, steps=None, render=True, epi_idx=0):
         obs_list = []
         action_list = []
         reward_list = []
@@ -304,6 +308,15 @@ class EvaluatorWithCost(object):
         cost_list = []
         qc_list = []
         lam_list = []
+
+        if self.args.env_id == 'quadrotor':
+            config = deepcopy(self.args.config_eval)
+            config.quadrotor_config['init_state']['init_x'] = self.eval_start_location[epi_idx][0]
+            config.quadrotor_config['init_state']['init_z'] = self.eval_start_location[epi_idx][1]
+            env = make('quadrotor', **config.quadrotor_config)
+            self.env = DummyVecEnv(env)
+            self.env.seed(self.args.random_seed + epi_idx)
+
         obs, info = self.env.reset()
         if render: self.env.render()
         if steps is not None:
@@ -364,9 +377,9 @@ class EvaluatorWithCost(object):
     def run_n_episodes(self, n):
         metrics_list = []
         vectors_list = []
-        for _ in range(n):
-            logger.info('logging {}-th episode'.format(_))
-            episode_info = self.run_an_episode(self.args.fixed_steps, self.args.eval_render)
+        for i in range(n):
+            logger.info('logging {}-th episode'.format(i))
+            episode_info = self.run_an_episode(self.args.fixed_steps, self.args.eval_render, i)
             metrics_list.append(self.metrics_for_an_episode(episode_info))
             if self.args.mode == 'testing' and self.args.env_id == 'quadrotor':
                 vectors_list.append({'x': episode_info['obs_list'][:, 0], 
@@ -381,6 +394,14 @@ class EvaluatorWithCost(object):
         for key in metrics_list[0].keys():
             value_list = list(map(lambda x: x[key], metrics_list))
             out.update({key: sum(value_list)/len(value_list)})
+
+        if self.args.env_id == 'quadrotor':
+            return_list = list(map(lambda x: x['episode_return'], metrics_list))
+            out.update({'worst-case return': min(return_list)})
+
+            violation_list = list(map(lambda x: x['episode_constraint_violation'], metrics_list))
+            out.update({'worst-case violation': max(violation_list)})
+
         return metrics_list, out
 
     def run_n_episodes_parallel(self, n):

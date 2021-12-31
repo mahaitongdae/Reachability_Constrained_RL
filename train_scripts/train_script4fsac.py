@@ -56,7 +56,7 @@ NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', Evalua
 NUM_WORKER = 1
 NUM_LEARNER = 1
 NUM_BUFFER = 1
-MAX_ITER = 1000000
+MAX_ITER = 500
 
 def built_FAC_parser():
     parser = argparse.ArgumentParser()
@@ -68,15 +68,17 @@ def built_FAC_parser():
         test_dir = '../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
+        test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
                            test_iter_list=[950000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=1,
+                           random_seed=59,
+                           num_eval_episode=4,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=360,
-                           eval_render=False))
+                           eval_render=False,
+                           eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -107,7 +109,7 @@ def built_FAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=1.0)  # todo
+    parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='Qc')  # todo: Qc feasibility
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
@@ -126,16 +128,16 @@ def built_FAC_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=5)
+    parser.add_argument('--num_eval_episode', type=int, default=4)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=1000)  # todo
+    parser.add_argument('--fixed_steps', type=int, default=None)  # todo
     parser.add_argument('--eval_render', type=bool, default=False)
-    num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
+    parser.add_argument('--eval_start_location', type=int, default=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)])
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--delay_update', type=int, default=1)  # todo
+    parser.add_argument('--delay_update', type=int, default=4)  # todo
     parser.add_argument('--dual_ascent_interval', type=int, default=12)  # todo
     parser.add_argument('--max_iter', type=int, default=MAX_ITER)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
@@ -157,16 +159,16 @@ def built_FAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 8e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 8e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-5, int(MAX_ITER / dual_ascent_interval), 3e-6])
-    parser.add_argument('--alpha', default=0.02)  # todo 'auto' 0.02
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / dual_ascent_interval), 5e-7])
+    parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo
@@ -180,12 +182,13 @@ def built_FAC_parser():
     parser.add_argument('--mu_bias', type=float, default=0.0)
     cost_lim = parser.parse_args().cost_lim
     parser.add_argument('--cost_bias', type=float, default=0.0)
+    parser.add_argument('--mu_upperbound', type=float, default=None)
 
     # preprocessor
     parser.add_argument('--obs_ptype', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=5.)  # todo
+    parser.add_argument('--rew_scale', type=float, default=1.)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # IO
@@ -212,14 +215,20 @@ def built_parser(alg_name):
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
-        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking.yaml'])
+        CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking_reset.yaml'])
         config = CONFIG_FACTORY.merge()
+
+        CONFIG_FACTORY_EVAL = ConfigFactory()
+        CONFIG_FACTORY_EVAL.parser.set_defaults(overrides=['./env_configs/constrained_tracking_eval.yaml'])
+        config_eval = CONFIG_FACTORY_EVAL.merge()
 
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
         args.config = deepcopy(config)
-        config.quadrotor_config['gui'] = False
+        args.config_eval = deepcopy(config_eval)
+        # config.quadrotor_config['gui'] = False
+        # args.config_eval.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
-        args.obs_scale = [1. for _ in range(env.observation_space.shape[0])]
+        args.obs_scale = [1.] * env.observation_space.shape[0]
     else:  # standard gym envs
         env = gym.make(args.env_id)  # **vars(args)
 

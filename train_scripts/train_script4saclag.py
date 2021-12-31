@@ -28,9 +28,12 @@ from safe_control_gym.utils.registration import make
 
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
-from learners.sac import SACLearnerWithCost
-from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, OffPolicyAsyncOptimizerWithCost
-from policy import PolicyWithMu
+from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping
+from optimizer import OffPolicyAsyncOptimizer, \
+                      SingleProcessOffPolicyOptimizer, \
+                      OffPolicyAsyncOptimizerWithCost, \
+                      OffPolicyAsyncOptimizerWithRewardShaping
+from policy import PolicyWithMu, PolicyWithQs
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker, OffPolicyWorkerWithCost
@@ -42,7 +45,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
                        ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
-NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost), ('SAC-Lagrangian', SACLearnerWithCost), ('RAC', SACLearnerWithCost)])
+NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
+                        ('SAC-Lagrangian', SACLearnerWithCost),
+                        ('RAC', SACLearnerWithCost),
+                        ('SAC-RewardShaping', SACLearnerWithRewardShaping)
+                        ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
                        ('None', None),
@@ -50,13 +57,15 @@ NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority_cost', PrioritizedReplayBufferWithCost)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('OffPolicyAsyncWithCost', OffPolicyAsyncOptimizerWithCost),
+                          ('OffPolicyAsyncWithRewardShaping', OffPolicyAsyncOptimizerWithRewardShaping),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
+NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
+                       ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
 NUM_WORKER = 1
 NUM_LEARNER = 1
 NUM_BUFFER = 1
-MAX_ITER = 2000000
+MAX_ITER = 500
 
 def built_SAC_Lagrangian_parser():
     parser = argparse.ArgumentParser()
@@ -68,16 +77,17 @@ def built_SAC_Lagrangian_parser():
         test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
+        test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
                            test_iter_list=[2000000],
                            test_log_dir=test_log_dir,
                            random_seed=59,
-                           num_eval_episode=1,
+                           num_eval_episode=4,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=360,
-                           eval_render=False))
+                           eval_render=False,
+                           eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -127,11 +137,12 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument('--num_eval_episode', type=int, default=3)
+    parser.add_argument('--num_eval_episode', type=int, default=4)
     parser.add_argument('--eval_log_interval', type=int, default=1)
     parser.add_argument('--fixed_steps', type=int, default=None)  # todo
     parser.add_argument('--eval_render', type=bool, default=False)
     parser.add_argument('--num_eval_agent', type=int, default=1)
+    parser.add_argument('--eval_start_location', type=int, default=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)])
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -223,8 +234,8 @@ def built_parser(alg_name):
         args.fixed_steps = int(config.quadrotor_config['episode_len_sec']*config.quadrotor_config['ctrl_freq'])
         args.config = deepcopy(config)
         args.config_eval = deepcopy(config_eval)
-        config.quadrotor_config['gui'] = False
-        args.config_eval.quadrotor_config['gui'] = False
+        # config.quadrotor_config['gui'] = False
+        # args.config_eval.quadrotor_config['gui'] = False
         env = make(args.env_id, **config.quadrotor_config)
         args.obs_scale = [1.] * env.observation_space.shape[0]
     else:  # standard gym envs
