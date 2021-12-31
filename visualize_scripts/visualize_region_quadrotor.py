@@ -252,7 +252,7 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='viridis',
+                ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='Accent',
                                      levels=2)
                 sub_ax.set_title(metric + ', ' + r'$\dot{z}=$' + str(self.z_dot_list[i]))
 
@@ -268,7 +268,7 @@ class Visualizer_quadrotor(object):
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2021-12-27-22-43-36',
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2021-12-30-13-00-03-Zero_violation',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
-    vizer.plot_region(['fea', 'cs', 'mu'])
+    vizer.plot_region(['fea'])
