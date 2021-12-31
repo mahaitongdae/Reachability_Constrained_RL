@@ -201,9 +201,13 @@ class OffPolicyWorkerWithCost(object):
 
     def apply_gradients(self, iteration, grads):
         self.iteration = iteration
-        qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
-        return qc_grad, lam_grad
-
+        isConstrained = self.args.constrained
+        if isConstrained:  # For SAC-L, FSAC. RAC
+            qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
+            return qc_grad, lam_grad
+        else:  # For SAC-RewardShaping
+            self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
+            
     def apply_ascent_gradients(self, iteration, qc_grad, lam_grad):
         self.iteration = iteration
         self.policy_with_value.apply_ascent_gradients(self.tf.constant(iteration, dtype=self.tf.int32), qc_grad, lam_grad)
