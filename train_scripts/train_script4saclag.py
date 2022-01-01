@@ -170,6 +170,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
     parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_out_activation', type=str, default='relu')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)

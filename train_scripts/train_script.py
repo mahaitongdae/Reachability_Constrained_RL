@@ -168,15 +168,16 @@ def built_RAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_out_activation', type=str, default='linear')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / dual_ascent_interval), 5e-7])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[1e-6, int(MAX_ITER / dual_ascent_interval), 1e-7])
     parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':

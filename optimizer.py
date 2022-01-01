@@ -94,7 +94,7 @@ class UpdateThread(threading.Thread):
             #     logger.info('Grad is nan!, zero it')
 
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad)
-            if self.iteration > int(self.args.max_iter / 5.):  # todo: change to proportional definition wrt max iter
+            if self.iteration > int(self.args.max_iter / 10.):  # todo: change to proportional definition wrt max iter
                 self.ascent = True
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             # ascent = self.ascent

@@ -17,6 +17,7 @@ from utils.misc import TimerStat
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+CONSTRAINTS_CLIP_MIN = -0.05
 
 class SACLearnerWithCost(object):
     import tensorflow as tf
@@ -229,7 +230,7 @@ class SACLearnerWithCost(object):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
-            violation = QC1 - self.args.cost_lim
+            violation = self.tf.clip_by_value(QC1 - self.args.cost_lim, CONSTRAINTS_CLIP_MIN, 100.)
             violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
             violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size
             if self.args.mlp_lam:
