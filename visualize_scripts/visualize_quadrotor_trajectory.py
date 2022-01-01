@@ -75,12 +75,12 @@ if __name__ == '__main__':
     # SAC-L
     trj_SACL = plt_trajectory(ax,
                              'SAC-L',
-                             '../results/quadrotor/SAC-Lagrangian-Qc/2021-12-29-20-54-24/logs/tester/test-2021-12-30-21-31-13')
+                              '../results/quadrotor/SAC-Lagrangian-Qc/2021-12-29-20-54-24_success/logs/tester/test-2021-12-30-21-31-13')
 
     # SAC-Reward Shaping
     trj_SACRS = plt_trajectory(ax,
                               'SAC-Reward Shaping',
-                              '../results/quadrotor/SAC-RewardShaping-Qc/2021-12-30-19-52-12/logs/tester/test-2021-12-31-11-02-25')
+                               '../results/quadrotor/SAC-RewardShaping-Qc/2021-12-30-19-52-12_success/logs/tester/test-2021-12-31-11-02-25')
 
     # # SAC-uncstr
     # plt_trajectory('../results/quadrotor/SAC/experiment-2021-12-27-22-26-02/logs/tester/test-2021-12-28-10-53-49')
