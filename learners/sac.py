@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from preprocessor import Preprocessor
-from utils.misc import TimerStat
+from utils.misc import TimerStat, compute_constraints
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -98,14 +98,18 @@ class SACLearnerWithCost(object):
         if self.constrained_value_type == 'feasibility':
             qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
                                      + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
+            clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
+
         elif self.constrained_value_type == 'Qc':
-            qc_target_non_terminal = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
-            
-            return clipped_double_q_target, qc_target_non_terminal
+            clipped_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
+
+        elif self.constrained_value_type == 'CBF':
+            cost_obses_tp1 = compute_constraints(self.batch_data['batch_obs_tp1'])
+            target_cbf = cost_obses_tp1 - (1 - self.args.cost_gamma) * processed_cost
+            clipped_qc_target = target_cbf
+
         else:
             raise NotImplementedError("Undefined constrained value")
-
-        clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
 
         return clipped_double_q_target, clipped_qc_target
 

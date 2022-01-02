@@ -36,6 +36,11 @@ def judge_is_nan(list_of_np_or_tensor):
                 raise ValueError
 
 
+def compute_constraints(obses: np.array) -> np.array:
+    z = obses[:, 2]  # (B,)
+    return np.array(np.maximum(0.5 - z, z - 1.5), dtype=np.float32)  # (B,)
+
+
 class TimerStat:
     def __init__(self, window_size=10):
         self._window_size = window_size

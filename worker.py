@@ -246,7 +246,7 @@ class OffPolicyWorkerWithCost(object):
             
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value == 'feasibility':
+            elif self.args.constrained_value in ['feasibility', 'CBF']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
             else:
                 raise NotImplementedError("Undefined constrained value")
@@ -288,7 +288,7 @@ class OffPolicyWorkerWithCost(object):
 
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value == 'feasibility':
+            elif self.args.constrained_value in ['feasibility', 'CBF']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
             else:
                 raise NotImplementedError("Undefined constrained value")
