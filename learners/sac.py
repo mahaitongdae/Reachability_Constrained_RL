@@ -172,9 +172,10 @@ class SACLearnerWithCost(object):
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             QC = self.policy_with_value.compute_QC1(processed_obses, actions)
+            violation = self.tf.clip_by_value(QC - self.args.cost_lim, 0., 100.)
             if self.args.mlp_lam:
                 lams = self.policy_with_value.compute_lam(processed_obses)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), violation))
             else:
                 lams = self.policy_with_value.log_lam
                 penalty_terms = lams * self.tf.reduce_mean(QC)
@@ -188,9 +189,8 @@ class SACLearnerWithCost(object):
             value_mean = self.tf.reduce_mean(all_Qs_min)
             cost_value_var = self.tf.math.reduce_variance(QC)
             cost_value_mean = self.tf.math.reduce_mean(QC)
-            statistic_dict = dict(policy_entropy=policy_entropy,value_var=value_var, value_mean=value_mean,
-                               cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,
-                               )
+            statistic_dict = dict(policy_entropy=policy_entropy, value_var=value_var, value_mean=value_mean,
+                                  cost_value_var=cost_value_var, cost_value_mean=cost_value_mean,)
 
         with self.tf.name_scope('policy_gradient') as scope:
             policy_gradient = tape.gradient(lagrangian, self.policy_with_value.policy.trainable_weights,)

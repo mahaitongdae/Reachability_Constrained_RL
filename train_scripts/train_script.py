@@ -92,7 +92,7 @@ def built_RAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='model-free rcrl')  # training testing
+    parser.add_argument('--motivation', type=str, default='remove under cost value in penalty terms')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
