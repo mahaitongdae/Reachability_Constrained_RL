@@ -48,7 +48,8 @@ NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
 NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
                         ('SAC-Lagrangian', SACLearnerWithCost),
                         ('RAC', SACLearnerWithCost),
-                        ('SAC-RewardShaping', SACLearnerWithRewardShaping)
+                        ('SAC-RewardShaping', SACLearnerWithRewardShaping),
+                        ('SAC-CBF', SACLearnerWithCost),
                         ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
