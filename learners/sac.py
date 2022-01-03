@@ -17,7 +17,7 @@ from utils.misc import TimerStat, compute_constraints
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CONSTRAINTS_CLIP_MIN = -0.05
+CONSTRAINTS_CLIP_MIN = -10.
 
 class SACLearnerWithCost(object):
     import tensorflow as tf
@@ -80,6 +80,7 @@ class SACLearnerWithCost(object):
     def compute_clipped_double_q_target(self):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+        processed_cost = self.preprocessor.tf_process_costs(self.batch_data['batch_costs']).numpy()
         done = self.batch_data['batch_dones']
 
         act_tp1, logp_tp1 = self.policy_with_value.compute_action(processed_obs_tp1)
@@ -93,7 +94,6 @@ class SACLearnerWithCost(object):
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                        (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-        processed_cost = self.batch_data['batch_costs']
         qc_target_terminal = processed_cost
         if self.constrained_value_type == 'feasibility':
             qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
@@ -104,7 +104,7 @@ class SACLearnerWithCost(object):
             clipped_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
 
         elif self.constrained_value_type == 'CBF':
-            cost_obses_tp1 = compute_constraints(self.batch_data['batch_obs_tp1'])
+            cost_obses_tp1 = self.preprocessor.tf_process_costs(compute_constraints(self.batch_data['batch_obs_tp1'])).numpy()
             target_cbf = cost_obses_tp1 - (1 - self.args.cost_gamma) * processed_cost
             clipped_qc_target = target_cbf
 

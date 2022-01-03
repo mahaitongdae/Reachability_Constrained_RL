@@ -58,7 +58,9 @@ class RunningMeanStd(object):
 
 class Preprocessor(object):
     def __init__(self, obs_dim, obs_ptype=None, rew_ptype=None, obs_scale=None,
-                 rew_scale=None, rew_shift=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, **kwargs):
+                 rew_scale=None, rew_shift=None,
+                 cost_ptype=None, cost_scale=None,
+                 clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8, **kwargs):
         self.obs_ptype = obs_ptype
         self.ob_rms = RunningMeanStd(shape=(obs_dim,)) if self.obs_ptype == 'normalize' else None
         self.rew_ptype = rew_ptype
@@ -66,7 +68,8 @@ class Preprocessor(object):
         self.obs_scale = np.array(obs_scale) if self.obs_ptype == 'scale' else None
         self.rew_scale = rew_scale if self.rew_ptype == 'scale' else None
         self.rew_shift = rew_shift if self.rew_ptype == 'scale' else None
-
+        self.cost_ptype = cost_ptype
+        self.cost_scale = cost_scale if self.cost_ptype == 'scale' else None
         self.clipob = clipob
         self.cliprew = cliprew
 
@@ -130,6 +133,12 @@ class Preprocessor(object):
             return (rewards + self.rew_shift) * self.rew_scale
         else:
             return rewards
+    
+    def np_process_costs(self, costs):
+        if self.cost_ptype == 'scale':
+            return costs * self.cost_scale
+        else:
+            return costs
 
     def tf_process_obses(self, obses):
         with tf.name_scope('obs_process') as scope:
@@ -157,6 +166,13 @@ class Preprocessor(object):
                        * tf.convert_to_tensor(self.rew_scale, dtype=tf.float32)
             else:
                 return tf.convert_to_tensor(rewards, dtype=tf.float32)
+
+    def tf_process_costs(self, costs):
+        with tf.name_scope('cost_process') as scope:
+            if self.cost_ptype == 'scale':
+                return costs * tf.convert_to_tensor(self.cost_scale, dtype=tf.float32)
+            else:
+                return tf.convert_to_tensor(costs, dtype=tf.float32)
 
     def set_params(self, params):
         if self.ob_rms:

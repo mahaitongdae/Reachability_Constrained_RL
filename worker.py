@@ -118,7 +118,7 @@ class OffPolicyWorker(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
-            processed_rew = self.preprocessor.process_rew(reward, self.done)
+            # processed_rew = self.preprocessor.process_rew(reward, self.done)
             for i in range(self.num_agent):
                 batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i]))
             self.obs = self.env.reset()

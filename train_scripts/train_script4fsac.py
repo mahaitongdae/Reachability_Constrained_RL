@@ -190,6 +190,8 @@ def built_FAC_parser():
     parser.add_argument('--rew_ptype', type=str, default='scale')
     parser.add_argument('--rew_scale', type=float, default=1.)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
+    parser.add_argument('--cost_ptype', type=str, default='scale')
+    parser.add_argument('--cost_scale', type=float, default=1.)  # todo
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
