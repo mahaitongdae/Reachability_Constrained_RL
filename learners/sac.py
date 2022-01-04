@@ -63,7 +63,8 @@ class SACLearnerWithCost(object):
                            'batch_rewards': batch_data[2].astype(np.float32),
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32),
-                           'batch_costs': batch_data[5].astype(np.float32)
+                           'batch_costs': batch_data[5].astype(np.float32),
+                           'batch_sis_info': batch_data[6].astype(np.float32),
                            }
 
         with self.target_timer:
@@ -105,13 +106,36 @@ class SACLearnerWithCost(object):
 
         elif self.constrained_value_type == 'CBF':
             cost_obses_tp1 = self.preprocessor.tf_process_costs(compute_constraints(self.batch_data['batch_obs_tp1'])).numpy()
-            target_cbf = cost_obses_tp1 - (1 - self.args.cost_gamma) * processed_cost
+            target_cbf = cost_obses_tp1 - self.args.cost_gamma * processed_cost
             clipped_qc_target = target_cbf
-
+        elif self.constrained_value_type == 'si':
+            delta_phi = self._compute_delta_safety_index(self.batch_data['batch_sis_info'])
+            clipped_qc_target = delta_phi
         else:
             raise NotImplementedError("Undefined constrained value")
 
         return clipped_double_q_target, clipped_qc_target
+
+    def _compute_delta_safety_index(self, mb_sis_infos):
+        '''
+        synthesis the safety index that ensures the valid solution
+        '''
+        sigma, k, n = self.policy_with_value.get_sis_paras.numpy()
+        # sis_infos shape: [batch size, 2(t,tp1), 2(constraints num), 2(d, dotd)]
+        # why all negative here: c < 0 is constraint-satisfactory, 
+        # and d = -c > 0 = d_min is constraint-satisfactory
+        d_t = -mb_sis_infos[:, 0, :, 0]
+        dotd_t = -mb_sis_infos[:, 0, :, 1]
+        d_tp1 = -mb_sis_infos[:, 1, :, 0]
+        dotd_tp1 = -mb_sis_infos[:, 1, :, 1]
+        phi_t = sigma - d_t**n - k * dotd_t
+        phi_t_across_cons_num = np.clip(np.max(phi_t, axis=1), 0, np.inf)
+
+        phi_tp1 = sigma - d_tp1**n - k * dotd_tp1
+        phi_tp1_across_cons_num = np.max(phi_tp1, axis=1)
+        delta_phi = phi_tp1_across_cons_num - phi_t_across_cons_num
+
+        return delta_phi
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
@@ -181,7 +205,7 @@ class SACLearnerWithCost(object):
                 penalty_terms = lams * self.tf.reduce_mean(QC)
             policy_loss = self.tf.reduce_mean(alpha*logps-all_Qs_min)
             if self.args.constrained:  # todo: add to hyper
-                lagrangian = policy_loss + penalty_terms # todo: + or -
+                lagrangian = policy_loss + penalty_terms  # todo: + or -
             else:
                 lagrangian = policy_loss
             policy_entropy = -self.tf.reduce_mean(logps)
@@ -304,10 +328,11 @@ class SACLearnerWithCost(object):
 
         with self.policy_gradient_timer:
             if ascent:
-                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats \
+                    = self.policy_forward_and_backward(mb_obs)
             else:
-                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
-                    mb_obs)
+                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats \
+                    = self.policy_forward_and_backward_uncstr(mb_obs)
 
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                             self.args.gradient_clip_norm)
@@ -366,204 +391,6 @@ class SACLearnerWithCost(object):
         else:
             gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
                               + policy_gradient + lam_gradient
-
-        return list(map(lambda x: x.numpy(), gradient_tensor))
-
-
-class SACLearnerWithSafetyIndex(SACLearnerWithCost):
-    import tensorflow as tf
-    tf.config.experimental.set_visible_devices([], 'GPU')
-    tf.config.threading.set_inter_op_parallelism_threads(1)
-    tf.config.threading.set_intra_op_parallelism_threads(1)
-    def __init__(self, policy_cls, args):
-        super(SACLearnerWithSafetyIndex, self).__init__(policy_cls, args)
-        self.k_gradient_timer = TimerStat()
-        assert self.constrained_value_type == 'adap-si'
-        assert self.args.mlp_lam
-    
-    def get_batch_data(self, batch_data, rb, indexes):
-        self.batch_data = {'batch_obs': batch_data[0].astype(np.float32),
-                           'batch_actions': batch_data[1].astype(np.float32),
-                           'batch_rewards': batch_data[2].astype(np.float32),
-                           'batch_obs_tp1': batch_data[3].astype(np.float32),
-                           'batch_dones': batch_data[4].astype(np.float32),
-                           'batch_costs': batch_data[5].astype(np.float32),
-                           'batch_sis_infos': batch_data[6].astype(np.float32)
-                           }
-
-        with self.target_timer:
-            target, cost_target = self.compute_clipped_double_q_target()
-
-        self.batch_data.update(dict(batch_targets=target, batch_cost_targets=cost_target))
-        if self.args.buffer_type != 'normal':
-            td_error, cost_td_error = self.compute_td_error()
-            self.info_for_buffer.update(dict(td_error=td_error, cost_td_error=cost_td_error,
-                                             rb=rb,
-                                             indexes=indexes))
-            self.stats.update(dict(qc_td_error=cost_td_error))
-
-    def compute_clipped_double_q_target(self):
-        processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-        processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-
-        act_tp1, logp_tp1 = self.policy_with_value.compute_action(processed_obs_tp1)
-
-        target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, act_tp1).numpy()
-        target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()
-        target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-
-        alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
-
-        clipped_double_q_target = processed_rewards + self.args.gamma * \
-                                  (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
-        processed_cost = self.compute_delta_safety_index()
-        clipped_double_qc_target = np.clip(processed_cost, -0.001, np.inf)
-
-        return clipped_double_q_target, clipped_double_qc_target
-    
-    def compute_delta_safety_index(self, hazards_size=0.5):
-        '''
-        synthesis the safety index that ensures the valid solution
-        '''
-        sigma, k, n = self.policy_with_value.get_sis_paras.numpy()
-        sis_infos = self.batch_data['batch_sis_infos']
-        # sis_infos shape: [batch size, 2(t,tp1), 4(hazards num), 2(d, dotd)]
-        d_t = sis_infos[:, 0, :, 0]
-        dotd_t = sis_infos[:, 0, :, 1]
-        d_tp1 = sis_infos[:, 1, :, 0]
-        dotd_tp1 = sis_infos[:, 1, :, 1]
-        phi_t = (sigma + hazards_size) ** n - d_t ** n - k * dotd_t
-        phi_t = np.clip(np.max(phi_t, axis=1), 0, np.inf)
-
-        phi_tp1 = (sigma + hazards_size) ** n - d_tp1 ** n - k * dotd_tp1
-        phi_tp1 = np.max(phi_tp1, axis=1)
-        delta_phi = phi_tp1 - phi_t
-        self.batch_data.update(dict(batch_delta_phi=delta_phi))
-
-        return delta_phi
-
-    @tf.function
-    def k_forward_and_backward(self, hazards_size=0.5):
-        sis_infos = self.batch_data['batch_sis_infos']
-        # sis_infos shape: [batch size, 2(t,tp1), 4(hazards num), 2(d, dotd)]
-        d_t = sis_infos[:, 0, :, 0]
-        dotd_t = sis_infos[:, 0, :, 1]
-        d_tp1 = sis_infos[:, 1, :, 0]
-        dotd_tp1 = sis_infos[:, 1, :, 1]
-
-        with self.tf.GradientTape() as tape:
-            sis_paras = self.policy_with_value.get_sis_paras
-            sigma, k, n = sis_paras[0], sis_paras[1], sis_paras[2]
-            phi_t = (sigma + hazards_size) ** n - d_t ** n - k * dotd_t
-            phi_t = self.tf.clip_by_value(self.tf.reduce_max(phi_t, axis=1), 0, 100)
-
-            phi_tp1 = (sigma + hazards_size) ** n - d_tp1 ** n - k * dotd_tp1
-            phi_tp1 = self.tf.reduce_max(phi_tp1, axis=1)
-            delta_phi = phi_tp1 - phi_t
-
-            sis_paras_loss = self.tf.reduce_mean(self.tf.where(delta_phi > 0, delta_phi, self.tf.zeros_like(delta_phi)))
-
-        with self.tf.name_scope('sis_paras_gradient') as scope:
-            sis_paras_gradient = tape.gradient(sis_paras_loss, self.policy_with_value.sis_para.trainable_weights)
-
-            return (sigma, k, n), sis_paras_loss, sis_paras_gradient
-
-    def compute_gradient(self, batch_data, rb, indexes, iteration):  # compute gradient
-        if self.counter % self.num_batch_reuse == 0:
-            self.get_batch_data(batch_data, rb, indexes)
-        self.counter += 1
-        if self.args.buffer_type != 'normal':
-            self.info_for_buffer.update(dict(td_error=self.compute_td_error()))
-        mb_obs = self.batch_data['batch_obs']
-        mb_actions = self.batch_data['batch_actions']
-        mb_targets = self.batch_data['batch_targets']
-        mb_cost_targets = self.batch_data['batch_cost_targets']
-
-        with self.q_gradient_timer:
-            q_loss1, q_loss2, qc_loss1, q_gradient1, q_gradient2, \
-                qc_gradient1, dist_stats = self.q_forward_and_backward(mb_obs, mb_actions, mb_targets, mb_cost_targets)
-            qc_gradient2 = qc_gradient1 # only for space
-            q_gradient1, q_gradient_norm1 = self.tf.clip_by_global_norm(q_gradient1, self.args.gradient_clip_norm)
-            q_gradient2, q_gradient_norm2 = self.tf.clip_by_global_norm(q_gradient2, self.args.gradient_clip_norm)
-            qc_gradient1, qc_gradient_norm1 = self.tf.clip_by_global_norm(qc_gradient1, self.args.gradient_clip_norm)
-
-        with self.policy_gradient_timer:
-            if iteration > self.args.penalty_start:
-                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward(mb_obs)
-            else:
-                policy_loss, penalty_terms, lagrangian, policy_gradient, policy_stats = self.policy_forward_and_backward_uncstr(
-                    mb_obs)
-
-        policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
-                                                                            self.args.gradient_clip_norm)
-
-        with self.lam_gradient_timer:
-            lam_loss, complementary_slackness, lam_gradient, lams, lam_stats = self.lam_forward_and_backward(mb_obs, mb_actions)
-            lam_gradient, lam_gradient_norm = self.tf.clip_by_global_norm(lam_gradient, self.args.lam_gradient_clip_norm)
-
-        with self.k_gradient_timer:
-            sis_paras, sis_paras_loss, sis_paras_gradient = self.k_forward_and_backward()
-            sis_paras_gradient, sis_paras_gradient_norm = self.tf.clip_by_global_norm(sis_paras_gradient,
-                                                                                  self.args.gradient_clip_norm)
-        self.stats.update(dict(
-            iteration=iteration,
-            q_timer=self.q_gradient_timer.mean,
-            pg_time=self.policy_gradient_timer.mean,
-            target_time=self.target_timer.mean,
-            lam_time=self.lam_gradient_timer.mean,
-            sis_paras_time=self.k_gradient_timer.mean,
-            q_loss1=q_loss1.numpy(),
-            q_loss2=q_loss2.numpy(),
-            qc_loss1=qc_loss1.numpy(),
-            policy_loss=policy_loss.numpy(),
-            mb_targets_mean=np.mean(mb_targets),
-            mb_cost_targets_mean=np.mean(mb_cost_targets),
-            mb_cost_targets_max=np.max(mb_cost_targets),
-            qc_targets=mb_cost_targets,
-            q_gradient_norm1=q_gradient_norm1.numpy(),
-            q_gradient_norm2=q_gradient_norm2.numpy(),
-            qc_gradient_norm1=qc_gradient_norm1.numpy(),
-            policy_gradient_norm=policy_gradient_norm.numpy(),
-            safety_index_margin=sis_paras[0].numpy(),
-            safety_index_k = sis_paras[1].numpy(),
-            safety_index_power=sis_paras[2].numpy(),
-            safety_index_k_loss=sis_paras_loss.numpy(),
-            safety_index_k_gradient_norm = sis_paras_gradient_norm.numpy()
-        ))
-        if self.args.constrained:
-            self.stats.update(dict(
-                lam_gradient_norm=lam_gradient_norm.numpy(),
-                lam_loss=lam_loss.numpy(),
-                complementary_slackness=complementary_slackness.numpy(),
-                penalty_terms=penalty_terms.numpy(),
-                max_multiplier=np.max(lams.numpy()),
-                mean_multiplier=np.mean(lams.numpy())
-            ))
-
-            for (k, v) in lam_stats.items():
-                self.stats.update({k: v.numpy()})
-
-        # update statistics
-        for (k, v) in policy_stats.items():
-            self.stats.update({k: v.numpy()})
-
-        for (k, v) in dist_stats.items():
-            self.stats.update({k: v.numpy()})
-
-        if self.args.alpha == 'auto':
-            with self.alpha_timer:
-                alpha_loss, alpha, alpha_gradient = self.alpha_forward_and_backward(mb_obs)
-                alpha_gradient, alpha_gradient_norm = self.tf.clip_by_global_norm(alpha_gradient,
-                                                                                  self.args.gradient_clip_norm)
-            self.stats.update(dict(alpha=alpha.numpy(),
-                                   alpha_loss=alpha_loss.numpy(),
-                                   alpha_gradient_norm=alpha_gradient_norm.numpy(),
-                                   alpha_time=self.alpha_timer.mean))
-            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
-                              + policy_gradient + lam_gradient + alpha_gradient + sis_paras_gradient
-        else:
-            gradient_tensor = q_gradient1 + q_gradient2 + qc_gradient1 + qc_gradient2 \
-                              + policy_gradient + lam_gradient + sis_paras_gradient
 
         return list(map(lambda x: x.numpy(), gradient_tensor))
 

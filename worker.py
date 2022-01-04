@@ -237,9 +237,9 @@ class OffPolicyWorkerWithCost(object):
             
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value in ['feasibility', 'CBF', 'adap-si']:
+            elif self.args.constrained_value in ['feasibility', 'CBF', 'si']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
-                if self.args.indicator_cost:
+                if self.args.constrained_value == 'feasibility' and self.args.indicator_cost:
                     if cost < 0:
                         cost = -1.
                     elif cost > 0:
@@ -288,9 +288,9 @@ class OffPolicyWorkerWithCost(object):
 
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value in ['feasibility', 'CBF', 'adap-si']:
+            elif self.args.constrained_value in ['feasibility', 'CBF', 'si']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
-                if self.args.indicator_cost:
+                if self.args.constrained_value == 'feasibility' and self.args.indicator_cost:
                     if cost < 0:
                         cost = -1.
                     elif cost > 0:
@@ -298,7 +298,7 @@ class OffPolicyWorkerWithCost(object):
             else:
                 raise NotImplementedError("Undefined constrained value")
             # safety index needs following addtional data
-            sis_info = info[0].get('sis_trans', np.zeros((2, 4, 2), dtype=np.float32))
+            sis_info = info[0].get('sis_trans', np.zeros((2, 2, 2), dtype=np.float32))
 
             self.sampled_costs += cost
             

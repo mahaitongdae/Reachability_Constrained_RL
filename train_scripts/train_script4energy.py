@@ -28,12 +28,12 @@ from safe_control_gym.utils.registration import make
 
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
-from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping, SACLearnerWithSafetyIndex
+from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping
 from optimizer import OffPolicyAsyncOptimizer, \
                       SingleProcessOffPolicyOptimizer, \
                       OffPolicyAsyncOptimizerWithCost, \
                       OffPolicyAsyncOptimizerWithRewardShaping
-from policy import PolicyWithMu, PolicyWithQs, PolicyWithAdaSafetyIndex
+from policy import PolicyWithMu, PolicyWithQs
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker, OffPolicyWorkerWithCost
@@ -49,7 +49,7 @@ NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
                         ('SAC-Lagrangian', SACLearnerWithCost),
                         ('RAC', SACLearnerWithCost),
                         ('SAC-RewardShaping', SACLearnerWithRewardShaping),
-                        ('FSAC-A', SACLearnerWithSafetyIndex),
+                        ('FSAC-A', SACLearnerWithCost),
                         ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
@@ -96,7 +96,7 @@ def built_FSAC_parser():
     parser.add_argument('--motivation', type=str, default='safe index')
 
     # trainer
-    parser.add_argument('--policy_type', type=str, default='PolicyWithAdaSafetyIndex')
+    parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
@@ -120,13 +120,11 @@ def built_FSAC_parser():
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
-    parser.add_argument('--constrained_value', type=str, default='adap-si')  # todo: Qc, feasibility, adap-si
+    parser.add_argument('--constrained_value', type=str, default='si')  # todo: Qc, feasibility, si
     if parser.parse_args().constrained_value == 'feasibility':
         parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
-    parser.add_argument('--adaptive_si_start', type=int, default=int(MAX_ITER / 20.))
-    parser.add_argument('--adaptive_si_interval', type=int, default=24)
     parser.add_argument('--init_sis_paras', type=list, default=[0.3, 1.0, 1.0])  # margin, k, power
 
     # worker
@@ -245,7 +243,7 @@ def built_parser(alg_name):
         assert args.constrained_value == 'CBF'
     elif args.alg_name == 'FSAC-A':
         assert args.mlp_lam
-        assert args.constrained_value == 'adap-si'
+        assert args.constrained_value == 'si'
     else:
         raise NotImplementedError("Unknown algorithm")
 
