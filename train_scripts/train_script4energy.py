@@ -3,7 +3,7 @@
 
 # =====================================
 # @Time    : 2021/12/23
-# @Author  : Dongjie Yu (Tsinghua Univ.)
+# @Author  : Haitong Ma (Tsinghua Univ.)
 # @FileName: train_script.py
 # ALL todos are env-related
 # =====================================
@@ -28,12 +28,12 @@ from safe_control_gym.utils.registration import make
 
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
-from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping
+from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping, SACLearnerWithSafetyIndex
 from optimizer import OffPolicyAsyncOptimizer, \
                       SingleProcessOffPolicyOptimizer, \
                       OffPolicyAsyncOptimizerWithCost, \
                       OffPolicyAsyncOptimizerWithRewardShaping
-from policy import PolicyWithMu, PolicyWithQs
+from policy import PolicyWithMu, PolicyWithQs, PolicyWithAdaSafetyIndex
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker, OffPolicyWorkerWithCost
@@ -48,7 +48,8 @@ NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
 NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
                         ('SAC-Lagrangian', SACLearnerWithCost),
                         ('RAC', SACLearnerWithCost),
-                        ('SAC-RewardShaping', SACLearnerWithRewardShaping)
+                        ('SAC-RewardShaping', SACLearnerWithRewardShaping),
+                        ('FSAC-A', SACLearnerWithSafetyIndex),
                         ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
@@ -62,12 +63,12 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 8
-NUM_LEARNER = 12
-NUM_BUFFER = 8
-MAX_ITER = 2000000
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
+MAX_ITER = 500
 
-def built_RAC_parser():
+def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training')  # training testing
@@ -92,18 +93,18 @@ def built_RAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='remove under cost value in penalty terms')  # training testing
+    parser.add_argument('--motivation', type=str, default='safe index')
 
     # trainer
-    parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
+    parser.add_argument('--policy_type', type=str, default='PolicyWithAdaSafetyIndex')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorkerWithCost')
     parser.add_argument('--evaluator_type', type=str, default='EvaluatorWithCost')
     parser.add_argument('--buffer_type', type=str, default='cost')
-    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
+    parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
     parser.add_argument('--demo', type=bool, default=False)
-    parser.add_argument('--penalty_start', type=int, default=0)
+    parser.add_argument('--penalty_start', type=int, default=int(MAX_ITER / 10.))
 
     # env
     parser.add_argument('--env_id', default='quadrotor')
@@ -111,7 +112,7 @@ def built_RAC_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
-    parser.add_argument('--alg_name', default='RAC')
+    parser.add_argument('--alg_name', default='FSAC-A')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=1.0)
@@ -119,11 +120,14 @@ def built_RAC_parser():
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
-    parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
+    parser.add_argument('--constrained_value', type=str, default='adap-si')  # todo: Qc, feasibility, adap-si
     if parser.parse_args().constrained_value == 'feasibility':
         parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
+    parser.add_argument('--adaptive_si_start', type=int, default=int(MAX_ITER / 20.))
+    parser.add_argument('--adaptive_si_interval', type=int, default=24)
+    parser.add_argument('--init_sis_paras', type=list, default=[0.3, 1.0, 1.0])  # margin, k, power
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
@@ -185,6 +189,7 @@ def built_RAC_parser():
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)  # todo
     parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, int(MAX_ITER / delay_update), 3e-6])
+    parser.add_argument('--k_lr_schedule', type=list, default=[8e-6, 100000, 1e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -224,8 +229,25 @@ def built_RAC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'RAC':
-        args = built_RAC_parser()
+    if alg_name == 'FSAC-A':
+        args = built_FSAC_parser()
+
+    if args.alg_name == 'RAC':
+        assert args.mlp_lam
+        assert args.constrained_value == 'feasibility'
+    elif args.alg_name == 'SAC-Lagrangian':
+        assert not args.mlp_lam
+        assert args.constrained_value == 'Qc'
+    elif args.alg_name == 'SAC-RewardShaping':
+        assert not args.mlp_lam
+    elif args.alg_name == 'CBF':
+        assert args.mlp_lam
+        assert args.constrained_value == 'CBF'
+    elif args.alg_name == 'FSAC-A':
+        assert args.mlp_lam
+        assert args.constrained_value == 'adap-si'
+    else:
+        raise NotImplementedError("Unknown algorithm")
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
@@ -289,4 +311,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('RAC')
+    main('FSAC-A')

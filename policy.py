@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 
-from model import MLPNet, AlphaModel, LamModel
+from model import MLPNet, AlphaModel, LamModel, SiSParaModel
 
 NAME2MODELCLS = dict([('MLP', MLPNet),])
 
@@ -49,6 +49,7 @@ class PolicyWithMu(tf.Module):
         self.penalty_start = kwargs.get('penalty_start')
         self.mu_upperbound = kwargs.get('mu_upperbound')
         self.qc_out_activation = kwargs.get('cost_value_out_activation')
+        assert self.double_Q
 
         value_model_cls, policy_model_cls = NAME2MODELCLS[value_model_cls], \
                                             NAME2MODELCLS[policy_model_cls]
@@ -172,54 +173,33 @@ class PolicyWithMu(tf.Module):
 
     @tf.function
     def apply_gradients(self, iteration, grads):
-        if self.policy_only:
-            policy_grad = grads
-            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-        else:
-            if self.double_Q:
-                q_weights_len = len(self.Q1.trainable_weights)
-                policy_weights_len = len(self.policy.trainable_weights)
-                lam_weights_len = len(self.Lam.trainable_weights)
-                q1_grad, q2_grad, qc1_grad, qc2_grad, policy_grad =\
-                    grads[:q_weights_len], \
-                    grads[q_weights_len:2*q_weights_len],\
-                    grads[2*q_weights_len:3*q_weights_len], \
-                    grads[3 * q_weights_len:4 * q_weights_len], \
-                    grads[4 * q_weights_len:4 * q_weights_len + policy_weights_len]
-                lam_grad = grads[
-                           4 * q_weights_len + policy_weights_len: 4 * q_weights_len + policy_weights_len + lam_weights_len]
-                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
-                self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
-                self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
-                if self.double_QC:
-                    self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
-                if iteration % self.delay_update == 0:
-                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-                    self.update_policy_target()
-                    self.update_all_Q_target()
-                    if self.alpha == 'auto':
-                        alpha_grad = grads[-1:]
-                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
-            else:
-                q_weights_len = len(self.Q1.trainable_weights)
-                policy_weights_len = len(self.policy.trainable_weights)
-                q1_grad, policy_grad = grads[:q_weights_len], grads[q_weights_len:q_weights_len+policy_weights_len]
-                self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
-                if iteration % self.delay_update == 0:
-                    self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
-                    if self.alpha == 'auto':
-                        alpha_grad = grads[-1:]
-                        self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
-                    if self.target:
-                        self.update_policy_target()
-                        self.update_Q1_target()
-        return qc1_grad, lam_grad
-
-    @tf.function
-    def apply_ascent_gradients(self, iteration, qc_grad, lam_grad):
-        assert self.double_Q
-        if iteration % self.dual_ascent_interval == 0 and self.constrained:
+        q_weights_len = len(self.Q1.trainable_weights)
+        policy_weights_len = len(self.policy.trainable_weights)
+        lam_weights_len = len(self.Lam.trainable_weights)
+        q1_grad, q2_grad, qc1_grad, qc2_grad, policy_grad =\
+            grads[:q_weights_len], \
+            grads[q_weights_len:2 * q_weights_len],\
+            grads[2 * q_weights_len:3 * q_weights_len], \
+            grads[3 * q_weights_len:4 * q_weights_len], \
+            grads[4 * q_weights_len:4 * q_weights_len + policy_weights_len]
+        self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+        self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
+        self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
+        if self.double_QC:
+            self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
+        if iteration % self.dual_ascent_interval == 0 and iteration > self.args.penalty_start:
+            assert self.constrained
+            lam_grad = grads[4 * q_weights_len + policy_weights_len:\
+                             4 * q_weights_len + policy_weights_len + lam_weights_len]
             self.Lam_optimizer.apply_gradients(zip(lam_grad, self.Lam.trainable_weights))
+        if iteration % self.delay_update == 0:
+            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+            self.update_policy_target()
+            self.update_all_Q_target()
+            if self.alpha == 'auto':
+                alpha_grad = grads[4 * q_weights_len + policy_weights_len + lam_weights_len:\
+                                   4 * q_weights_len + policy_weights_len + lam_weights_len + 1]
+                self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
 
     def update_all_Q_target(self):
         self.update_Q1_target()
@@ -370,6 +350,72 @@ class PolicyWithMu(tf.Module):
                                     clip_value_max=self.mu_upperbound)
         else:
             return tf.nn.softplus(self.Lam.var)
+
+
+class PolicyWithAdaSafetyIndex(PolicyWithMu):
+    def __init__(self, obs_dim, act_dim,
+                 value_model_cls, value_num_hidden_layers, value_num_hidden_units,
+                 value_hidden_activation, value_lr_schedule, cost_value_lr_schedule,
+                 policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
+                 policy_out_activation, policy_lr_schedule,
+                 alpha, alpha_lr_schedule,
+                 policy_only, double_Q, target, tau, delay_update,
+                 deterministic_policy, action_range, lam_lr_schedule, dual_ascent_interval=1, **kwargs):
+        super(PolicyWithAdaSafetyIndex, self).__init__(obs_dim, act_dim,
+                 value_model_cls, value_num_hidden_layers, value_num_hidden_units,
+                 value_hidden_activation, value_lr_schedule, cost_value_lr_schedule,
+                 policy_model_cls, policy_num_hidden_layers, policy_num_hidden_units, policy_hidden_activation,
+                 policy_out_activation, policy_lr_schedule,
+                 alpha, alpha_lr_schedule,
+                 policy_only, double_Q, target, tau, delay_update,
+                 deterministic_policy, action_range, lam_lr_schedule, dual_ascent_interval=1, **kwargs)
+
+        assert kwargs.get('constrained_value') == 'adap-si'
+        self.init_sis_paras = kwargs.get('init_sis_paras')
+        k_lr_schedule = kwargs.get('k_lr_schedule')
+        k_lr = PolynomialDecay(*k_lr_schedule)
+        self.sis_para = SiSParaModel(name='k', init_var=self.init_sis_paras)
+        self.k_optimizer = self.tf.keras.optimizers.Adam(k_lr, name='k_opt')
+        self.models += (self.sis_para,)
+        self.optimizers += (self.k_optimizer,)
+        self.adaptive_si_interval = kwargs.get('adaptive_si_interval')
+        self.adaptive_si_start = kwargs.get('adaptive_si_start')
+
+    @tf.function
+    def apply_gradients(self, iteration, grads):
+        assert self.double_Q
+        q_weights_len = len(self.Q1.trainable_weights)
+        policy_weights_len = len(self.policy.trainable_weights)
+        lam_weights_len = len(self.Lam.trainable_weights)
+        q1_grad, q2_grad, qc1_grad, qc2_grad, policy_grad = \
+            grads[:q_weights_len], \
+            grads[q_weights_len:2 * q_weights_len], \
+            grads[2 * q_weights_len:3 * q_weights_len], \
+            grads[3 * q_weights_len:4 * q_weights_len], \
+            grads[4 * q_weights_len:4 * q_weights_len + policy_weights_len]
+        self.Q1_optimizer.apply_gradients(zip(q1_grad, self.Q1.trainable_weights))
+        self.Q2_optimizer.apply_gradients(zip(q2_grad, self.Q2.trainable_weights))
+        self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
+        if self.double_QC:
+            self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
+        if iteration % self.dual_ascent_interval == 0 and iteration > self.args.penalty_start:
+            lam_grad = grads[4 * q_weights_len + policy_weights_len:\
+                             4 * q_weights_len + policy_weights_len + lam_weights_len]
+            self.Lam_optimizer.apply_gradients(zip(lam_grad, self.Lam.trainable_weights))
+        if iteration % self.delay_update == 0:
+            self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+            self.update_policy_target()
+            self.update_all_Q_target()
+            alpha_grad = grads[-2:-1]
+            self.alpha_optimizer.apply_gradients(zip(alpha_grad, self.alpha_model.trainable_weights))
+        if self.constrained_value == 'adap-si':
+            if iteration % self.adaptive_si_interval == 0 and iteration > self.adaptive_si_start:
+                k_grad = grads[-1:]
+                self.k_optimizer.apply_gradients(zip(k_grad, self.sis_para.trainable_weights))
+
+    @property
+    def get_sis_paras(self):
+        return tf.clip_by_value(self.sis_para.var, [0.0, 0.5, 0.1], [1.0, 3.0, 2.0])
 
 
 class PolicyWithQs(tf.Module):

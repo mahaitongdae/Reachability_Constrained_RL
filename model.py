@@ -55,11 +55,18 @@ class AlphaModel(Model):
         super(AlphaModel, self).__init__(name=kwargs['name'])
         self.log_alpha = tf.Variable(0., dtype=tf.float32)
 
+
 class LamModel(Model):
     def __init__(self, **kwargs):
         super(LamModel, self).__init__(name=kwargs['name'])
         self.var = tf.Variable(-1., dtype=tf.float32)
 
+
+class SiSParaModel(Model):
+    def __init__(self, **kwargs):
+        super(SiSParaModel, self).__init__(name=kwargs['name'])
+        init_var = kwargs.get('init_var', [0.1, 1.0, 2.0])
+        self.var = tf.Variable(init_var, dtype=tf.float32)
 
 
 def test_alpha():

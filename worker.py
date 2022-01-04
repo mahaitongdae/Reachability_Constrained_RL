@@ -201,16 +201,7 @@ class OffPolicyWorkerWithCost(object):
 
     def apply_gradients(self, iteration, grads):
         self.iteration = iteration
-        isConstrained = self.args.constrained
-        if isConstrained:  # For SAC-L, FSAC. RAC
-            qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
-            return qc_grad, lam_grad
-        else:  # For SAC-RewardShaping
-            self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
-            
-    def apply_ascent_gradients(self, iteration, qc_grad, lam_grad):
-        self.iteration = iteration
-        self.policy_with_value.apply_ascent_gradients(self.tf.constant(iteration, dtype=self.tf.int32), qc_grad, lam_grad)
+        self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -246,7 +237,7 @@ class OffPolicyWorkerWithCost(object):
             
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value in ['feasibility', 'CBF']:
+            elif self.args.constrained_value in ['feasibility', 'CBF', 'adap-si']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
                 if self.args.indicator_cost:
                     if cost < 0:
@@ -255,10 +246,14 @@ class OffPolicyWorkerWithCost(object):
                         cost = 1.
             else:
                 raise NotImplementedError("Undefined constrained value")
+            # safety index needs following addtional data
+            sis_info = info[0].get('sis_trans', np.zeros((2, 4, 2), dtype=np.float32))
+
             self.sampled_costs += cost
 
             for i in range(self.num_agent):
-                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i], cost))
+                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i],
+                                   cost, sis_info))
 
             self.obs = self.env.reset()[0] if self.done else obs_tp1.copy()
 
@@ -293,7 +288,7 @@ class OffPolicyWorkerWithCost(object):
 
             if self.args.constrained_value == 'Qc':
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
-            elif self.args.constrained_value in ['feasibility', 'CBF']:
+            elif self.args.constrained_value in ['feasibility', 'CBF', 'adap-si']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
                 if self.args.indicator_cost:
                     if cost < 0:
@@ -302,10 +297,14 @@ class OffPolicyWorkerWithCost(object):
                         cost = 1.
             else:
                 raise NotImplementedError("Undefined constrained value")
+            # safety index needs following addtional data
+            sis_info = info[0].get('sis_trans', np.zeros((2, 4, 2), dtype=np.float32))
+
             self.sampled_costs += cost
             
             for i in range(self.num_agent):
-                batch_data.append((self.obs[i].copy(), action[i], reward[i], obs_tp1[i].copy(), self.done[i], cost))
+                batch_data.append((self.obs[i].copy(), action[i].numpy(), reward[i], obs_tp1[i].copy(), self.done[i],
+                                   cost, sis_info))
 
             self.obs = self.env.reset()[0] if self.done else obs_tp1.copy()
 

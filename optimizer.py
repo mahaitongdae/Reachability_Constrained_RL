@@ -93,14 +93,9 @@ class UpdateThread(threading.Thread):
             #     self.grad = [tf.zeros_like(grad) for grad in self.grad]
             #     logger.info('Grad is nan!, zero it')
 
-            qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad)
-            if self.iteration > int(self.args.max_iter / 10.):  # todo: change to proportional definition wrt max iter
+            self.local_worker.apply_gradients(self.iteration, self.grad)
+            if self.iteration > self.args.penalty_start:
                 self.ascent = True
-                self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
-            # ascent = self.ascent
-            # if ascent:
-            #     self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
-            # todo: remove ascent
 
         # log
         if self.iteration % self.args.log_interval == 0:
