@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import colors
 
 import json
 import argparse
@@ -27,7 +28,7 @@ from evaluator import EvaluatorWithCost
 
 class Visualizer_quadrotor(object):
     def __init__(self, policy_dir, iteration,
-                bound=(-1.5, 1.5, 0.5, 1.5),
+                bound=(-1.5, 1.5, 0.4, 1.6),
                 z_dot_list=[-1., 0., 1.],
                 baseline=False):
         # 1 Load params and models
@@ -230,19 +231,36 @@ class Visualizer_quadrotor(object):
             assert metric in ['fea', 'cs', 'mu']
 
         fig, axes = plt.subplots(nrows=len(metrics), ncols=len(self.batch_obses_list), figsize=(12, 3))
-        colorbar_types = []
-        for i, obses in enumerate(self.batch_obses_list):
-            preprocess_obs = self.evaluator.preprocessor.np_process_obses(obses)
-            flatten_mu = self.evaluator.policy_with_value.compute_lam(preprocess_obs).numpy()
 
-            processed_obses = self.evaluator.preprocessor.tf_process_obses(obses)
-            actions, _ = self.evaluator.policy_with_value.compute_action(processed_obses)
-            flatten_cost_q = self.evaluator.policy_with_value.compute_QC1(processed_obses, actions).numpy()
-            flatten_fea_v = flatten_cost_q
+        for j, metric in enumerate(metrics):
+            axes_list = []
+            min_val_list = []
+            max_val_list = []
+            data2plot = []
+            ct_list = []
+            for i, obses in enumerate(self.batch_obses_list):
+                preprocess_obs = self.evaluator.preprocessor.np_process_obses(obses)
+                flatten_mu = self.evaluator.policy_with_value.compute_lam(preprocess_obs).numpy()
 
-            flatten_cs = np.multiply(flatten_fea_v, flatten_mu)
-            NAME2VALUE = dict(zip(['fea', 'cs', 'mu'], [flatten_fea_v, flatten_cs, flatten_mu]))
-            for j, metric in enumerate(metrics):
+                processed_obses = self.evaluator.preprocessor.tf_process_obses(obses)
+                actions, _ = self.evaluator.policy_with_value.compute_action(processed_obses)
+                flatten_cost_q = self.evaluator.policy_with_value.compute_QC1(processed_obses, actions).numpy()
+                flatten_fea_v = flatten_cost_q
+
+                flatten_cs = np.multiply(flatten_fea_v, flatten_mu)
+                NAME2VALUE = dict(zip(['fea', 'cs', 'mu'], [flatten_fea_v, flatten_cs, flatten_mu]))
+                val = NAME2VALUE[metric].reshape(self.X.shape)
+
+                min_val_list.append(np.min(val))
+                max_val_list.append(np.max(val))
+                data2plot.append(val)
+
+            min_val = np.min(min_val_list)
+            max_val = np.max(max_val_list)
+            min_idx = np.argmin(min_val_list)
+            norm = colors.Normalize(vmin=min_val, vmax=max_val)
+
+            for i in range(len(data2plot)):
                 if len(metrics) == 1 and len(self.z_dot_list) == 1:
                     sub_ax = axes
                 elif len(axes.shape) > 1:
@@ -252,23 +270,21 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, NAME2VALUE[metric].reshape(self.X.shape), cmap='Accent',
-                                     levels=2)
+                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow', levels=2)
+                ct_list.append(ct)
                 sub_ax.set_title(metric + ', ' + r'$\dot{z}=$' + str(self.z_dot_list[i]))
+                axes_list.append(sub_ax)
 
-                if i == len(self.z_dot_list) - 1:
-                    cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
-                    colorbar_types.append((ct, cax))
+            cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
+            plt.colorbar(ct_list[min_idx], ax=axes_list, cax=cax)
+
         fig.supxlabel(r'$x$')
         fig.supylabel(r'$z$')
-
-        for i, pairs in enumerate(colorbar_types):
-            plt.colorbar(pairs[0], cax=pairs[1])
         plt.show()
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2021-12-30-13-00-03-Zero_violation',
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-05-00-11-28-indicator_scale_5_2pi_lr',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
-    vizer.plot_region(['fea'])
+    vizer.plot_region(['fea', 'mu'])
