@@ -62,10 +62,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 8
-NUM_LEARNER = 12
-NUM_BUFFER = 8
-MAX_ITER = 2000000
+NUM_WORKER = 1
+NUM_LEARNER = 1
+NUM_BUFFER = 1
+MAX_ITER = 500
 
 def built_RAC_parser():
     parser = argparse.ArgumentParser()
