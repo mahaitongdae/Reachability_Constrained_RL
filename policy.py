@@ -249,7 +249,7 @@ class PolicyWithMu(tf.Module):
                 self.tfp.distributions.TransformedDistribution(
                     distribution=act_dist,
                     bijector=self.tfb.Chain(
-                        [self.tfb.Affine(scale_identity_multiplier=self.action_range),
+                        [self.tfb.Scale(scale=self.action_range),
                          self.tfb.Tanh()])
                 ))
         return act_dist
@@ -531,7 +531,7 @@ class PolicyWithQs(tf.Module):
                 self.tfp.distributions.TransformedDistribution(
                     distribution=act_dist,
                     bijector=self.tfb.Chain(
-                        [self.tfb.Affine(scale_identity_multiplier=self.action_range),
+                        [self.tfb.Scale(scale=self.action_range),
                          self.tfb.Tanh()])
                 ))
         return act_dist

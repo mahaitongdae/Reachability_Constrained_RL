@@ -237,7 +237,7 @@ def built_parser(alg_name):
         assert not args.mlp_lam
         assert args.constrained_value == 'Qc'
     elif args.alg_name == 'SAC-RewardShaping':
-        assert not args.mlp_lam
+        pass
     elif args.alg_name == 'CBF':
         assert args.mlp_lam
         assert args.constrained_value == 'CBF'

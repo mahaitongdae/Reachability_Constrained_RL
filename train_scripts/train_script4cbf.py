@@ -226,6 +226,23 @@ def built_parser(alg_name):
     if alg_name == 'SAC-CBF':
         args = built_SAC_CBF_parser()
 
+    if args.alg_name == 'RAC':
+        assert args.mlp_lam
+        assert args.constrained_value == 'feasibility'
+    elif args.alg_name == 'SAC-Lagrangian':
+        assert not args.mlp_lam
+        assert args.constrained_value == 'Qc'
+    elif args.alg_name == 'SAC-RewardShaping':
+        pass
+    elif args.alg_name == 'CBF':
+        assert args.mlp_lam
+        assert args.constrained_value == 'CBF'
+    elif args.alg_name == 'FSAC-A':
+        assert args.mlp_lam
+        assert args.constrained_value == 'si'
+    else:
+        raise NotImplementedError("Unknown algorithm")
+
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
         CONFIG_FACTORY.parser.set_defaults(overrides=['./env_configs/constrained_tracking_reset.yaml'])
