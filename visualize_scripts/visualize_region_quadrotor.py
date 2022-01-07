@@ -28,7 +28,7 @@ from evaluator import EvaluatorWithCost
 
 class Visualizer_quadrotor(object):
     def __init__(self, policy_dir, iteration,
-                bound=(-1.5, 1.5, 0.4, 1.6),
+                bound=(-1.5, 1.5, 0.5, 1.5),
                 z_dot_list=[-1., 0., 1.],
                 baseline=False):
         # 1 Load params and models
@@ -284,7 +284,7 @@ class Visualizer_quadrotor(object):
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-05-00-11-28-indicator_scale_5_2pi_lr',
+    vizer = Visualizer_quadrotor('../results/quadrotor/SAC-CBF-CBF/2022-01-05-11-34-37/',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
     vizer.plot_region(['fea', 'mu'])

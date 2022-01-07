@@ -235,7 +235,7 @@ def built_parser(alg_name):
         assert args.constrained_value == 'Qc'
     elif args.alg_name == 'SAC-RewardShaping':
         pass
-    elif args.alg_name == 'CBF':
+    elif args.alg_name == 'SAC-CBF':
         assert args.mlp_lam
         assert args.constrained_value == 'CBF'
     elif args.alg_name == 'FSAC-A':
