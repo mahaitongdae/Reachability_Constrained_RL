@@ -1,12 +1,21 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
 ALG2CMAP = dict([('RAC (ours)', 'Blue'),
-                 ('SAC-L', 'Green'),
+                 ('SAC-Lagrangian', 'Green'),
                  ('SAC-Reward Shaping', 'orange'),
-                 ('SAC-CBF', 'salmon'),
-                 ('SAC-Energy', 'orchid')])
+                 ('CBF-based SAC', 'salmon'),
+                 ('Energy-based SAC', 'orchid')])
+
+params={'font.family': 'Arial',
+        # 'font.serif': 'Times New Roman',
+        # 'font.style': 'italic',
+        # 'font.weight': 'normal', #or 'blod'
+        'font.size': 13,  # or large,small
+        }
+rcParams.update(params)
 
 def plt_trajectory(ax, alg, trj_dir, episode=None):
     coordinates_list = np.load(trj_dir + '/coordinates_x_z.npy', allow_pickle=True)
@@ -20,6 +29,7 @@ def plt_trajectory(ax, alg, trj_dir, episode=None):
         trj = ax.plot(xs, zs, c=ALG2CMAP[alg],
                       linewidth=2,
                       label=alg,)
+        break
     # plt.colorbar(trj)
     # plt.colorbar(PID_trj_plot)
     # plt.colorbar(PID_ref_plot)
@@ -47,7 +57,7 @@ def plt_constraint(ax):
     z_ub = 1.5 * np.ones_like(x)
 
     ax.plot(x, z_lb, marker='.', c='r')
-    ax.plot(x, z_ub, marker='.', c='r')
+    ax.plot(x, z_ub, marker='.', c='r', label='Constraints')
 
 def plt_PID_baseline(ax):
     # PID uncstr baseline
@@ -60,8 +70,8 @@ def plt_PID_baseline(ax):
 
 
 if __name__ == '__main__':
-    fig = plt.figure(figsize=[5, 5])
-    ax = plt.axes([0.1, 0.2, 0.8, 0.75])
+    fig = plt.figure(figsize=[9, 6])
+    ax = plt.axes([0.1, 0.25, 0.8, 0.7])
     # # FSAC-Qc
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21/logs/tester/test-2021-12-24-13-27-39/')
 
@@ -69,30 +79,30 @@ if __name__ == '__main__':
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-17-45/')  # 1M
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56/logs/tester/test-2021-12-24-16-20-46/')  # 0.95M
 
-    # # RAC
-    # trj_RAC = plt_trajectory(ax,
-    #                          'RAC (ours)',
-    #                          '../results/quadrotor/RAC-feasibility/2021-12-30-13-00-03-Zero_violation/logs/tester/test-2021-12-30-21-01-46')
-    #
-    # # SAC-L
-    # trj_SACL = plt_trajectory(ax,
-    #                          'SAC-L',
-    #                           '../results/quadrotor/SAC-Lagrangian-Qc/2021-12-29-20-54-24_success/logs/tester/test-2021-12-30-21-31-13')
-    #
-    # # SAC-Reward Shaping
-    # trj_SACRS = plt_trajectory(ax,
-    #                           'SAC-Reward Shaping',
-    #                            '../results/quadrotor/SAC-RewardShaping-Qc/2021-12-30-19-52-12_success/logs/tester/test-2021-12-31-11-02-25')
+    # RAC
+    trj_RAC = plt_trajectory(ax,
+                             'RAC (ours)',
+                             '../results/quadrotor/RAC-feasibility/data2plot/2022-01-07-13-13-39/logs/tester/test-2022-01-10-15-05-22')
+
+    # SAC-L
+    trj_SACL = plt_trajectory(ax,
+                             'SAC-Lagrangian',
+                              '../results/quadrotor/SAC-Lagrangian-Qc/data2plot/2022-01-07-21-28-13/logs/tester/test-2022-01-10-15-08-36')
+
+    # SAC-Reward Shaping
+    trj_SACRS = plt_trajectory(ax,
+                              'SAC-Reward Shaping',
+                               '../results/quadrotor/SAC-RewardShaping-Qc/data2plot/2022-01-08-05-34-36/logs/tester/test-2022-01-10-15-08-04')
 
     # SAC-CBF
     trj_SACCBF = plt_trajectory(ax,
-                               'SAC-CBF',
-                               '../results/quadrotor/SAC-CBF-CBF/2022-01-05-11-34-37/logs/tester/test-2022-01-07-11-10-26')
+                               'CBF-based SAC',
+                               '../results/quadrotor/SAC-CBF-CBF/data2plot/2022-01-08-16-20-24/logs/tester/test-2022-01-10-15-06-14')
 
     # SAC-Energy
     trj_SACenergy = plt_trajectory(ax,
-                                   'SAC-Energy',
-                                   '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11/logs/tester/test-2022-01-07-11-10-26')
+                                   'Energy-based SAC',
+                                   '../results/quadrotor/FSAC-A-si/data2plot/2022-01-09-21-16-56/logs/tester/test-2022-01-10-15-07-22')
 
     # # SAC-uncstr
     # plt_trajectory('../results/quadrotor/SAC/experiment-2021-12-27-22-26-02/logs/tester/test-2021-12-28-10-53-49')
@@ -103,12 +113,15 @@ if __name__ == '__main__':
     # plt_PID_baseline(ax)
 
     # Plot settings
-    ax.set_xlabel(r'$x$')
-    ax.set_ylabel(r'$z$')
-    ax.set_xlim(-2, 2)
-    ax.set_ylim(-0, 2)
+    ax.set_xlabel('x')
+    ax.set_ylabel('z')
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-0.2, 2.2)
 
     # legend1 = ax.legend(*trj_RAC.legend_elements(),
     #                     loc="lower left", title="Algorithms")
-    ax.legend(loc='upper left')
+    ax.legend(frameon=False, fontsize=12,
+              bbox_to_anchor=(0.5, -0.25), loc='lower center', ncol=4)
+    plt.title('Quadrotor Tracking Trajectories Visualization', fontsize=12)
+    plt.tight_layout(pad=0.5)
     plt.show()

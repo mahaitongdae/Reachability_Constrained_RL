@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib import colors
+from matplotlib import colors, rcParams
 
 import json
 import argparse
@@ -25,6 +25,13 @@ import safe_control_gym
 from policy import PolicyWithMu
 from evaluator import EvaluatorWithCost
 
+params={'font.family': 'Arial',
+        # 'font.serif': 'Times New Roman',
+        # 'font.style': 'italic',
+        # 'font.weight': 'normal', #or 'blod'
+        'font.size': 14,  # or large,small
+        }
+rcParams.update(params)
 
 class Visualizer_quadrotor(object):
     def __init__(self, policy_dir, iteration,
@@ -230,7 +237,10 @@ class Visualizer_quadrotor(object):
         for metric in metrics:
             assert metric in ['fea', 'cs', 'mu']
 
-        fig, axes = plt.subplots(nrows=len(metrics), ncols=len(self.batch_obses_list), figsize=(12, 3))
+        fig, axes = plt.subplots(nrows=len(metrics), ncols=len(self.batch_obses_list), figsize=(10, 3),
+                                 constrained_layout=True)
+        # axes.set_position([0.1, 0.1, 0.9, 0.9])
+        # fig_aux = plt.figure()
 
         for j, metric in enumerate(metrics):
             axes_list = []
@@ -258,6 +268,7 @@ class Visualizer_quadrotor(object):
             min_val = np.min(min_val_list)
             max_val = np.max(max_val_list)
             min_idx = np.argmin(min_val_list)
+            max_idx = np.argmax(max_val_list)
             norm = colors.Normalize(vmin=min_val, vmax=max_val)
 
             for i in range(len(data2plot)):
@@ -270,21 +281,24 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow', levels=2)
+                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',
+                                     levels=[-1.2, -0.6, 0., 0.6, 1.2, 1.8])
+                sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
                 ct_list.append(ct)
-                sub_ax.set_title(metric + ', ' + r'$\dot{z}=$' + str(self.z_dot_list[i]))
+                sub_ax.set_title(r'$\dot{z}=$' + str(self.z_dot_list[i]))
                 axes_list.append(sub_ax)
 
-            cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
-            plt.colorbar(ct_list[min_idx], ax=axes_list, cax=cax)
+            # cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
+            plt.colorbar(ct_list[1], ax=axes_list,
+                         shrink=0.8, pad=0.02)
 
-        fig.supxlabel(r'$x$')
-        fig.supylabel(r'$z$')
+        fig.supxlabel('x')
+        fig.supylabel('z')
         plt.show()
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/SAC-CBF-CBF/2022-01-05-11-34-37/',
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-09-02-00-54',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
-    vizer.plot_region(['fea', 'mu'])
+    vizer.plot_region(['fea'])

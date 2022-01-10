@@ -17,7 +17,7 @@ SMOOTHFACTOR = 0.9
 SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
-fontsize = 15
+fontsize = 12
 paper = True
 env_name_dict = {'quadrotor': 'Quadrotor Circle Tracking'}
 tag_name_dict = {'episode_return': 'Total average return',
@@ -34,10 +34,10 @@ ylim_dict = {'episode_return': {'quadrotor': [-500, 0],
 
 def help_func():
     tag2plot = ['episode_return', 'episode_constraint_violation']
-    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Qc', 'SAC-RewardShaping-Qc', ]
-    lbs = ['RAC', 'SAC-Lagrangian', 'SAC-Reward Shaping', ]  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Qc', 'SAC-RewardShaping-Qc', 'FSAC-A-si', 'SAC-CBF-CBF']
+    lbs = ['RAC (ours)', 'SAC-Lagrangian', 'SAC-Reward Shaping', 'Energy-based SAC', 'CBF-based SAC']  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['quadrotor']
-    palette = "dark"
+    palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}'  # .format(env_id, alg_name) #
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
@@ -55,6 +55,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(
                 data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
+                # if num_run == 1:
+                #     break
                 if alg in txt_store_alg_list:  # result run by safety-starter-agents
                     eval_dir = data2plot_dir + '/' + dir
                     print(eval_dir)
@@ -97,10 +99,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                 df_list.append(df_in_one_run_of_one_alg)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
 
-        for tag in tag2plot:
-            figsize = (12, 8)
+        for i, tag in enumerate(tag2plot):
+            figsize = (5, 4)
             axes_size = [0.13, 0.14, 0.85, 0.80] if paper else [0.13, 0.11, 0.86, 0.84]
-            f1 = plt.figure(figsize=figsize)  # figsize=figsize
+            plt.figure(figsize=figsize)  # figsize=figsize
             ax1 = plt.axes()  # f1.add_axes(axes_size)
             sns.lineplot(x="iteration", y=tag, hue="algorithm",
                          data=total_dataframe, linewidth=2, palette=palette
@@ -110,17 +112,26 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
             handles, labels = ax1.get_legend_handles_labels()
             labels = lbs
-            ax1.legend(handles=handles, labels=labels, loc='best', frameon=False, fontsize=fontsize)
+            ax1.legend(handles=handles, labels=labels,
+                       # bbox_to_anchor=(0.5, -0.1), loc='lower center', ncol=3,
+                       loc='best',
+                       frameon=False, fontsize=fontsize)
+            if i != 0:
+                ax1.get_legend().remove()
             plt.yticks(fontsize=fontsize)
             plt.xticks(fontsize=fontsize)
             plt.xlim([0, 200])
             plt.ylim(ylim_dict[tag][task])
             plt.title(title, fontsize=fontsize)
-            plt.gcf().set_size_inches(3.85, 2.75)
+            # plt.gcf().set_size_inches(3.85, 2.75)
             plt.tight_layout(pad=0.5)
-        plt.show()
-            # fig_name = '../data_process/figure/motivation_' + task+'-'+tag + '.png'
-            # plt.savefig(fig_name)
+
+            save_dir = '../data_process/figure/'
+            os.makedirs(save_dir, exist_ok=True)
+            fig_name = save_dir + task + '-' + tag + '.pdf'
+            plt.savefig(fig_name)
+
+        # plt.show()
 
 
 def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):

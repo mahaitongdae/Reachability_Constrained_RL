@@ -74,7 +74,7 @@ def built_SAC_RewShaping_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/FSAC/experiment-2021-04-08-05-03-05_300w'
+        test_dir = '../results/quadrotor/SAC-RewardShaping-Qc/data2plot/2022-01-08-05-34-36'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)

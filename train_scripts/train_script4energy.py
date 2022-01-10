@@ -75,7 +75,7 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11'
+        test_dir = '../results/quadrotor/FSAC-A-si/data2plot/2022-01-09-21-16-56'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
@@ -104,7 +104,7 @@ def built_FSAC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
     parser.add_argument('--demo', type=bool, default=False)
-    parser.add_argument('--penalty_start', type=int, default=int(MAX_ITER / 10.))
+    parser.add_argument('--penalty_start', type=int, default=0)  # int(MAX_ITER / 10.)
 
     # env
     parser.add_argument('--env_id', default='quadrotor')

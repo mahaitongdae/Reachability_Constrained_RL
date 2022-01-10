@@ -75,7 +75,7 @@ def built_SAC_CBF_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/SAC-CBF-CBF/2022-01-05-11-34-37'
+        test_dir = '../results/quadrotor/SAC-CBF-CBF/data2plot/2022-01-08-16-20-24'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
@@ -115,13 +115,13 @@ def built_SAC_CBF_parser():
     parser.add_argument('--alg_name', default='SAC-CBF')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--cost_gamma', type=float, default=0.95)
+    parser.add_argument('--cost_gamma', type=float, default=0.9)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='CBF')  # todo: Qc feasibility CBF
-    parser.add_argument('--mlp_lam', default=False)
+    parser.add_argument('--mlp_lam', default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
