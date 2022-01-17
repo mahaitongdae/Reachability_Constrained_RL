@@ -63,10 +63,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
-MAX_ITER = 500
+NUM_WORKER = 8
+NUM_LEARNER = 12
+NUM_BUFFER = 8
+MAX_ITER = 2000000
 
 def built_SAC_CBF_parser():
     parser = argparse.ArgumentParser()
@@ -115,13 +115,13 @@ def built_SAC_CBF_parser():
     parser.add_argument('--alg_name', default='SAC-CBF')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--cost_gamma', type=float, default=0.95)
+    parser.add_argument('--cost_gamma', type=float, default=0.9)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='CBF')  # todo: Qc feasibility CBF
-    parser.add_argument('--mlp_lam', default=False)
+    parser.add_argument('--mlp_lam', default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
     # worker
@@ -202,7 +202,7 @@ def built_SAC_CBF_parser():
     parser.add_argument('--rew_scale', type=float, default=1.)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
     parser.add_argument('--cost_ptype', type=str, default='scale')
-    parser.add_argument('--cost_scale', type=float, default=1.)  # todo
+    parser.add_argument('--cost_scale', type=float, default=100.)  # todo
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")

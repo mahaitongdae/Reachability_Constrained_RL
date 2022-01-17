@@ -257,7 +257,8 @@ class SACLearnerWithCost(object):
         assert self.args.constrained
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
-            QC1 = self.policy_with_value.compute_QC1(processed_obses, mb_actions)
+            actions, logps = self.policy_with_value.compute_action(processed_obses)
+            QC1 = self.policy_with_value.compute_QC1(processed_obses, actions)
             violation = self.tf.clip_by_value(QC1 - self.args.cost_lim, CONSTRAINTS_CLIP_MIN, 100.)
             violation_count = self.tf.where(QC1 > self.args.cost_lim, self.tf.ones_like(QC1), self.tf.zeros_like(QC1))
             violation_rate = self.tf.reduce_sum(violation_count) / self.args.replay_batch_size

@@ -28,9 +28,12 @@ from safe_control_gym.utils.registration import make
 
 from buffer import *
 from evaluator import Evaluator, EvaluatorWithCost
-from learners.sac import SACLearnerWithCost
-from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, OffPolicyAsyncOptimizerWithCost
-from policy import PolicyWithMu
+from learners.sac import SACLearnerWithCost, SACLearnerWithRewardShaping
+from optimizer import OffPolicyAsyncOptimizer, \
+                      SingleProcessOffPolicyOptimizer, \
+                      OffPolicyAsyncOptimizerWithCost, \
+                      OffPolicyAsyncOptimizerWithRewardShaping
+from policy import PolicyWithMu, PolicyWithQs
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker, OffPolicyWorkerWithCost
@@ -42,7 +45,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
                        ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
-NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost), ('SAC-Lagrangian', SACLearnerWithCost), ('RAC', SACLearnerWithCost)])
+NAME2LEARNERCLS = dict([('FSAC', SACLearnerWithCost),
+                        ('FAC', SACLearnerWithCost),
+                        ('SAC-Lagrangian', SACLearnerWithCost),
+                        ('RAC', SACLearnerWithCost),
+                        ('SAC-RewardShaping', SACLearnerWithRewardShaping)
+                        ])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority', PrioritizedReplayBuffer),
                        ('None', None),
@@ -50,13 +58,15 @@ NAME2BUFFERCLS = dict([('normal', ReplayBuffer),
                        ('priority_cost', PrioritizedReplayBufferWithCost)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('OffPolicyAsyncWithCost', OffPolicyAsyncOptimizerWithCost),
+                          ('OffPolicyAsyncWithRewardShaping', OffPolicyAsyncOptimizerWithRewardShaping),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu)])
+NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
+                       ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
-MAX_ITER = 500
+NUM_WORKER = 8
+NUM_LEARNER = 12
+NUM_BUFFER = 8
+MAX_ITER = 2000000
 
 def built_FAC_parser():
     parser = argparse.ArgumentParser()
@@ -83,7 +93,7 @@ def built_FAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='single qc test')  # training testing
+    parser.add_argument('--motivation', type=str, default='FAC test')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
@@ -102,7 +112,7 @@ def built_FAC_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
-    parser.add_argument('--alg_name', default='FSAC')
+    parser.add_argument('--alg_name', default='FAC')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=0.99)
@@ -159,15 +169,16 @@ def built_FAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, MAX_ITER, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
+    parser.add_argument('--cost_value_out_activation', type=str, default='relu')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, int(MAX_ITER / delay_update), 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, int(MAX_ITER / dual_ascent_interval), 5e-7])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[8e-7, int(MAX_ITER / dual_ascent_interval), 1e-7])
     parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
@@ -212,8 +223,28 @@ def built_FAC_parser():
     return parser.parse_args()
 
 def built_parser(alg_name):
-    if alg_name == 'FSAC':
+    if alg_name == 'FAC':
         args = built_FAC_parser()
+
+    if args.alg_name == 'RAC':
+        assert args.mlp_lam
+        assert args.constrained_value == 'feasibility'
+    elif args.alg_name == 'SAC-Lagrangian':
+        assert not args.mlp_lam
+        assert args.constrained_value == 'Qc'
+    elif args.alg_name == 'SAC-RewardShaping':
+        pass
+    elif args.alg_name == 'SAC-CBF':
+        assert args.mlp_lam
+        assert args.constrained_value == 'CBF'
+    elif args.alg_name == 'FSAC-A':
+        assert args.mlp_lam
+        assert args.constrained_value == 'si'
+    elif args.alg_name == 'FAC':
+        assert args.mlp_lam
+        assert args.constrained_value == 'Qc'
+    else:
+        raise NotImplementedError("Unknown algorithm")
 
     if args.env_id == 'quadrotor':  # safe-control-gym
         CONFIG_FACTORY = ConfigFactory()
@@ -247,7 +278,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(object_store_memory=3*1024*1024*1024)
+        ray.init(object_store_memory=16*1024*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
@@ -277,4 +308,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('FSAC')
+    main('FAC')

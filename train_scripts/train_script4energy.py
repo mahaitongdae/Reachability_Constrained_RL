@@ -63,35 +63,35 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
-MAX_ITER = 500
+NUM_WORKER = 8
+NUM_LEARNER = 12
+NUM_BUFFER = 8
+MAX_ITER = 2000000
 
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training')  # training testing
-    mode = parser.parse_args().mode
+    # mode = parser.parse_args().mode
 
-    if mode == 'testing':
-        test_dir = '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11'
-        params = json.loads(open(test_dir + '/config.json').read())
-        time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
-        params.update(dict(test_dir=test_dir,
-                           test_iter_list=[2000000],
-                           test_log_dir=test_log_dir,
-                           random_seed=59,
-                           num_eval_episode=4,
-                           num_eval_agent=1,
-                           eval_log_interval=1,
-                           fixed_steps=360,
-                           eval_render=False,
-                           eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
-        for key, val in params.items():
-            parser.add_argument("-" + key, default=val)
-        return parser.parse_args()
+    # if mode == 'testing':
+    #     test_dir = '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11'
+    #     params = json.loads(open(test_dir + '/config.json').read())
+    #     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    #     test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
+    #     params.update(dict(test_dir=test_dir,
+    #                        test_iter_list=[2000000],
+    #                        test_log_dir=test_log_dir,
+    #                        random_seed=59,
+    #                        num_eval_episode=4,
+    #                        num_eval_agent=1,
+    #                        eval_log_interval=1,
+    #                        fixed_steps=360,
+    #                        eval_render=False,
+    #                        eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
+    #     for key, val in params.items():
+    #         parser.add_argument("-" + key, default=val)
+    #     return parser.parse_args()
 
     parser.add_argument('--motivation', type=str, default='safe index')
 
@@ -104,7 +104,7 @@ def built_FSAC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=0)
     parser.add_argument('--demo', type=bool, default=False)
-    parser.add_argument('--penalty_start', type=int, default=int(MAX_ITER / 10.))
+    parser.add_argument('--penalty_start', type=int, default=0)  # int(MAX_ITER / 10.)
 
     # env
     parser.add_argument('--env_id', default='quadrotor')

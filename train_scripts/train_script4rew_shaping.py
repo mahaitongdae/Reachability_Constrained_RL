@@ -62,10 +62,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
-MAX_ITER = 500
+NUM_WORKER = 8
+NUM_LEARNER = 12
+NUM_BUFFER = 8
+MAX_ITER = 2000000
 
 def built_SAC_RewShaping_parser():
     parser = argparse.ArgumentParser()
@@ -117,7 +117,7 @@ def built_SAC_RewShaping_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
     parser.add_argument('--constrained_value', type=str, default='Qc')  # todo: Qc feasibility
-    parser.add_argument('--cost_weight', type=float, default=1.)
+    parser.add_argument('--cost_weight', type=float, default=0.5)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)

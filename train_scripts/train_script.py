@@ -62,10 +62,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 1
-NUM_LEARNER = 1
-NUM_BUFFER = 1
-MAX_ITER = 500
+NUM_WORKER = 8
+NUM_LEARNER = 12
+NUM_BUFFER = 8
+MAX_ITER = 2000000
 
 def built_RAC_parser():
     parser = argparse.ArgumentParser()
@@ -101,7 +101,7 @@ def built_RAC_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--random_seed', type=int, default=456)
     parser.add_argument('--demo', type=bool, default=False)
     parser.add_argument('--penalty_start', type=int, default=0)
 
@@ -178,8 +178,8 @@ def built_RAC_parser():
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 2e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[1e-6, int(MAX_ITER / dual_ascent_interval), 1e-7])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[8e-7, int(MAX_ITER / dual_ascent_interval), 1e-7])
     parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
