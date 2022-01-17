@@ -72,26 +72,26 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training')  # training testing
-    # mode = parser.parse_args().mode
+    mode = parser.parse_args().mode
 
-    # if mode == 'testing':
-    #     test_dir = '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11'
-    #     params = json.loads(open(test_dir + '/config.json').read())
-    #     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    #     test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
-    #     params.update(dict(test_dir=test_dir,
-    #                        test_iter_list=[2000000],
-    #                        test_log_dir=test_log_dir,
-    #                        random_seed=59,
-    #                        num_eval_episode=4,
-    #                        num_eval_agent=1,
-    #                        eval_log_interval=1,
-    #                        fixed_steps=360,
-    #                        eval_render=False,
-    #                        eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
-    #     for key, val in params.items():
-    #         parser.add_argument("-" + key, default=val)
-    #     return parser.parse_args()
+    if mode == 'testing':
+        test_dir = '../results/quadrotor/FSAC-A-si/2022-01-04-20-43-11'
+        params = json.loads(open(test_dir + '/config.json').read())
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
+        params.update(dict(test_dir=test_dir,
+                           test_iter_list=[2000000],
+                           test_log_dir=test_log_dir,
+                           random_seed=59,
+                           num_eval_episode=4,
+                           num_eval_agent=1,
+                           eval_log_interval=1,
+                           fixed_steps=360,
+                           eval_render=False,
+                           eval_start_location=[(1., 1.), (-1., 1.), (0., 0.53), (0., 1.47)]))
+        for key, val in params.items():
+            parser.add_argument("-" + key, default=val)
+        return parser.parse_args()
 
     parser.add_argument('--motivation', type=str, default='safe index')
 

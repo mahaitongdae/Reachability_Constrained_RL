@@ -10,4 +10,4 @@ python ./train_script4rew_shaping.py
 
 python ./train_script4cbf.py
 
-python ./train_script4energy.py --random_seed 123
+python ./train_script4energy.py
