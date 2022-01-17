@@ -74,7 +74,7 @@ def built_RAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/RAC-feasibility/2021-12-27-22-43-36'
+        test_dir = '../results/quadrotor/RAC-feasibility/data2plot/2022-01-07-13-13-39'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
