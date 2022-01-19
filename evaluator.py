@@ -265,9 +265,13 @@ class EvaluatorWithCost(object):
         self.iteration = 0
         if self.args.mode == 'training':
             self.log_dir = self.args.log_dir + '/evaluator'
-        else:
+        elif self.args.mode == 'testing':
             self.log_dir = self.args.test_log_dir
-        if not os.path.exists(self.log_dir):
+        else:
+            assert self.args.mode == 'plotting'
+            self.log_dir = self.args.test_log_dir
+
+        if (self.args.mode != 'plotting') and (not os.path.exists(self.log_dir)):
             os.makedirs(self.log_dir)
 
         self.preprocessor = Preprocessor(**kwargs)

@@ -32,9 +32,7 @@ class SACLearnerWithCost(object):
         self.batch_size = self.args.replay_batch_size
         self.policy_with_value = policy_cls(**vars(self.args))
         self.batch_data = {}
-        self.preprocessor = Preprocessor(self.args.obs_dim, self.args.obs_ptype, self.args.rew_ptype,
-                                         self.args.obs_scale, self.args.rew_scale, self.args.rew_shift,
-                                         gamma=self.args.gamma)
+        self.preprocessor = Preprocessor(**vars(self.args))
         self.policy_gradient_timer = TimerStat()
         self.q_gradient_timer = TimerStat()
         self.alpha_timer = TimerStat()
@@ -95,8 +93,8 @@ class SACLearnerWithCost(object):
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                        (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-        qc_target_terminal = processed_cost
         if self.constrained_value_type == 'feasibility':
+            qc_target_terminal = processed_cost
             qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
                                      + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
             clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)

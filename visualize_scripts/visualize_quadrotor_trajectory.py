@@ -13,7 +13,7 @@ params={'font.family': 'Arial',
         # 'font.serif': 'Times New Roman',
         # 'font.style': 'italic',
         # 'font.weight': 'normal', #or 'blod'
-        'font.size': 13,  # or large,small
+        'font.size': 15,  # or large,small
         }
 rcParams.update(params)
 
@@ -70,7 +70,7 @@ def plt_PID_baseline(ax):
 
 
 if __name__ == '__main__':
-    fig = plt.figure(figsize=[9, 6])
+    fig = plt.figure(figsize=[9, 7])
     ax = plt.axes([0.1, 0.25, 0.8, 0.7])
     # # FSAC-Qc
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21/logs/tester/test-2021-12-24-13-27-39/')

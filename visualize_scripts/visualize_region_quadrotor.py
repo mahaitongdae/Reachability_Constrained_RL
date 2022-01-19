@@ -50,6 +50,7 @@ class Visualizer_quadrotor(object):
             parser.add_argument("-" + key, default=val)
         args = parser.parse_args()
         args.config_eval = munch.munchify(args.config_eval)
+        args.mode = 'plotting'
         evaluator = EvaluatorWithCost(PolicyWithMu, args.env_id, args)
         evaluator.load_weights(os.path.join(policy_dir, 'models'), iteration)
 
