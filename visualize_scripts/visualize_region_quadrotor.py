@@ -282,8 +282,8 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',
-                                     levels=[-1.2, -0.6, 0., 0.6, 1.2, 1.8])
+                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',)
+                                    #  levels=[-1.2, -0.6, 0., 0.6, 1.2, 1.8])
                 sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
                 ct_list.append(ct)
                 sub_ax.set_title(r'$\dot{z}=$' + str(self.z_dot_list[i]))
@@ -295,11 +295,12 @@ class Visualizer_quadrotor(object):
 
         fig.supxlabel('x')
         fig.supylabel('z')
+        plt.savefig(self.args.test_log_dir+'/region'+'.png')
         plt.show()
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-09-02-00-54',
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-20-22-16-18',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
     vizer.plot_region(['fea'])
