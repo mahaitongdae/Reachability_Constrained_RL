@@ -258,6 +258,16 @@ class Visualizer_quadrotor(object):
                 flatten_cost_q = self.evaluator.policy_with_value.compute_QC1(processed_obses, actions).numpy()
                 flatten_fea_v = flatten_cost_q
 
+                if self.args.constrained_value == "si":
+                    sigma, k, n = self.evaluator.policy_with_value.get_sis_paras.numpy()
+                    dist2ub = obses[:, 2] - 1.5
+                    dot_dist2ub = obses[:, 3]
+                    dist2lb = 0.5 - obses[:, 2]
+                    dot_dist2lb = -obses[:, 3]
+                    phi_ub = sigma - (-dist2ub) ** n - k * (-dot_dist2ub)
+                    phi_lb = sigma - (-dist2lb) ** n - k * (-dot_dist2lb)
+                    flatten_fea_v = np.maximum(phi_ub, phi_lb)
+
                 flatten_cs = np.multiply(flatten_fea_v, flatten_mu)
                 NAME2VALUE = dict(zip(['fea', 'cs', 'mu'], [flatten_fea_v, flatten_cs, flatten_mu]))
                 val = NAME2VALUE[metric].reshape(self.X.shape)
@@ -282,25 +292,32 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',)
-                                    #  levels=[-1.2, -0.6, 0., 0.6, 1.2, 1.8])
+                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',
+                                     # levels=[-0.064, -0.048, -0.032, -0.016, 0., 0.016])  # CBF
+                                     levels=[-3., -2, -1, 0., 0.5, 1.0, 1.5])  # RAC
+                                     # levels=[-0.6, -0.3, 0., 0.3, 0.6, 0.9, 1.2])  # SI
+                x = np.linspace(-1.5, 1.5, 100)
+                y1 = np.ones_like(x) * 1.5
+                y2 = np.ones_like(x) * 0.5
+                line1, = sub_ax.plot(x, y1, color='black', linestyle = 'dashed')
+                line2, = sub_ax.plot(x, y2, color='black', linestyle = 'dashed')
+
                 sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
                 ct_list.append(ct)
                 sub_ax.set_title(r'$\dot{z}=$' + str(self.z_dot_list[i]))
                 axes_list.append(sub_ax)
 
             # cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
-            plt.colorbar(ct_list[1], ax=axes_list,
+            plt.colorbar(ct_list[0], ax=axes_list,
                          shrink=0.8, pad=0.02)
 
         fig.supxlabel('x')
         fig.supylabel('z')
-        plt.savefig(self.args.test_log_dir+'/region'+'.png')
         plt.show()
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-20-22-16-18',
+    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-21-00-00-00',
                                  2000000,
                                  z_dot_list=[-1., 0., 1.])
     vizer.plot_region(['fea'])

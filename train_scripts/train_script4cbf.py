@@ -115,7 +115,7 @@ def built_SAC_CBF_parser():
     parser.add_argument('--alg_name', default='SAC-CBF')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--cost_gamma', type=float, default=0.9)
+    parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
@@ -202,7 +202,7 @@ def built_SAC_CBF_parser():
     parser.add_argument('--rew_scale', type=float, default=1.)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
     parser.add_argument('--cost_ptype', type=str, default='scale')
-    parser.add_argument('--cost_scale', type=float, default=100.)  # todo
+    parser.add_argument('--cost_scale', type=float, default=1.)  # todo
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")

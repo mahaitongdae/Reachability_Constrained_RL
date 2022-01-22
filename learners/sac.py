@@ -131,7 +131,7 @@ class SACLearnerWithCost(object):
 
         phi_tp1 = sigma - d_tp1**n - k * dotd_tp1
         phi_tp1_across_cons_num = np.max(phi_tp1, axis=1)
-        delta_phi = phi_tp1_across_cons_num - phi_t_across_cons_num
+        delta_phi = phi_tp1_across_cons_num - np.maximum(phi_t_across_cons_num-0.1, 0.)
 
         return delta_phi
 
@@ -194,7 +194,7 @@ class SACLearnerWithCost(object):
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             QC = self.policy_with_value.compute_QC1(processed_obses, actions)
-            violation = self.tf.clip_by_value(QC - self.args.cost_lim, -100., 100.)
+            violation = self.tf.clip_by_value(QC - self.args.cost_lim, 0., 100.)
             if self.args.mlp_lam:
                 lams = self.policy_with_value.compute_lam(processed_obses)
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), violation))

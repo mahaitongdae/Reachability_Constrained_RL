@@ -118,7 +118,7 @@ def built_RAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=-1)  # todo
+    parser.add_argument('--cost_lim', type=float, default=-0.1)  # todo
     parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     if parser.parse_args().constrained_value == 'feasibility':
         parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1
@@ -200,7 +200,7 @@ def built_RAC_parser():
     parser.add_argument('--obs_ptype', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.75)  # todo
+    parser.add_argument('--rew_scale', type=float, default=1.)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
     parser.add_argument('--cost_ptype', type=str, default='scale')
     parser.add_argument('--cost_scale', type=float, default=10.)  # todo
