@@ -205,5 +205,3 @@ dmypy.json
 .idea/
 results/
 test_for_debug.py
-
-/data_process/figure/

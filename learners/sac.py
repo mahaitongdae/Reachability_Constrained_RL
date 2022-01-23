@@ -93,24 +93,8 @@ class SACLearnerWithCost(object):
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                        (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-        if self.constrained_value_type == 'feasibility':
-            qc_target_terminal = processed_cost
-            qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
-                                     + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
-            clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
-
-        elif self.constrained_value_type == 'Qc':
-            clipped_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
-
-        elif self.constrained_value_type == 'CBF':
-            cost_obses_tp1 = self.preprocessor.tf_process_costs(compute_constraints(self.batch_data['batch_obs_tp1'])).numpy()
-            target_cbf = cost_obses_tp1 - self.args.cost_gamma * processed_cost
-            clipped_qc_target = target_cbf
-        elif self.constrained_value_type == 'si':
-            delta_phi = self._compute_delta_safety_index(self.batch_data['batch_sis_info'])
-            clipped_qc_target = delta_phi
-        else:
-            raise NotImplementedError("Undefined constrained value")
+        constriants = compute_constraints(self.batch_data['batch_obs_tp1'])
+        clipped_qc_target = constriants
 
         return clipped_double_q_target, clipped_qc_target
 

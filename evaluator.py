@@ -15,7 +15,7 @@ from copy import deepcopy
 import gym
 import numpy as np
 
-import dynamics
+# import dynamics
 import safe_control_gym
 from safe_control_gym.utils.configuration import ConfigFactory
 from safe_control_gym.utils.registration import make

@@ -21,7 +21,7 @@ sys.path.append( os.path.join( os.path.dirname(__file__), os.path.pardir ) )
 import gym
 import ray
 
-import dynamics
+# import dynamics
 import safe_control_gym
 from safe_control_gym.utils.configuration import ConfigFactory
 from safe_control_gym.utils.registration import make
