@@ -64,9 +64,9 @@ NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
 NUM_WORKER = 8
-NUM_LEARNER = 12
+NUM_LEARNER = 8
 NUM_BUFFER = 8
-MAX_ITER = 2000000
+MAX_ITER = 1000000
 
 def built_FAC_parser():
     parser = argparse.ArgumentParser()
@@ -157,7 +157,7 @@ def built_FAC_parser():
     parser.add_argument('--grads_queue_size', type=int, default=25)
     parser.add_argument('--grads_max_reuse', type=int, default=0)
     parser.add_argument('--eval_interval', type=int, default=10000)
-    parser.add_argument('--save_interval', type=int, default=50000)
+    parser.add_argument('--save_interval', type=int, default=250000)
     parser.add_argument('--log_interval', type=int, default=100)
 
     # policy and model
@@ -171,14 +171,14 @@ def built_FAC_parser():
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
     parser.add_argument('--value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
     parser.add_argument('--cost_value_lr_schedule', type=list, default=[1e-4, MAX_ITER, 1e-6])
-    parser.add_argument('--cost_value_out_activation', type=str, default='relu')
+    parser.add_argument('--cost_value_out_activation', type=str, default='linear')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[8e-7, int(MAX_ITER / dual_ascent_interval), 1e-7])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[5e-5, int(MAX_ITER / delay_update), 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[2e-6, int(MAX_ITER / dual_ascent_interval), 8e-7])
     parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
@@ -199,7 +199,7 @@ def built_FAC_parser():
     parser.add_argument('--obs_ptype', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=1.)  # todo
+    parser.add_argument('--rew_scale', type=float, default=0.005)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
     parser.add_argument('--cost_ptype', type=str, default='scale')
     parser.add_argument('--cost_scale', type=float, default=1.)  # todo
