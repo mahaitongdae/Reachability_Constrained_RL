@@ -17,27 +17,27 @@ def histograms_download(name='HalfCheetah-FAC'):
 
     a = data
     df_times = []
-    for i in range(10):
+    for i in range(9):
         dist = []
-        for interval in a[(i + 1) * 5][2]:
+        for interval in a[(i + 2) * 5][2]:
             if interval[2] > 0:
-                interval_dist = np.linspace(interval[0], interval[1], int(interval[2]))
+                interval_dist = np.linspace(interval[0]/20.2, interval[1]/20.2, int(interval[2]))
                 dist += list(interval_dist)
-        iter = a[(i + 1) * 5][1]/1000000 * np.ones([len(dist),])
-        df=pd.DataFrame((dict(g=iter + 0.1 * (i + 1),x=dist)))
+        iter = a[(i + 2) * 5][1]/3000000 * np.ones([len(dist),])
+        df=pd.DataFrame((dict(g=iter + 0.1 * (i + 2),x=dist)))
         df_times.append(df)
     total_df = df_times[0].append(df_times[1:])
 
     # Initialize the FacetGrid object
     pal = sns.cubehelix_palette(10, rot=-.25, light=.7)
-    g = sns.FacetGrid(total_df, row="g", hue="g", aspect=15, size=.5, palette=pal,xlim=[29., 31.], ) #xlim=[-0.8, 0.8],
+    g = sns.FacetGrid(total_df, row="g", hue="g", aspect=15, size=.5, palette=pal, xlim=[1.4, 1.6],) #xlim=[-0.8, 0.8],
 
     # cstr_plt_ax = []
     # for i in [0, 3, 6, 9]:
     #  cstr_plt_ax.append(g.row_names[i])
 
     for iter, ax in g.axes_dict.items():
-     ax.plot([0, 0], [0, 0.8], color='r', linestyle='dashed', linewidth=LINEWIDTH ) # 0.06
+     ax.plot([1.5, 1.5], [0, 4], color='r', linestyle='dashed', linewidth=LINEWIDTH ) # 0.06
      if iter == g.row_names[0]:
       ax.text(0, 0.9, "Million Iters",  color='black', fontsize=FONTSIZE, # fontweight="bold",
               ha="left", va="center", transform=ax.transAxes)
@@ -53,20 +53,20 @@ def histograms_download(name='HalfCheetah-FAC'):
     # Define and use a simple function to label the plot in axes coordinates
     def label(x, color, label):
      ax = plt.gca()
-     ax.text(0, .1, '{:.2f}'.format(float(label)), color='black', fontsize=FONTSIZE,
+     ax.text(0, .05, '{:.2f}'.format(float(label)), color='black', fontsize=int(0.6 * FONTSIZE),
              ha="left", va="center", transform=ax.transAxes) # fontweight="bold",
 
     g.map(label, "x")
 
 
     # Set the subplots to overlap
-    g.fig.subplots_adjust(hspace=-.6)
+    g.fig.subplots_adjust(hspace=-.9)
 
 
     # Remove axes details that don't play will with overlap
     g.set_titles("")
     g.set(yticks=[])
-    g.set_xticklabels(fontsize=FONTSIZE)
+    g.set_xticklabels(fontsize=int(0.6 * FONTSIZE))
     g.despine(bottom=True, left=True)
     import os
     os.makedirs('../data_process/figure', exist_ok=True)
@@ -81,14 +81,14 @@ def histograms_download2(name='HalfCheetah-SACL'):
 
     a = data
     df_times = []
-    for i in range(10):
+    for i in range(9):
         dist = []
-        for interval in a[(i + 1) * 5][2]:
+        for interval in a[(i + 2) * 5][2]:
             if interval[2] > 0:
-                interval_dist = np.linspace(interval[0], interval[1], int(interval[2]))
+                interval_dist = np.linspace(interval[0] / 20, interval[1] / 20, 1000 * int(interval[2]))
                 dist += list(interval_dist)
-        iter = a[(i + 1) * 5][1]/1000000 * np.ones([len(dist),])
-        df=pd.DataFrame((dict(g=iter + 0.1 * (i + 1),x=dist)))
+        iter = a[(i + 2) * 5][1]/1000000 * np.ones([len(dist),])
+        df=pd.DataFrame((dict(g=iter + 0.1 * (i + 2),x=dist)))
         df_times.append(df)
     total_df = df_times[0].append(df_times[1:])
 
@@ -101,7 +101,7 @@ def histograms_download2(name='HalfCheetah-SACL'):
     #  cstr_plt_ax.append(g.row_names[i])
 
     for iter, ax in g.axes_dict.items():
-     ax.plot([0, 0], [0, 0.8], color='r', linestyle='dashed', linewidth=LINEWIDTH ) # 0.06
+     ax.plot([1.5, 1.5], [0, 0.4], color='r', linestyle='dashed', linewidth=LINEWIDTH ) # 0.06
      if iter == g.row_names[0]:
       ax.text(0, 0.9, "Million Iters",  color='black', fontsize=FONTSIZE, # fontweight="bold",
               ha="left", va="center", transform=ax.transAxes)
@@ -117,14 +117,14 @@ def histograms_download2(name='HalfCheetah-SACL'):
     # Define and use a simple function to label the plot in axes coordinates
     def label(x, color, label):
      ax = plt.gca()
-     ax.text(0, .1, '{:.2f}'.format(float(label)), color='black', fontsize=FONTSIZE,
+     ax.text(0, .05, '{:.2f}'.format(float(label)), color='black', fontsize=int(0.6 * FONTSIZE),
              ha="left", va="center", transform=ax.transAxes) # fontweight="bold",
 
     g.map(label, "x")
 
 
     # Set the subplots to overlap
-    g.fig.subplots_adjust(hspace=-.6)
+    g.fig.subplots_adjust(hspace=-0.9)
 
 
     # Remove axes details that don't play will with overlap
@@ -138,6 +138,6 @@ def histograms_download2(name='HalfCheetah-SACL'):
     plt.savefig(fig_name)
 
 if __name__ == '__main__':
-    # histograms_download()
-    histograms_download2()
+    histograms_download()
+    # histograms_download2()
     # distributions_download()
