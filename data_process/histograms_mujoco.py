@@ -139,5 +139,5 @@ def histograms_download2(name='HalfCheetah-SACL'):
 
 if __name__ == '__main__':
     histograms_download()
-    # histograms_download2()
+    histograms_download2()
     # distributions_download()
