@@ -62,9 +62,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 8
-NUM_LEARNER = 12
-NUM_BUFFER = 8
+NUM_WORKER = 6
+NUM_LEARNER = 6
+NUM_BUFFER = 6
 MAX_ITER = 2000000
 
 def built_SAC_Lagrangian_parser():
@@ -74,7 +74,7 @@ def built_SAC_Lagrangian_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/SAC-Lagrangian-Qc/data2plot/2022-01-07-21-28-13'
+        test_dir = '../results/quadrotor/SAC-Lagrangian-Dist/data2plot/2022-01-07-21-28-13'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
@@ -101,7 +101,7 @@ def built_SAC_Lagrangian_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--random_seed', type=int, default=4)
     parser.add_argument('--demo', type=bool, default=False)
     parser.add_argument('--penalty_start', type=int, default=0)
 

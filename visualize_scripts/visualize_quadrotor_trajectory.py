@@ -82,12 +82,12 @@ if __name__ == '__main__':
     # RAC
     trj_RAC = plt_trajectory(ax,
                              'RAC (ours)',
-                             '../results/quadrotor/RAC-feasibility/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
+                             '../results/quadrotor/RAC-feasibility/data2plot/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
 
     # SAC-L
     trj_SACL = plt_trajectory(ax,
                              'SAC-Lagrangian',
-                              '../results/quadrotor/SAC-Lagrangian-Qc/2022-01-18-07-51-09/logs/tester/test-2022-01-22-11-52-41')
+                              '../results/quadrotor/SAC-Lagrangian-Dist/2022-01-18-07-51-09/logs/tester/test-2022-01-22-11-52-41')
 
     # SAC-Reward Shaping
     trj_SACRS = plt_trajectory(ax,

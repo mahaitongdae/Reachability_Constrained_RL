@@ -93,8 +93,14 @@ class SACLearnerWithCost(object):
         clipped_double_q_target = processed_rewards + self.args.gamma * \
                                        (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
-        constriants = compute_constraints(self.batch_data['batch_obs_tp1'])
-        clipped_qc_target = constriants
+        if self.constrained_value_type == 'feasibility':
+            qc_target_terminal = processed_cost
+            qc_target_non_terminal = (1 - self.args.cost_gamma) * processed_cost \
+                                     + self.args.cost_gamma * np.maximum(processed_cost, target_QC1_of_tp1)
+            clipped_qc_target = np.where(done, qc_target_terminal, qc_target_non_terminal)
+        else:
+            constriants = compute_constraints(self.batch_data['batch_obs_tp1'])
+            clipped_qc_target = constriants
 
         return clipped_double_q_target, clipped_qc_target
 
@@ -178,7 +184,8 @@ class SACLearnerWithCost(object):
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             QC = self.policy_with_value.compute_QC1(processed_obses, actions)
-            violation = self.tf.clip_by_value(QC - self.args.cost_lim, 0., 100.)
+            # violation = self.tf.clip_by_value(QC - self.args.cost_lim, 0., 100.)
+            violation = QC - self.args.cost_lim
             if self.args.mlp_lam:
                 lams = self.policy_with_value.compute_lam(processed_obses)
                 penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), violation))

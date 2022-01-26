@@ -13,6 +13,7 @@ from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import colors, rcParams
+from visualize_quadrotor_trajectory import plt_trajectory, plt_ref_trj
 
 import json
 import argparse
@@ -35,13 +36,14 @@ rcParams.update(params)
 
 class Visualizer_quadrotor(object):
     def __init__(self, policy_dir, iteration,
-                bound=(-1.5, 1.5, 0.5, 1.5),
+                bound=(-1.1, 1.1, -0.1, 2.1),
                 z_dot_list=[-1., 0., 1.],
                 baseline=False):
         # 1 Load params and models
         params = json.loads(open(policy_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = policy_dir + '/logs' + '/tester/test-region-{}'.format(time_now)
+        self.test_log_dir = test_log_dir
         params.update(dict(mode='testing',
                            test_dir=policy_dir,
                            test_log_dir=test_log_dir, ))
@@ -296,28 +298,45 @@ class Visualizer_quadrotor(object):
                                      # levels=[-0.064, -0.048, -0.032, -0.016, 0., 0.016])  # CBF
                                      levels=[-3., -2, -1, 0., 0.5, 1.0, 1.5])  # RAC
                                      # levels=[-0.6, -0.3, 0., 0.3, 0.6, 0.9, 1.2])  # SI
-                x = np.linspace(-1.5, 1.5, 100)
+                x = np.linspace(-1.1, 1.1, 100)
                 y1 = np.ones_like(x) * 1.5
                 y2 = np.ones_like(x) * 0.5
                 line1, = sub_ax.plot(x, y1, color='black', linestyle = 'dashed')
                 line2, = sub_ax.plot(x, y2, color='black', linestyle = 'dashed')
 
-                sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
+                # def plt_constraint(ax):
+                #     x = np.linspace(-1.1, 1.1, 100)
+                #     z_lb = 0.5 * np.ones_like(x)
+                #     z_ub = 1.5 * np.ones_like(x)
+                #
+                #     ax.plot(x, z_lb, marker='.', c='r')
+                #     ax.plot(x, z_ub, marker='.', c='r', label='Constraints')
+                # plt_constraint(sub_ax)
+                plt_ref_trj(sub_ax)
+
+                # sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
                 ct_list.append(ct)
                 sub_ax.set_title(r'$\dot{z}=$' + str(self.z_dot_list[i]))
                 axes_list.append(sub_ax)
 
             # cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
-            plt.colorbar(ct_list[0], ax=axes_list,
+            bar = plt.colorbar(ct_list[0], ax=axes_list,
                          shrink=0.8, pad=0.02)
 
-        fig.supxlabel('x')
-        fig.supylabel('z')
-        plt.show()
+
+
+        # fig.xlabel('x')
+        # fig.ylabel('z')
+        rect1 = plt.Rectangle((0, 0), 1, 1, fc=ct.collections[0].get_facecolor()[0], ec=None, linewidth=3)
+        fig.legend([rect1],
+                  ['Feasible Regions']
+                  # , rect3, rect4 , 'Energy-based','MPC-feasiblity'
+                  , loc='lower right', fontsize=15)
+        plt.savefig(os.path.join(self.test_log_dir, 'region.png'))
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-21-00-00-00',
-                                 2000000,
-                                 z_dot_list=[-1., 0., 1.])
+    vizer = Visualizer_quadrotor('../results/quadrotor/FAC-Dist/2022-01-24-22-45-41',
+                                 1000000,
+                                 z_dot_list=[-3., 0., 3.])
     vizer.plot_region(['fea'])

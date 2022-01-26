@@ -63,10 +63,10 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
 NAME2POLICYCLS = dict([('PolicyWithMu', PolicyWithMu),
                        ('PolicyWithQs', PolicyWithQs)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 8
-NUM_LEARNER = 8
-NUM_BUFFER = 8
-MAX_ITER = 1000000
+NUM_WORKER = 6
+NUM_LEARNER = 6
+NUM_BUFFER = 6
+MAX_ITER = 1500000
 
 def built_FAC_parser():
     parser = argparse.ArgumentParser()
@@ -75,12 +75,12 @@ def built_FAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/FSAC-Qc/2021-12-24-12-35-56'
+        test_dir = '../results/quadrotor/FAC-Dist/2022-01-24-22-45-41'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[950000],
+                           test_iter_list=[1000000],
                            test_log_dir=test_log_dir,
                            random_seed=59,
                            num_eval_episode=4,
@@ -102,7 +102,7 @@ def built_FAC_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost')  # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=0)
+    parser.add_argument('--random_seed', type=int, default=2)
     parser.add_argument('--demo', type=bool, default=False)
     parser.add_argument('--penalty_start', type=int, default=0)
 
@@ -112,15 +112,15 @@ def built_FAC_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
 
     # learner
-    parser.add_argument('--alg_name', default='FAC')
+    parser.add_argument('--alg_name', default='RAC')
     parser.add_argument('--constrained', default=True)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--cost_gamma', type=float, default=0.99)
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
-    parser.add_argument('--constrained_value', type=str, default='Qc')  # todo: Qc feasibility
+    parser.add_argument('--cost_lim', type=float, default=-0.1)  # todo
+    parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -209,7 +209,7 @@ def built_FAC_parser():
     alg_name = parser.parse_args().alg_name
     env_id = parser.parse_args().env_id
     constrained_value = parser.parse_args().constrained_value
-    results_dir = '../results/{task}/{algorithm}-{constrained_value}/{time}'.format(task=env_id,
+    results_dir = '../results/{task}/{algorithm}-Dist/{time}'.format(task=env_id,
                                                                                     algorithm=alg_name,
                                                                                     constrained_value=constrained_value,
                                                                                     time=time_now)

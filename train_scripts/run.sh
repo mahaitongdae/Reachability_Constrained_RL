@@ -1,8 +1,8 @@
-export PYTHONPATH=/home/yudongjie/PycharmProjects/Reachability_Constrained_RL:$PYTHONPATH
+export PYTHONPATH=~/PycharmProjects/Reachability_Constrained_RL:$PYTHONPATH
 
-python ./train_script.py
+#python ./train_script.py
 
-# python ./train_script4saclag.py
+python ./train_script4saclag.py
 
 # python ./train_script4fsac.py
 

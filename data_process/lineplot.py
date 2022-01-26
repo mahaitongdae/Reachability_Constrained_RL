@@ -13,7 +13,7 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.9
+SMOOTHFACTOR = 0.1
 SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
@@ -24,7 +24,7 @@ tag_name_dict = {'episode_return': 'Total average return',
                  'episode_constraint_violation': 'Total average constraint violation rate (%)'}
 
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-ylim_dict = {'episode_return': {'quadrotor': [-500, 0],
+ylim_dict = {'episode_return': {'quadrotor': [-2500, 0],
                                 'PointButton': [-5, 33]},
              'episode_constraint_violation': {'CarGoal': [0, 28],
                                               'PointButton': [2, 16],
@@ -34,8 +34,8 @@ ylim_dict = {'episode_return': {'quadrotor': [-500, 0],
 
 def help_func():
     tag2plot = ['episode_return', 'episode_constraint_violation']
-    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Qc', 'SAC-RewardShaping-Qc', 'FSAC-A-si', 'SAC-CBF-CBF']
-    lbs = ['RAC (ours)', 'SAC-Lagrangian', 'SAC-Reward Shaping', 'Energy-based SAC', 'CBF-based SAC']  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Dist', 'SAC-Lagrangian-Qc', 'CPO'] # 'SAC-RewardShaping-Qc', 'FSAC-A-si', 'SAC-CBF-CBF'
+    lbs = ['SFAC', 'SAC-ExpDist', 'SAC-Lagrangian', 'CPO']  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['quadrotor']
     palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
