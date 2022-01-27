@@ -238,7 +238,8 @@ class Visualizer_quadrotor(object):
         for metric in metrics:
             assert metric in ['fea', 'cs', 'mu']
 
-        fig, axes = plt.subplots(nrows=len(metrics), ncols=len(self.batch_obses_list), figsize=(10, 3),
+        fig, axes = plt.subplots(nrows=len(metrics), ncols=len(self.batch_obses_list),
+                                 figsize=(12, 3),
                                  constrained_layout=True)
         # axes.set_position([0.1, 0.1, 0.9, 0.9])
         # fig_aux = plt.figure()
@@ -292,15 +293,27 @@ class Visualizer_quadrotor(object):
                 elif len(metrics) > 1:
                     sub_ax = axes[j]
 
-                ct = sub_ax.contourf(self.X, self.Z, data2plot[i], norm=norm, cmap='rainbow',
-                                     # levels=[-0.064, -0.048, -0.032, -0.016, 0., 0.016])  # CBF
-                                     levels=[-3., -2, -1, 0., 0.5, 1.0, 1.5])  # RAC
-                                     # levels=[-0.6, -0.3, 0., 0.3, 0.6, 0.9, 1.2])  # SI
+                ct = sub_ax.contourf(self.X, self.Z, data2plot[i],
+                                     norm=norm,
+                                     cmap='rainbow',
+                                     # levels=[-0.06, -0.04, -0.02, 0., 0.2, 0.6, 1.0, 1.2])  # CBF
+                                     levels=[-1.2, -0.6, 0., 1.2, 2.4, 3.6, 4.8])  # RAC
+                                     # levels=[-1.2, -0.8, -0.4, 0., 0.4, 0.8, 1.2])  # SI
+                ct_line = sub_ax.contour(self.X, self.Z, data2plot[i],
+                                         levels=[0], colors='black',
+                                         linewidths=2.5, linestyles='solid')
+                sub_ax.clabel(ct_line, inline=True, fontsize=14, fmt=r'Feasible set boundary',)
+
                 x = np.linspace(-1.5, 1.5, 100)
                 y1 = np.ones_like(x) * 1.5
                 y2 = np.ones_like(x) * 0.5
-                line1, = sub_ax.plot(x, y1, color='black', linestyle = 'dashed')
-                line2, = sub_ax.plot(x, y2, color='black', linestyle = 'dashed')
+
+                theta = np.linspace(0, 2*np.pi, 360)
+                trj_x = np.cos(theta)
+                trj_y = np.sin(theta) + 1
+                line1, = sub_ax.plot(x, y1, color='black', linestyle = 'solid')
+                line2, = sub_ax.plot(x, y2, color='black', linestyle = 'solid')
+                line3, = sub_ax.plot(trj_x, trj_y, color='black', linestyle='dashed')
 
                 sub_ax.set_yticks(np.linspace(0.5, 1.5, 3))
                 ct_list.append(ct)
@@ -308,7 +321,7 @@ class Visualizer_quadrotor(object):
                 axes_list.append(sub_ax)
 
             # cax = add_right_cax(sub_ax, pad=0.01, width=0.02)
-            plt.colorbar(ct_list[0], ax=axes_list,
+            plt.colorbar(ct_list[1], ax=axes_list,
                          shrink=0.8, pad=0.02)
 
         fig.supxlabel('x')
@@ -317,7 +330,8 @@ class Visualizer_quadrotor(object):
 
 
 if __name__ == '__main__':
-    vizer = Visualizer_quadrotor('../results/quadrotor/RAC-feasibility/2022-01-21-00-00-00',
+    vizer = Visualizer_quadrotor('../results/quadrotor/round1/RAC-feasibility/2022-01-09-02-00-54',
                                  2000000,
+                                 bound=[-1.5, 1.5, 0, 2],
                                  z_dot_list=[-1., 0., 1.])
     vizer.plot_region(['fea'])

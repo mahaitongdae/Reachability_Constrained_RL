@@ -3,11 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
-ALG2CMAP = dict([('RAC (ours)', 'Blue'),
-                 ('SAC-Lagrangian', 'Green'),
-                 ('SAC-Reward Shaping', 'orange'),
-                 ('SAC-CBF', 'salmon'),
-                 ('SAC-SI', 'orchid')])
+ALG2CMAP = dict([('RAC (ours)', (0.0, 0.24705882352941178, 1.0)),
+                 ('SAC-Lagrangian', (0.011764705882352941, 0.9294117647058824, 0.22745098039215686)),
+                 ('SAC-Reward Shaping', (0.9098039215686274, 0.0, 0.043137254901960784)),
+                 ('SAC-CBF', (0.5411764705882353, 0.16862745098039217, 0.8862745098039215)),
+                 ('SAC-SI', (1.0, 0.7686274509803922, 0.0))])
 
 params={'font.family': 'Arial',
         # 'font.serif': 'Times New Roman',
@@ -56,8 +56,8 @@ def plt_constraint(ax):
     z_lb = 0.5 * np.ones_like(x)
     z_ub = 1.5 * np.ones_like(x)
 
-    ax.plot(x, z_lb, marker='.', c='r')
-    ax.plot(x, z_ub, marker='.', c='r', label='Constraints')
+    ax.plot(x, z_lb, ls='solid', c='Black')
+    ax.plot(x, z_ub, ls='solid', c='Black', label='Constraints')
 
 def plt_PID_baseline(ax):
     # PID uncstr baseline
@@ -70,8 +70,8 @@ def plt_PID_baseline(ax):
 
 
 if __name__ == '__main__':
-    fig = plt.figure(figsize=[9, 7])
-    ax = plt.axes([0.1, 0.25, 0.8, 0.7])
+    fig = plt.figure()  #figsize=[6, 6]
+    ax = plt.axes([0.2, 0.2, 0.7, 0.7])
     # # FSAC-Qc
     # plt_trajectory('../results/quadrotor/FSAC-Qc/2021-12-23-22-39-21/logs/tester/test-2021-12-24-13-27-39/')
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # RAC
     trj_RAC = plt_trajectory(ax,
                              'RAC (ours)',
-                             '../results/quadrotor/RAC-feasibility/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
+                             '../results/quadrotor/RAC-feasibility/data2plot/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
 
     # SAC-L
     trj_SACL = plt_trajectory(ax,
@@ -92,12 +92,12 @@ if __name__ == '__main__':
     # SAC-Reward Shaping
     trj_SACRS = plt_trajectory(ax,
                               'SAC-Reward Shaping',
-                               '../results/quadrotor/SAC-RewardShaping-Qc/2022-01-18-15-59-47/logs/tester/test-2022-01-22-11-51-45')
+                               '../results/quadrotor/SAC-RewardShaping-Qc/data2plot/2022-01-18-15-59-47/logs/tester/test-2022-01-22-11-51-45')
 
     # SAC-CBF
     trj_SACCBF = plt_trajectory(ax,
                                'SAC-CBF',
-                               '../results/quadrotor/SAC-CBF-CBF/2022-01-19-00-28-04/logs/tester/test-2022-01-22-12-10-45')
+                               '../results/quadrotor/SAC-CBF-CBF/2022-01-24-12-52-48/logs/tester/test-2022-01-24-23-19-02')
 
     # SAC-Energy
     trj_SACenergy = plt_trajectory(ax,
@@ -115,13 +115,15 @@ if __name__ == '__main__':
     # Plot settings
     ax.set_xlabel('x')
     ax.set_ylabel('z')
-    ax.set_xlim(-1.5, 1.5)
+    ax.set_xlim(-1.2, 1.2)
     ax.set_ylim(-0.2, 2.2)
 
     # legend1 = ax.legend(*trj_RAC.legend_elements(),
     #                     loc="lower left", title="Algorithms")
-    ax.legend(frameon=False, fontsize=12,
-              bbox_to_anchor=(0.5, -0.25), loc='lower center', ncol=4)
-    plt.title('Quadrotor Tracking Trajectories Visualization', fontsize=12)
-    plt.tight_layout(pad=0.5)
+    ax.legend(frameon=False,
+              fontsize=14,
+              bbox_to_anchor=(0.5, -0.25),
+              loc='lower center', ncol=5)
+    plt.title('Quadrotor Tracking Trajectories Visualization', fontsize=14)
+    # plt.tight_layout(pad=0.5)
     plt.show()
