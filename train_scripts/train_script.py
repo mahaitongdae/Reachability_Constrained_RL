@@ -118,7 +118,7 @@ def built_RAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=-0.1)  # todo
+    parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     if parser.parse_args().constrained_value == 'feasibility':
         parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1
@@ -179,7 +179,7 @@ def built_RAC_parser():
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[2e-5, int(MAX_ITER / delay_update), 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[1e-6, int(MAX_ITER / dual_ascent_interval), 1e-7])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[6e-7, int(MAX_ITER / dual_ascent_interval), 1e-7])
     parser.add_argument('--alpha', default='auto')  # todo 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
@@ -200,10 +200,10 @@ def built_RAC_parser():
     parser.add_argument('--obs_ptype', type=str, default='scale')
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=1.)  # todo
+    parser.add_argument('--rew_scale', type=float, default=1.0)  # todo
     parser.add_argument('--rew_shift', type=float, default=0.)
     parser.add_argument('--cost_ptype', type=str, default='scale')
-    parser.add_argument('--cost_scale', type=float, default=10.)  # todo
+    parser.add_argument('--cost_scale', type=float, default=50.)  # todo
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")

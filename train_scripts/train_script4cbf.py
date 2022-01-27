@@ -237,6 +237,7 @@ def built_parser(alg_name):
     elif args.alg_name == 'SAC-CBF':
         assert args.mlp_lam
         assert args.constrained_value == 'CBF'
+        assert args.cost_scale == 1.0
     elif args.alg_name == 'FSAC-A':
         assert args.mlp_lam
         assert args.constrained_value == 'si'
