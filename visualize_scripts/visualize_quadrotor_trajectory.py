@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # RAC
     trj_RAC = plt_trajectory(ax,
                              'RAC (ours)',
-                             '../results/quadrotor/RAC-feasibility/data2plot/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
+                             '../results/quadrotor/RAC-feasibility/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
 
     # SAC-L
     trj_SACL = plt_trajectory(ax,
