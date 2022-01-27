@@ -103,8 +103,14 @@ class SACLearnerWithCost(object):
             clipped_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
 
         elif self.constrained_value_type == 'CBF':
-            cost_obses_tp1 = self.preprocessor.tf_process_costs(compute_constraints(self.batch_data['batch_obs_tp1'])).numpy()
-            target_cbf = cost_obses_tp1 - self.args.cost_gamma * processed_cost
+            # cost_obses_tp1 = self.preprocessor.tf_process_costs(compute_constraints(self.batch_data['batch_obs_tp1'])).numpy()
+            # target_cbf = cost_obses_tp1 - self.args.cost_gamma * processed_cost
+            z = self.batch_data['batch_obs'][:, 2]
+            z_dot = self.batch_data['batch_obs_tp1'][:, 3]
+            h1, h2 = z - 1.5, 0.5 - z  # (B,)
+            h1_dot, h2_dot = z_dot, -z_dot  # (B,)
+            target_cbf = np.maximum(h1_dot+(1-self.args.cost_gamma)*h1, h2_dot+(1-self.args.cost_gamma)*h2)
+            
             clipped_qc_target = target_cbf
         elif self.constrained_value_type == 'si':
             delta_phi = self._compute_delta_safety_index(self.batch_data['batch_sis_info'])
@@ -131,7 +137,7 @@ class SACLearnerWithCost(object):
 
         phi_tp1 = sigma - d_tp1**n - k * dotd_tp1
         phi_tp1_across_cons_num = np.max(phi_tp1, axis=1)
-        delta_phi = phi_tp1_across_cons_num - phi_t_across_cons_num
+        delta_phi = phi_tp1_across_cons_num - np.maximum(phi_t_across_cons_num-0.1, 0.)
 
         return delta_phi
 
@@ -194,10 +200,10 @@ class SACLearnerWithCost(object):
             all_Qs_min = self.tf.reduce_min((all_Qs1, all_Qs2), 0)
             alpha = self.tf.exp(self.policy_with_value.log_alpha) if self.args.alpha == 'auto' else self.args.alpha
             QC = self.policy_with_value.compute_QC1(processed_obses, actions)
-            violation = self.tf.clip_by_value(QC - self.args.cost_lim, 0., 100.)
+            violation = self.tf.clip_by_value(QC - self.args.cost_lim, -100., 100.)
             if self.args.mlp_lam:
                 lams = self.policy_with_value.compute_lam(processed_obses)
-                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), violation))
+                penalty_terms = self.tf.reduce_mean(self.tf.multiply(self.tf.stop_gradient(lams), QC))
             else:
                 lams = self.policy_with_value.log_lam
                 penalty_terms = lams * self.tf.reduce_mean(QC)
