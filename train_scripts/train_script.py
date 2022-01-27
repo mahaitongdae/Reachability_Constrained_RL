@@ -74,7 +74,7 @@ def built_RAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/RAC-feasibility/data2plot/2022-01-07-13-13-39'
+        test_dir = '../results/quadrotor/RAC-feasibility/2022-01-20-22-16-18'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
@@ -118,7 +118,7 @@ def built_RAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
+    parser.add_argument('--cost_lim', type=float, default=-0.1)  # todo
     parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     if parser.parse_args().constrained_value == 'feasibility':
         parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1

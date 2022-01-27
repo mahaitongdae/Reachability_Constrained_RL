@@ -131,7 +131,7 @@ class SACLearnerWithCost(object):
 
         phi_tp1 = sigma - d_tp1**n - k * dotd_tp1
         phi_tp1_across_cons_num = np.max(phi_tp1, axis=1)
-        delta_phi = phi_tp1_across_cons_num - phi_t_across_cons_num
+        delta_phi = phi_tp1_across_cons_num - np.maximum(phi_t_across_cons_num-0.1, 0.)
 
         return delta_phi
 

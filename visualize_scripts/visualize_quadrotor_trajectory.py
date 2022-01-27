@@ -6,8 +6,8 @@ from matplotlib import rcParams
 ALG2CMAP = dict([('RAC (ours)', 'Blue'),
                  ('SAC-Lagrangian', 'Green'),
                  ('SAC-Reward Shaping', 'orange'),
-                 ('CBF-based SAC', 'salmon'),
-                 ('Energy-based SAC', 'orchid')])
+                 ('SAC-CBF', 'salmon'),
+                 ('SAC-SI', 'orchid')])
 
 params={'font.family': 'Arial',
         # 'font.serif': 'Times New Roman',
@@ -27,7 +27,7 @@ def plt_trajectory(ax, alg, trj_dir, episode=None):
         zs = coor_dict_i['z']
         print(xs[0], zs[0])
         trj = ax.plot(xs, zs, c=ALG2CMAP[alg],
-                      linewidth=2,
+                      linewidth=2 if alg!='RAC (ours)' else 4,
                       label=alg,)
         break
     # plt.colorbar(trj)
@@ -82,27 +82,27 @@ if __name__ == '__main__':
     # RAC
     trj_RAC = plt_trajectory(ax,
                              'RAC (ours)',
-                             '../results/quadrotor/RAC-feasibility/data2plot/2022-01-07-13-13-39/logs/tester/test-2022-01-10-15-05-22')
+                             '../results/quadrotor/RAC-feasibility/2022-01-21-21-19-42/logs/tester/test-2022-01-22-11-14-25')
 
     # SAC-L
     trj_SACL = plt_trajectory(ax,
                              'SAC-Lagrangian',
-                              '../results/quadrotor/SAC-Lagrangian-Qc/data2plot/2022-01-07-21-28-13/logs/tester/test-2022-01-10-15-08-36')
+                              '../results/quadrotor/SAC-Lagrangian-Qc/2022-01-18-07-51-09/logs/tester/test-2022-01-22-11-52-41')
 
     # SAC-Reward Shaping
     trj_SACRS = plt_trajectory(ax,
                               'SAC-Reward Shaping',
-                               '../results/quadrotor/SAC-RewardShaping-Qc/data2plot/2022-01-08-05-34-36/logs/tester/test-2022-01-10-15-08-04')
+                               '../results/quadrotor/SAC-RewardShaping-Qc/2022-01-18-15-59-47/logs/tester/test-2022-01-22-11-51-45')
 
     # SAC-CBF
     trj_SACCBF = plt_trajectory(ax,
-                               'CBF-based SAC',
-                               '../results/quadrotor/SAC-CBF-CBF/data2plot/2022-01-08-16-20-24/logs/tester/test-2022-01-10-15-06-14')
+                               'SAC-CBF',
+                               '../results/quadrotor/SAC-CBF-CBF/2022-01-19-00-28-04/logs/tester/test-2022-01-22-12-10-45')
 
     # SAC-Energy
     trj_SACenergy = plt_trajectory(ax,
-                                   'Energy-based SAC',
-                                   '../results/quadrotor/FSAC-A-si/data2plot/2022-01-09-21-16-56/logs/tester/test-2022-01-10-15-07-22')
+                                   'SAC-SI',
+                                   '../results/quadrotor/FSAC-A-si/2022-01-21-21-53-18/logs/tester/test-2022-01-22-12-11-01')
 
     # # SAC-uncstr
     # plt_trajectory('../results/quadrotor/SAC/experiment-2021-12-27-22-26-02/logs/tester/test-2021-12-28-10-53-49')
