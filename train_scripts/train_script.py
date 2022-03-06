@@ -121,7 +121,7 @@ def built_RAC_parser():
     parser.add_argument('--cost_lim', type=float, default=0.0)  # todo
     parser.add_argument('--constrained_value', type=str, default='feasibility')  # todo: Qc feasibility
     if parser.parse_args().constrained_value == 'feasibility':
-        parser.add_argument('--indicator_cost', type=bool, default=False)  # todo: False: original cost values; True: -1/+1
+        parser.add_argument('--indicator_cost', type=bool, default=True)  # todo: False: original cost values; True: -1/+1
     parser.add_argument('--mlp_lam', type=bool, default=True)
     parser.add_argument('--double_QC', type=bool, default=False)
 
