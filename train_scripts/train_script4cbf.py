@@ -75,7 +75,7 @@ def built_SAC_CBF_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/quadrotor/SAC-CBF-CBF/data2plot/2022-01-08-16-20-24'
+        test_dir = '../results/quadrotor/SAC-CBF-CBF/2022-01-24-12-52-48'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = test_dir + '/logs' + '/tester/test-{}'.format(time_now)
@@ -237,6 +237,7 @@ def built_parser(alg_name):
     elif args.alg_name == 'SAC-CBF':
         assert args.mlp_lam
         assert args.constrained_value == 'CBF'
+        assert args.cost_scale == 1.0
     elif args.alg_name == 'FSAC-A':
         assert args.mlp_lam
         assert args.constrained_value == 'si'

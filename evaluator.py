@@ -256,6 +256,9 @@ class EvaluatorWithCost(object):
         elif self.args.env_id == 'quadrotor':
             env = make('quadrotor', **self.args.config_eval.quadrotor_config)
             self.env = DummyVecEnv(env)
+            self.eval_start_location = self.args.eval_start_location
+            assert self.args.num_eval_episode % len(self.eval_start_location) == 0, \
+                print('num_epi:', self.args.num_eval_episode, 'len(starting loc):', len(self.eval_start_location))
         else:
             env = gym.make(self.args.env_id)
             self.env = DummyVecEnv(env)
@@ -280,9 +283,7 @@ class EvaluatorWithCost(object):
         self.stats = {}
         self.eval_timer = TimerStat()
         self.eval_times = 0
-        self.eval_start_location = self.args.eval_start_location
-        assert self.args.num_eval_episode % len(self.eval_start_location) == 0, \
-            print('num_epi:', self.args.num_eval_episode, 'len(starting loc):', len(self.eval_start_location))
+        
 
     def set_seed(self, seed):
         self.tf.random.set_seed(seed)
@@ -314,11 +315,8 @@ class EvaluatorWithCost(object):
         lam_list = []
 
         if self.args.env_id == 'quadrotor':
-            config = deepcopy(self.args.config_eval)
-            config.quadrotor_config['init_state']['init_x'] = self.eval_start_location[epi_idx][0]
-            config.quadrotor_config['init_state']['init_z'] = self.eval_start_location[epi_idx][1]
-            env = make('quadrotor', **config.quadrotor_config)
-            self.env = DummyVecEnv(env)
+            self.env.INIT_X = self.eval_start_location[epi_idx][0]
+            self.env.INIT_Z = self.eval_start_location[epi_idx][1]
             self.env.seed(self.args.random_seed + epi_idx)
 
         obs, info = self.env.reset()
@@ -362,6 +360,7 @@ class EvaluatorWithCost(object):
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 cost_list.append(cost)
+        cost_list = map(lambda c: np.maximum(c, 0.), cost_list)
         episode_return = sum(reward_list)
         episode_cost_sum = sum(cost_list)
         episode_len = len(reward_list)

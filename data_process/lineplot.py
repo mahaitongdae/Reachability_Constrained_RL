@@ -12,19 +12,28 @@ import tensorboard as tb
 from tensorboard.backend.event_processing import event_accumulator
 import json
 
-sns.set(style="darkgrid")
+sns.set(style="whitegrid", font_scale=1)
+sns.set_palette(sns.color_palette('bright'))
+sns.set_palette([(0.0, 0.24705882352941178, 1.0),
+                 (0.011764705882352941, 0.9294117647058824, 0.22745098039215686),
+                 (0.9098039215686274, 0.0, 0.043137254901960784),
+                 (0.5411764705882353, 0.16862745098039217, 0.8862745098039215),
+                 (1.0, 0.7686274509803922, 0.0),
+                 (0.0, 0.8431372549019608, 1.0)])
+
+
 SMOOTHFACTOR = 0.9
 SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
-fontsize = 12
+fontsize = 10
 paper = True
 env_name_dict = {'quadrotor': 'Quadrotor Circle Tracking'}
-tag_name_dict = {'episode_return': 'Total average return',
-                 'episode_constraint_violation': 'Total average constraint violation rate (%)'}
+tag_name_dict = {'episode_return': 'Episode return',
+                 'episode_constraint_violation': 'Constraint violation rate (%)'}
 
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-ylim_dict = {'episode_return': {'quadrotor': [-500, 0],
+ylim_dict = {'episode_return': {'quadrotor': [-4, 0.],
                                 'PointButton': [-5, 33]},
              'episode_constraint_violation': {'CarGoal': [0, 28],
                                               'PointButton': [2, 16],
@@ -34,8 +43,8 @@ ylim_dict = {'episode_return': {'quadrotor': [-500, 0],
 
 def help_func():
     tag2plot = ['episode_return', 'episode_constraint_violation']
-    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Qc', 'SAC-RewardShaping-Qc', 'FSAC-A-si', 'SAC-CBF-CBF']
-    lbs = ['RAC (ours)', 'SAC-Lagrangian', 'SAC-Reward Shaping', 'Energy-based SAC', 'CBF-based SAC']  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['RAC-feasibility', 'SAC-Lagrangian-Qc', 'SAC-RewardShaping-Qc', 'SAC-CBF-CBF', 'FSAC-A-si']
+    lbs = ['RAC (ours)', 'SAC-Lagrangian', 'SAC-Reward Shaping', 'SAC-CBF', 'SAC-SI']  # 'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['quadrotor']
     palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
@@ -55,8 +64,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(
                 data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
-                # if num_run == 1:
-                #     break
+                # if num_run != 1:
+                #     continue
                 if alg in txt_store_alg_list:  # result run by safety-starter-agents
                     eval_dir = data2plot_dir + '/' + dir
                     print(eval_dir)
@@ -74,6 +83,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
 
                         data_in_one_run_of_one_alg.update({tag: []})
                         data_in_one_run_of_one_alg.update({'iteration': []})
+                        data_in_one_run_of_one_alg.update({'linewidth': []})
                         for eval_summary in eval_summarys:
                             event = event_pb2.Event.FromString(eval_summary.numpy())
                             if event.step % 10000 != 0: continue  # TODO: step/iteration
@@ -81,8 +91,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 t = tf.make_ndarray(v.tensor)
                                 tag_in_events = 'evaluation/' + tag if tag.startswith('ep') else 'optimizer/' + tag
                                 if tag_in_events == v.tag:
-                                    # if tag == 'episode_return':
-                                    #     t = np.clip(t, -2.0, 100.0)
+                                    if tag == 'episode_return':
+                                        t /= 1000.0
                                     if tag == 'episode_constraint_violation':
                                         t *= 100.0
                                     data_in_one_run_of_one_alg[tag].append(
@@ -90,6 +100,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                             t)
                                         if data_in_one_run_of_one_alg[tag] else float(t))  # TODO: why smooth?
                                     data_in_one_run_of_one_alg['iteration'].append(int(event.step / 10000.))
+                                    data_in_one_run_of_one_alg['linewidth'].append(4 if alg == 'RAC-feasibility' else 2)
                     # len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                     # period = int(len1/len2)
                     # data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period] for i in range(len2)]
@@ -100,38 +111,39 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
 
         for i, tag in enumerate(tag2plot):
-            figsize = (5, 4)
-            axes_size = [0.13, 0.14, 0.85, 0.80] if paper else [0.13, 0.11, 0.86, 0.84]
+            figsize = (3, 2.5)
+            # axes_size = [0.13, 0.14, 0.85, 0.80] if paper else [0.13, 0.11, 0.86, 0.84]
             plt.figure(figsize=figsize)  # figsize=figsize
             ax1 = plt.axes()  # f1.add_axes(axes_size)
             sns.lineplot(x="iteration", y=tag, hue="algorithm",
-                         data=total_dataframe, linewidth=2, palette=palette
-                         )
+                         data=total_dataframe, size='linewidth', sizes=[1.5, 2.5])  # size='linewidth', sizes=[1.5, 2.5]
             title = env_name_dict[task]
             ax1.set_ylabel(tag_name_dict[tag], fontsize=fontsize)
             ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
             handles, labels = ax1.get_legend_handles_labels()
             labels = lbs
-            ax1.legend(handles=handles, labels=labels,
-                       # bbox_to_anchor=(0.5, -0.1), loc='lower center', ncol=3,
-                       loc='best',
-                       frameon=False, fontsize=fontsize)
-            if i != 0:
-                ax1.get_legend().remove()
+            # ax1.legend(handles=handles, labels=labels,
+            #            bbox_to_anchor=(1.5, 0.5), loc='center right', ncol=1,
+            #            # loc='best',
+            #            frameon=False, fontsize=fontsize)
+            if i == 0:
+                plt.text(0, 0.1, r'x10$^{3}$', fontsize=9, family='Arial')
+            # if i != 1:
+            ax1.get_legend().remove()
             plt.yticks(fontsize=fontsize)
             plt.xticks(fontsize=fontsize)
             plt.xlim([0, 200])
             plt.ylim(ylim_dict[tag][task])
-            plt.title(title, fontsize=fontsize)
+            # plt.title(title, fontsize=fontsize)
             # plt.gcf().set_size_inches(3.85, 2.75)
             plt.tight_layout(pad=0.5)
 
             save_dir = '../data_process/figure/'
-            os.makedirs(save_dir, exist_ok=True)
+            # os.makedirs(save_dir, exist_ok=True)
             fig_name = save_dir + task + '-' + tag + '.pdf'
-            plt.savefig(fig_name)
+            # plt.savefig(fig_name)
 
-        # plt.show()
+        plt.show()
 
 
 def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):

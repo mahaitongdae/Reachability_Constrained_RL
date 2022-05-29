@@ -110,7 +110,7 @@ class SACLearnerWithCost(object):
             h1, h2 = z - 1.5, 0.5 - z  # (B,)
             h1_dot, h2_dot = z_dot, -z_dot  # (B,)
             target_cbf = np.maximum(h1_dot+(1-self.args.cost_gamma)*h1, h2_dot+(1-self.args.cost_gamma)*h2)
-            # target_cbf = cost_obses_tp1 - self.args.cost_gamma * processed_cost
+            
             clipped_qc_target = target_cbf
         elif self.constrained_value_type == 'si':
             delta_phi = self._compute_delta_safety_index(self.batch_data['batch_sis_info'])

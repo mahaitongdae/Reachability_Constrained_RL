@@ -239,14 +239,14 @@ class OffPolicyWorkerWithCost(object):
                 cost = np.float32(info[0].get('constraint_violation', 0))  # todo: scg: constraint_values; gym: cost    
             elif self.args.constrained_value in ['feasibility', 'CBF', 'si']:
                 cost = np.max(info[0].get('constraint_values', 0.))  # todo: scg: constraint_values; gym: cost
-                if self.args.constrained_value == 'feasibility':
+                if self.args.constrained_value == 'feasibility' and (not self.args.indicator_cost):
                     if cost > 0: cost += 0.05
-                    
-                    if self.args.indicator_cost:
-                        if cost < 0:
-                            cost = -1.
-                        elif cost > 0:
-                            cost = 1.
+                    # cost = np.clip(cost, 0., 5.) # TODO: you may find this line useful so feel free to uncomment
+                if self.args.constrained_value == 'feasibility' and self.args.indicator_cost:
+                    if cost < 0:
+                        cost = -1.
+                    elif cost > 0:
+                        cost = 1.
             else:
                 raise NotImplementedError("Undefined constrained value")
             # safety index needs following addtional data

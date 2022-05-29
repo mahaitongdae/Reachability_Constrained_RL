@@ -1,4 +1,7 @@
-export PYTHONPATH=/home/yudongjie/PycharmProjects/Reachability_Constrained_RL:$PYTHONPATH
+#!/bin/sh
+
+PARENT_DIR=$(cd $(dirname $0);cd ..; pwd)
+export PYTHONPATH=$PYTHONPATH:$PARENT_DIR
 
 python ./train_script.py
 
