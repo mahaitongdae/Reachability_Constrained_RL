@@ -6,7 +6,7 @@ which includes implementations of most common RL algorithms with the state-of-th
 If you are interested in or want to contribute to PABAL, you can contact me or the [original creator](https://github.com/idthanm).
 
 ## Requirements
-**[https://github.com/ManUtdMoon/safe-control-gym](Safe-control-gym) is needed before running!**
+**[Safe-control-gym]((https://github.com/ManUtdMoon/safe-control-gym) is needed before running!**
 
 To install other requirements:
 
