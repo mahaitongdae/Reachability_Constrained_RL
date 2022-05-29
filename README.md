@@ -54,7 +54,7 @@ When contributing to this repository, please first discuss the change you wish t
 
 ## If you find our paper/code helpful, welcome to cite:
 ```
-@misc{yu2022rcrl,
+@misc{yuandma2022rcrl,
   url = {https://arxiv.org/abs/2205.07536},
   author = {Yu, Dongjie and Ma, Haitong and Li, Shengbo Eben and Chen, Jianyu},
   title = {Reachability Constrained Reinforcement Learning},
