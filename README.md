@@ -44,7 +44,7 @@ To test and evaluate trained policies, run:
 ```test
 python train_scripts4<alg_name>.py --mode testing --test_dir <your_log_dir> --test_iter_list <iter_nums>
 ```
-and the results will be recored in `/results/quadrotr/<ALGO_NAME>/<EXP_TIME>/logs/tester`.
+and the results will be recored in `/results/quadrotor/<ALGO_NAME>/<EXP_TIME>/logs/tester`.
 
 ### Results visualization
 `visualize_scripts/visualize_quadrotor_trajectory.py` and `visualize_scripts/visualize_region_quadrotor.py` can be used to visualize the trajectory and the feasible set, respectively. All you need to do is to paste the directory of the experiment run into the main function.
