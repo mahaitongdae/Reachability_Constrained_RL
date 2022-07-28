@@ -54,8 +54,7 @@ When contributing to this repository, please first discuss the change you wish t
 
 ## If you find our paper/code helpful, welcome to cite:
 ```
-
-@InProceedings{pmlr-v162-yu22d,
+@InProceedings{yuandma2022rcrl,
   title = 	 {Reachability Constrained Reinforcement Learning},
   author =       {Yu, Dongjie and Ma, Haitong and Li, Shengbo and Chen, Jianyu},
   booktitle = 	 {Proceedings of the 39th International Conference on Machine Learning},
